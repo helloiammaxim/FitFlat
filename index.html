@@ -2275,7 +2275,7 @@ const lineHit = hitLine(x, y);
 // world axes as shown (Z up) in the tool's own coordinates
 const AXIS_V = { x: [1, 0, 0], y: [0, 0, -1], z: [0, 1, 0] };
 function moveDecalTo(p, x, y) {
-  const X = ensureXform(p.d); if (!X) return;
+  const X = ensureXform(p.d, p.idx); if (!X) return;
   let dl;
   const ax = AXIS_V[S.moveAxis];
   if (ax && p.last) { // locked to an axis: follow the point on the axis line closest to the pointer's line of sight
@@ -2301,8 +2301,18 @@ function moveDecalTo(p, x, y) {
 }
 function applyDrag(e, x, y) {
   const p = press, d = p.decal;
-  let hit = pickFor(p, x, y, e.shiftKey); p.lx = x; p.ly = y; if (!hit) return;
-  if (p.kind === 'p') hit = snapHit(hit);
+  let hit = pickFor(p, x, y, e.shiftKey); p.lx = x; p.ly = y;
+  const ax = p.kind === 'p' && !p.ghost ? AXIS_V[S.moveAxis] : null;
+  if (ax) { // locked to an axis: the point on the axis line through the grabbed point closest to the pointer's line of sight, laid on the surface
+    const O = p.orig[p.index].p, w = canvas.clientWidth, h = canvas.clientHeight; raycaster.setFromCamera({ x: x / w * 2 - 1, y: -(y / h) * 2 + 1 }, camera);
+    const o = raycaster.ray.origin, dv = [raycaster.ray.direction.x, raycaster.ray.direction.y, raycaster.ray.direction.z], w0 = v3.sub(O, [o.x, o.y, o.z]), b = v3.dot(ax, dv), den = 1 - b * b;
+    if (den < 1e-4) return;
+    const t = (b * v3.dot(dv, w0) - v3.dot(ax, w0)) / den, piece = S.model.topo.piece[d.ctrl[p.index].face];
+    const h2 = Core.closestPoint(S.model.mesh, S.model.grid, v3.add(O, v3.mul(ax, t)), 120, f => S.model.topo.piece[f] === piece); if (!h2) return;
+    hit = { p: h2.point, face: h2.face };
+  }
+  if (!hit) return;
+  if (p.kind === 'p' && !ax) hit = snapHit(hit);
   if (!p.hist) { HIST.undo.push(snapshotBefore(p)); HIST.redo = []; S.dirty = true; p.hist = true; }
   let hp = hit.p, hf = hit.face;
   if (p.ghost) { const h = Core.closestPoint(S.model.mesh, S.model.grid, reflect(hit.p), 80); if (!h) return; hp = h.point; hf = h.face; }
@@ -2785,7 +2795,7 @@ document.querySelectorAll('#moveAxis [data-mx]').forEach(b => b.addEventListener
 window.addEventListener('keydown', e => {
   if (e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, select, textarea')) return;
   const k = e.key.toLowerCase(); if (!['x', 'y', 'z'].includes(k)) return;
-  const moving = (press && press.type === 'move') || (gzDrag && gzDrag.g === 'move'); if (!moving) return;
+  const moving = (press && (press.type === 'move' || (press.type === 'drag' && press.kind === 'p'))) || (gzDrag && gzDrag.g === 'move'); if (!moving) return;
   setMoveAxis(S.moveAxis === k ? '' : k); e.preventDefault(); e.stopImmediatePropagation();
 }, true);
 document.querySelectorAll('#turnAxis [data-ax]').forEach(b => b.addEventListener('click', () => { S.turnAxis = b.dataset.ax; document.querySelectorAll('#turnAxis [data-ax]').forEach(x => x.setAttribute('aria-pressed', x.dataset.ax === S.turnAxis)); flash(S.turnAxis === 'view' ? 'Turning around the view: the decal turns as you see it.' : S.turnAxis === 'surface' ? 'Turning around the surface normal at the decal\'s centre.' : `Turning around the ${S.turnAxis.toUpperCase()} axis through the middle of the tube.`); }));
@@ -4469,10 +4479,10 @@ function uvAt(res, p, face) {
   }
   return null;
 }
-function startXform(d) {
+function startXform(d, idx) {
   const res = d.res; if (!res || res.error || !res.uvOf) return null;
-  const piece = S.model.topo.piece[d.ctrl[0].face], sym = !!(d.mirror && d.ctrl.some(c => c.plane));
-  const all = (d.mergedMap || d.ctrl).map(c => c.p), m = [0, 1, 2].map(k => all.reduce((a, p) => a + p[k], 0) / all.length);
+  const piece = S.model.topo.piece[d.ctrl[0].face], sym = !idx && !!(d.mirror && d.ctrl.some(c => c.plane));
+  const all = idx ? idx.map(i => d.ctrl[i].p) : (d.mergedMap || d.ctrl).map(c => c.p), m = [0, 1, 2].map(k => all.reduce((a, p) => a + p[k], 0) / all.length);
   let h = Core.closestPoint(S.model.mesh, S.model.grid, m, 300, f => S.model.topo.piece[f] === piece); if (!h) return null;
   if (sym) { const s2 = snapToPlane(h.point, h.face); if (s2) h = { point: s2.p, face: s2.face }; }
   const C = h.point, fc = h.face, uvC = uvAt(res, C, fc); if (!uvC) return null;
@@ -4485,7 +4495,7 @@ function startXform(d) {
   const g1 = v3.sub(vtx(1), A3), g2 = v3.sub(vtx(2), A3);
   const J = w => { const a = (w[0]*du2[1] - w[1]*du2[0]) / dt, b = (du1[0]*w[1] - du1[1]*w[0]) / dt; return v3.add(v3.mul(g1, a), v3.mul(g2, b)); };
   const items = [];
-  for (const c of d.ctrl) { const uv = uvAt(res, c.p, c.face); if (!uv) return null; items.push({ w: [uv[0] - uvC[0], uv[1] - uvC[1]], o: cloneC(c) }); }
+  for (const i of idx || d.ctrl.map((_, k) => k)) { const c = d.ctrl[i], uv = uvAt(res, c.p, c.face); if (!uv) return null; items.push({ i, w: [uv[0] - uvC[0], uv[1] - uvC[1]], o: cloneC(c) }); }
   const n0 = fnorm(fc), sgn = Math.sign(v3.dot(v3cross(J([1, 0]), J([0, 1])), n0)) || 1; // which way the layout turns relative to the surface
   const vf = camFwd(), axis = S.turnAxis || 'view';
   // world axes as shown (Z up): X = x, Y = -z, Z = y inside the tool
@@ -4495,7 +4505,7 @@ function startXform(d) {
   if (worldAxis && modelMesh) { const n = fnorm(fc), rc = new THREE.Raycaster(new THREE.Vector3(...v3.sub(C, v3.mul(n, 0.05))), new THREE.Vector3(-n[0], -n[1], -n[2]));
     const side = modelMesh.material.side; modelMesh.material.side = THREE.DoubleSide; // the far wall is seen from inside
     const hit = rc.intersectObject(modelMesh, false).find(h => h.distance > 0.2); modelMesh.material.side = side; if (hit && hit.distance < S.model.diag * 0.25) pivot = v3.sub(C, v3.mul(n, (hit.distance + 0.05) / 2)); }
-  return { d, piece, sym, C, fc, E1: J([1, 0]), E2: J([0, 1]), sgn, items, du: 0, dv: 0, ang: 0, sc: 1, axis, worldAxis, pivot, viewAxis: [vf.x, vf.y, vf.z], before: snapshot(), t: performance.now() };
+  return { d, idxKey: idx ? idx.join(',') : 'all', piece, sym, C, fc, E1: J([1, 0]), E2: J([0, 1]), sgn, items, du: 0, dv: 0, ang: 0, sc: 1, axis, worldAxis, pivot, viewAxis: [vf.x, vf.y, vf.z], before: snapshot(), t: performance.now() };
 }
 const rodr = (v, ax, th) => { const cr = v3cross(ax, v), dt = v3.dot(ax, v); return v3.add(v3.add(v3.mul(v, Math.cos(th)), v3.mul(cr, Math.sin(th))), v3.mul(ax, dt * (1 - Math.cos(th)))); };
 function applyXform() {
@@ -4506,8 +4516,8 @@ function applyXform() {
   const axisV = worldTurn ? X.worldAxis : X.viewAxis;
   const mv = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [E1, E2] = mv.carry;
   const nC = fnorm(mv.face);
-  d.ctrl.forEach((c, i) => {
-    const it = X.items[i], w = [X.sc * (it.w[0]*cs - it.w[1]*sn), X.sc * (it.w[0]*sn + it.w[1]*cs)];
+  X.items.forEach(it => {
+    const c = d.ctrl[it.i], w = [X.sc * (it.w[0]*cs - it.w[1]*sn), X.sc * (it.w[0]*sn + it.w[1]*cs)];
     const r = surfWalk(mv.p, mv.face, v3.add(v3.mul(E1, w[0]), v3.mul(E2, w[1])), X.piece);
     let q = r.p, face = r.face;
     if (vth && viewTurn) { // turn about the line of sight through the centre, then lay the point back onto the surface as seen from the view
@@ -4540,12 +4550,14 @@ function axisGuide(cx, cy) {
   const dx = a.x - b.x, dy = a.y - b.y, L = Math.hypot(dx, dy) || 1, ux = dx / L * 3000, uy = dy / L * 3000;
   return `<line x1="${cx - ux}" y1="${cy - uy}" x2="${cx + ux}" y2="${cy + uy}" stroke="${col}" stroke-width="1.2" stroke-dasharray="6 4" opacity=".8" pointer-events="none"/>`;
 }
-function gizmoTarget() { const d = xformTarget(); return d && d.samples?.length && !selList().length && (!press || press.type === 'move') ? d : (gzDrag ? gzDrag.d : null); }
+const selIdx = () => { const L = selList(); return L.length >= 2 && S.sel?.decal === S.active ? L : null; }; // two or more selected points transform on their own
+function gizmoTarget() { const d = xformTarget(), n = selList().length; return d && d.samples?.length && (n === 0 || selIdx()) && (!press || press.type === 'move') ? d : (gzDrag ? gzDrag.d : null); }
 function drawGizmo() {
   const el = $('#gizmo'); if (!el) return;
   const d = gizmoTarget();
   if (!d) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; gizmoKey = ''; } return; }
-  const sp = d.samples.map(q => screenOf(q.point)).concat((d.twin?.res?.samples || []).length && !d.mergedMap ? [] : []);
+  const si = gzDrag ? gzDrag.idx : selIdx();
+  const sp = si ? si.map(i => screenOf(d.ctrl[i].p)) : d.samples.map(q => screenOf(q.point));
   let cx = 0, cy = 0; for (const p of sp) { cx += p.x; cy += p.y; } cx /= sp.length; cy /= sp.length;
   if (gzDrag) { cx = gzDrag.cx ?? cx; cy = gzDrag.cy ?? cy; }
   let R = 0; for (const p of sp) R = Math.max(R, Math.hypot(p.x - cx, p.y - cy)); R = Math.max(28, R + 14);
@@ -4568,16 +4580,16 @@ $('#gizmo').addEventListener('pointerdown', e => {
   const g = e.target.closest('[data-g]')?.dataset.g; if (!g || e.button !== 0) return;
   const d = gizmoTarget(); if (!d) return;
   e.preventDefault(); e.stopPropagation();
-  const X = ensureXform(d); if (!X) { flash('Unwrap this decal first (it has no valid layout yet).'); return; }
-  const { x, y } = rel(e), sp = d.samples.map(q => screenOf(q.point));
+  const idx = selIdx(), X = ensureXform(d, idx); if (!X) { flash('Unwrap this decal first (it has no valid layout yet).'); return; }
+  const { x, y } = rel(e), sp = idx ? idx.map(i => screenOf(d.ctrl[i].p)) : d.samples.map(q => screenOf(q.point));
   let cx = 0, cy = 0; for (const p of sp) { cx += p.x; cy += p.y; } cx /= sp.length; cy /= sp.length;
   // which way the layout turns on screen, so dragging clockwise turns the decal clockwise
   const c0 = screenOf(X.C), a1 = screenOf(v3.add(X.C, X.E1)), a2 = screenOf(v3.add(X.C, X.E2));
   const scr = Math.sign((a1.x - c0.x) * (a2.y - c0.y) - (a1.y - c0.y) * (a2.x - c0.x)) || 1;
-  const sym = d.mirror && d.ctrl.some(c => c.plane);
+  const sym = !idx && d.mirror && d.ctrl.some(c => c.plane);
   if (g === 'rot' && sym) { flash('A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.'); return; }
-  gzDrag = { d, g, cx, cy, x0: x, y0: y, a0: Math.atan2(y - cy, x - cx), r0: Math.max(4, Math.hypot(x - cx, y - cy)), ang0: X.ang, sc0: X.sc, scr, last: null, label: '' };
-  if (g === 'move') { const h = pickAt(x, y) || pickAt(cx, cy); gzDrag.p = { d, last: h ? h.p : X.C.slice(), twin: false }; }
+  gzDrag = { d, idx, g, cx, cy, x0: x, y0: y, a0: Math.atan2(y - cy, x - cx), r0: Math.max(4, Math.hypot(x - cx, y - cy)), ang0: X.ang, sc0: X.sc, scr, last: null, label: '' };
+  if (g === 'move') { const h = pickAt(x, y) || pickAt(cx, cy); gzDrag.p = { d, idx, last: h ? h.p : X.C.slice(), twin: false }; }
   $('#gizmo').setPointerCapture(e.pointerId);
 });
 $('#gizmo').addEventListener('pointermove', e => {
@@ -4598,18 +4610,20 @@ $('#gizmo').addEventListener('pointermove', e => {
 });
 const endGizmo = () => { if (!gzDrag) return; const d = gzDrag.d; gzDrag = null; gizmoKey = ''; if (xform && xform.d === d) { clearTimeout(xformT); xformT = null; solve(d); } };
 $('#gizmo').addEventListener('pointerup', endGizmo); $('#gizmo').addEventListener('pointercancel', endGizmo);
-function ensureXform(d) {
-  if (xform && xform.d === d && xform.sig === ctrlSig(d) && xform.axis === (S.turnAxis || 'view')) return xform; // the same gesture goes on while nothing else changed the decal
+// idx: only these points (a selection), or the whole decal
+function ensureXform(d, idx) {
+  const key = idx && idx.length ? idx.join(',') : 'all';
+  if (xform && xform.d === d && xform.sig === ctrlSig(d) && xform.axis === (S.turnAxis || 'view') && xform.idxKey === key) return xform; // the same gesture goes on while nothing else changed the decal
   if (xformT) { clearTimeout(xformT); xformT = null; if (S.decals.includes(d)) solveNow(d); } // start from a fresh layout
-  xform = startXform(d); if (!xform) return null; xform.sig = ctrlSig(d);
+  xform = startXform(d, idx && idx.length ? idx : null); if (!xform) return null; xform.sig = ctrlSig(d);
   HIST.undo.push(xform.before); HIST.redo = []; S.dirty = true; return xform;
 }
 canvas.addEventListener('wheel', e => {
   const d = xformTarget(); if (!d || !(e.altKey || e.ctrlKey || e.metaKey)) return;
   e.preventDefault(); e.stopImmediatePropagation();
-  const turning = !e.altKey, sym = d.mirror && d.ctrl.some(c => c.plane);
+  const idx = selIdx(), turning = !e.altKey, sym = !idx && d.mirror && d.ctrl.some(c => c.plane);
   if (turning && sym) { flash('A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.'); return; }
-  if (!ensureXform(d)) { flash('Unwrap this decal first (it has no valid layout yet).'); return; }
+  if (!ensureXform(d, idx)) { flash('Unwrap this decal first (it has no valid layout yet).'); return; }
   const dir = e.deltaY < 0 ? 1 : -1, big = e.shiftKey;
   if (turning) xform.ang = Math.round((xform.ang + dir * (big ? 15 : 1)) * 10) / 10;
   else xform.sc = Math.max(0.05, Math.round((xform.sc * (1 + dir * (big ? 0.1 : 0.01))) * 1000) / 1000);
