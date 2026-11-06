@@ -124,6 +124,20 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .viewlist .del{ border:0; background:transparent; font-size:18px; line-height:1; cursor:pointer; color:var(--muted); border-radius:7px; height:28px; }
 .viewlist .del:hover{ color:var(--bad); background:var(--fill); }
 .viewmenu .btn{ width:100%; justify-content:center; background:var(--fill); }
+/* floating panels: drag by the grip, drop at an edge to pin there */
+#floatLayer{ position:absolute; inset:0; pointer-events:none; z-index:7; }
+#floatLayer > .fpanel{ position:absolute; pointer-events:auto; margin:0; right:auto; bottom:auto; max-width:calc(100% - 24px); box-shadow:0 10px 32px rgba(0,0,0,.16); }
+#floatLayer > .viewmenu{ max-height:calc(100% - 24px); overflow:auto; }
+.phead{ display:flex; align-items:center; gap:1px; color:var(--muted); flex:none; }
+.pgrip{ cursor:grab; padding:4px 1px; display:inline-flex; opacity:.5; touch-action:none; } .pgrip:hover{ opacity:1; }
+.fpanel.dragging, .fpanel.dragging .pgrip{ cursor:grabbing; user-select:none; }
+.ppin{ border:0; background:transparent; color:var(--muted); width:22px; height:22px; padding:0; border-radius:6px; display:inline-grid; place-items:center; cursor:pointer; opacity:.5; }
+.ppin:hover{ opacity:1; background:var(--fill); }
+.ppin[aria-pressed="true"]{ color:var(--accent); opacity:1; }
+.rail > .phead{ justify-content:center; margin-bottom:4px; }
+.viewmenu > .phead{ position:absolute; top:8px; right:8px; }
+#dockHint{ position:absolute; background:color-mix(in srgb, var(--accent) 22%, transparent); border:1.5px dashed var(--accent); border-radius:10px; pointer-events:none; z-index:6; }
+.stolw{ display:inline-flex; align-items:center; gap:4px; } .stolw input{ width:58px; border:0; background:var(--fill); border-radius:7px; padding:4px 6px; color:var(--ink); font:inherit; font-variant-numeric:tabular-nums; }
 .viewmenu .keys{ font-size:11.5px; color:var(--muted); margin:8px 0 0; }
 
 /* side panel */
@@ -272,7 +286,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
   <main class="layout">
     <section class="stage" id="stage" aria-label="3D view">
       <div class="hud">
-        <nav class="rail" aria-label="Tools">
+        <nav class="rail" id="railPanel" aria-label="Tools">
           <div class="railgrp" role="group" aria-label="Tool">
             <button id="modeDraw" aria-pressed="true" title="Draw new outlines"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20z"/><path d="M13.5 7.5l3 3"/></svg><span>Draw</span></button>
             <button id="modeEdit" aria-pressed="false" title="Move, add and delete points"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3l14 7-6 2-2 6z"/></svg><span>Edit</span></button>
@@ -281,7 +295,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           </div>
         </nav>
         <div class="hudrow">
-        <div class="topbar">
+        <div class="topbar" id="topPanel">
           <div class="grp" aria-label="History">
             <button class="ib" id="undo" title="Undo (Ctrl+Z)" aria-label="Undo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg></button>
             <button class="ib" id="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 14l5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg></button>
@@ -315,7 +329,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           </div>
 
         </div>
-        <div class="viewbar"><div class="grp" aria-label="View">
+        <div class="viewbar" id="viewPanel"><div class="grp" aria-label="View">
             <div class="viewwrap">
           <button class="btn" id="views" aria-haspopup="true" aria-expanded="false">Views</button>
           <div class="viewmenu" id="viewMenu" hidden>
@@ -338,6 +352,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <h3>Saved views</h3>
             <ul class="viewlist" id="viewList"></ul>
             <button class="btn" id="saveView">Save current view</button>
+            <button class="btn" id="resetPanels" title="Put all panels back in their default places">Reset panels</button>
             <p class="keys">Keys: 1, 3, 7 look from the right, front and top (Ctrl for the opposite side). 4 and 6 turn, 8 and 2 tilt by 45°. 5 switches ortho. 0 fits the frame.</p>
           </div>
         </div>
@@ -382,6 +397,9 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <button class="btn" id="smoothBtn" title="Even out the selected points and give them automatic handles">Smooth curve</button>
           <label class="inline radius" title="Corner radius">r <input type="number" id="roundR" value="5" min="0.5" step="0.5"> mm</label>
           <button class="btn" id="roundBtn" title="Round the selected corners with this radius">Round corners</button>
+          <span class="sep"></span>
+          <label class="inline radius" title="How far the simplified outline may move away from the original">± <input type="number" id="simpTol" value="0.5" min="0.05" step="0.1"> mm</label>
+          <button class="btn" id="simpBtn" title="Remove points the shape does not need (decimate). Works on the selected points, or the whole decal">Simplify</button>
           <button class="btn" id="zoomSel" title="Zoom in on the selection (F)">Zoom to</button>
         </div>
         </div>
@@ -435,6 +453,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <label><input type="checkbox" id="sbor" checked> Sheet outline</label>
           <label><input type="checkbox" id="smir"> Mirror pieces</label>
           <label title="Export clean Bézier curves with few nodes instead of dense straight segments"><input type="checkbox" id="scurve" checked> Clean curves</label>
+          <label class="stolw" title="How far exported curves may stray from the unwrapped outline. Higher gives fewer, smoother nodes">± <input type="number" id="stol" value="0.1" min="0.01" max="2" step="0.05"> mm</label>
         </div>
         <p class="note warn" id="sheetWarn"></p>
       </div>
@@ -1076,11 +1095,18 @@ const Core = (() => {
 
   // ---------- clean curves for export ----------
   // fit one cubic per original segment of the outline (using the known curve parameters), splitting only where needed
-  function fitCurves(outline, samples, tol) {
+  // one cubic per outline segment where it fits, more only where needed; straight[seg] marks corner-to-corner segments,
+  // smooth evens out the small wobble the faceted mesh puts into the flattened outline
+  // Fit the flattened outline with cubic Béziers: one per decal segment where that is close enough, split only where needed.
+  // straight(seg): a corner-to-corner segment, exported as a clean line when it is one. corner(seg): the segment starts at a sharp point.
+  // Elsewhere the curves leave and enter each node along the outline's own direction, so smooth nodes stay smooth (no kinks).
+  function fitCurves(outline, samples, tol, straight, smooth = 0, corner) {
     const n = outline.length; if (n < 3 || !samples || samples.length !== n) return null;
     const starts = []; for (let i = 0; i < n; i++) if (i === 0 || samples[i].seg !== samples[i - 1].seg) starts.push(i);
-    const out = [];
-    const fit = (P, T) => {
+    const out = [], meta = []; // meta per curve: the points it was fitted to, and whether it starts at a sharp node
+    const nrm = v => { const l = Math.hypot(v[0], v[1]); return l > 1e-12 ? [v[0] / l, v[1] / l] : null; };
+    const evalB = (Q, t) => { const u = 1 - t, b0 = u*u*u, b1 = 3*u*u*t, b2 = 3*u*t*t, b3 = t*t*t; return [b0*Q[0][0] + b1*Q[1][0] + b2*Q[2][0] + b3*Q[3][0], b0*Q[0][1] + b1*Q[1][1] + b2*Q[2][1] + b3*Q[3][1]]; };
+    const fitFree = (P, T) => { // both handles free
       const m = P.length, Q0 = P[0], Q3 = P[m - 1];
       let a11 = 0, a12 = 0, a22 = 0; const r1 = [0, 0], r2 = [0, 0];
       for (let i = 0; i < m; i++) {
@@ -1089,33 +1115,112 @@ const Core = (() => {
         a11 += b1*b1; a12 += b1*b2; a22 += b2*b2; r1[0] += b1*R[0]; r1[1] += b1*R[1]; r2[0] += b2*R[0]; r2[1] += b2*R[1];
       }
       const det = a11*a22 - a12*a12;
-      let Q1, Q2;
-      if (Math.abs(det) < 1e-12) { Q1 = [Q0[0] + (Q3[0]-Q0[0])/3, Q0[1] + (Q3[1]-Q0[1])/3]; Q2 = [Q0[0] + 2*(Q3[0]-Q0[0])/3, Q0[1] + 2*(Q3[1]-Q0[1])/3]; }
-      else { Q1 = [(a22*r1[0] - a12*r2[0]) / det, (a22*r1[1] - a12*r2[1]) / det]; Q2 = [(a11*r2[0] - a12*r1[0]) / det, (a11*r2[1] - a12*r1[1]) / det]; }
+      const Q = Math.abs(det) < 1e-12 ? [Q0, [Q0[0] + (Q3[0]-Q0[0])/3, Q0[1] + (Q3[1]-Q0[1])/3], [Q0[0] + 2*(Q3[0]-Q0[0])/3, Q0[1] + 2*(Q3[1]-Q0[1])/3], Q3]
+        : [Q0, [(a22*r1[0] - a12*r2[0]) / det, (a22*r1[1] - a12*r2[1]) / det], [(a11*r2[0] - a12*r1[0]) / det, (a11*r2[1] - a12*r1[1]) / det], Q3];
       let err = 0, at = 0;
-      for (let i = 1; i < m - 1; i++) {
+      for (let i = 1; i < m - 1; i++) { const p = evalB(Q, T[i]), e = Math.hypot(p[0] - P[i][0], p[1] - P[i][1]); if (e > err) { err = e; at = i; } }
+      return { seg: Q, err, at };
+    };
+    const fit = (P, T, tA, tB) => { // tA, tB: unit directions of travel at the start and the end
+      if (!tA && !tB) return fitFree(P, T);
+      if (!tA || !tB) { const f0 = fitFree(P, T).seg; tA = tA || nrm([f0[1][0] - f0[0][0], f0[1][1] - f0[0][1]]); tB = tB || nrm([f0[3][0] - f0[2][0], f0[3][1] - f0[2][1]]); if (!tA || !tB) return fitFree(P, T); }
+      const m = P.length, Q0 = P[0], Q3 = P[m - 1], L = Math.hypot(Q3[0] - Q0[0], Q3[1] - Q0[1]);
+      let c11 = 0, c12 = 0, c22 = 0, x1 = 0, x2 = 0;
+      for (let i = 0; i < m; i++) {
         const t = T[i], u = 1 - t, b0 = u*u*u, b1 = 3*u*u*t, b2 = 3*u*t*t, b3 = t*t*t;
-        const x = b0*Q0[0] + b1*Q1[0] + b2*Q2[0] + b3*Q3[0], y = b0*Q0[1] + b1*Q1[1] + b2*Q2[1] + b3*Q3[1];
-        const e = Math.hypot(x - P[i][0], y - P[i][1]); if (e > err) { err = e; at = i; }
+        const A1 = [b1 * tA[0], b1 * tA[1]], A2 = [-b2 * tB[0], -b2 * tB[1]];
+        const R = [P[i][0] - (b0 + b1) * Q0[0] - (b2 + b3) * Q3[0], P[i][1] - (b0 + b1) * Q0[1] - (b2 + b3) * Q3[1]];
+        c11 += A1[0]*A1[0] + A1[1]*A1[1]; c12 += A1[0]*A2[0] + A1[1]*A2[1]; c22 += A2[0]*A2[0] + A2[1]*A2[1];
+        x1 += A1[0]*R[0] + A1[1]*R[1]; x2 += A2[0]*R[0] + A2[1]*R[1];
       }
-      return { seg: [Q0, Q1, Q2, Q3], err, at };
+      const det = c11 * c22 - c12 * c12;
+      let al = det > 1e-12 ? (x1 * c22 - x2 * c12) / det : 0, be = det > 1e-12 ? (c11 * x2 - c12 * x1) / det : 0;
+      if (!(al > L * 1e-3) || !(be > L * 1e-3) || al > L * 3 || be > L * 3) al = be = L / 3;
+      const Q = [Q0, [Q0[0] + tA[0] * al, Q0[1] + tA[1] * al], [Q3[0] - tB[0] * be, Q3[1] - tB[1] * be], Q3];
+      let err = 0, at = 0;
+      for (let i = 1; i < m - 1; i++) { const p = evalB(Q, T[i]), e = Math.hypot(p[0] - P[i][0], p[1] - P[i][1]); if (e > err) { err = e; at = i; } }
+      return { seg: Q, err, at };
     };
-    const rec = (P, T, depth) => {
-      if (P.length <= 2) { out.push([P[0], P[0], P[P.length - 1], P[P.length - 1]]); return; }
-      const r = fit(P, T);
-      if (r.err <= tol || P.length < 6 || depth > 10) { out.push(r.seg); return; }
+    const newton = (Q, P, T) => T.map((t, i) => { // move each parameter to where the curve is closest to its point
+      if (i === 0 || i === T.length - 1) return t;
+      const u = 1 - t, p = evalB(Q, t);
+      const d1 = [3*(u*u*(Q[1][0]-Q[0][0]) + 2*u*t*(Q[2][0]-Q[1][0]) + t*t*(Q[3][0]-Q[2][0])), 3*(u*u*(Q[1][1]-Q[0][1]) + 2*u*t*(Q[2][1]-Q[1][1]) + t*t*(Q[3][1]-Q[2][1]))];
+      const d2 = [6*(u*(Q[2][0]-2*Q[1][0]+Q[0][0]) + t*(Q[3][0]-2*Q[2][0]+Q[1][0])), 6*(u*(Q[2][1]-2*Q[1][1]+Q[0][1]) + t*(Q[3][1]-2*Q[2][1]+Q[1][1]))];
+      const e = [p[0] - P[i][0], p[1] - P[i][1]], num = e[0]*d1[0] + e[1]*d1[1], den = d1[0]*d1[0] + d1[1]*d1[1] + e[0]*d2[0] + e[1]*d2[1];
+      return Math.abs(den) < 1e-12 ? t : Math.max(0, Math.min(1, t - num / den));
+    });
+    const rec = (P, T, tA, tB, depth) => {
+      if (P.length <= 2) { const A = P[0], B = P[P.length - 1]; out.push([A, [A[0] + (B[0]-A[0])/3, A[1] + (B[1]-A[1])/3], [A[0] + 2*(B[0]-A[0])/3, A[1] + 2*(B[1]-A[1])/3], B]); meta.push({ fixed: true }); return; }
+      let r = fit(P, T, tA, tB);
+      for (let it = 0; it < 6 && r.err > tol; it++) { const T2 = newton(r.seg, P, T), r2 = fit(P, T2, tA, tB); if (r2.err >= r.err) break; r = r2; T = T2; }
+      if (r.err <= tol || P.length < 6 || depth > 10) { out.push(r.seg); meta.push({ P, T, sharp: depth === 0 ? null : false }); return; }
       const k = Math.min(Math.max(r.at, 2), P.length - 3), tk = T[k];
-      rec(P.slice(0, k + 1), T.slice(0, k + 1).map(t => t / tk), depth + 1);
-      rec(P.slice(k), T.slice(k).map(t => (t - tk) / (1 - tk)), depth + 1);
+      const k2 = Math.min(k + 4, P.length - 1), k1 = Math.max(k - 4, 0), tc = nrm([P[k2][0] - P[k1][0], P[k2][1] - P[k1][1]]); // both halves share the direction at the split
+      rec(P.slice(0, k + 1), T.slice(0, k + 1).map(t => t / tk), tA, tc, depth + 1);
+      rec(P.slice(k), T.slice(k).map(t => (t - tk) / (1 - tk)), tc, tB, depth + 1);
     };
-    for (let q = 0; q < starts.length; q++) {
-      const a = starts[q], b = q + 1 < starts.length ? starts[q + 1] : n;
-      const P = [], T = [];
-      for (let i = a; i < b; i++) { P.push(outline[i]); T.push(samples[i].t); }
-      P.push(outline[b % n]); T.push(1);
-      // the parameters run 0..1 inside the segment; normalise in case the first sample is not exactly at 0
+    // the outline cut into its segments, evened out first
+    const pieces = starts.map((a, q) => {
+      const b = q + 1 < starts.length ? starts[q + 1] : n, P = [], T = [];
+      for (let i = a; i < b; i++) { P.push(outline[i].slice()); T.push(samples[i].t); }
+      P.push(outline[b % n].slice()); T.push(1);
       const t0 = T[0]; for (let i = 0; i < T.length; i++) T[i] = (T[i] - t0) / Math.max(1 - t0, 1e-9);
-      rec(P, T, 0);
+      if (smooth && P.length > 3) { // even out the mesh wobble, never moving a point further than the tolerance allows
+        const O = P.map(p => p.slice()), lim = tol * 0.75;
+        for (let it = 0; it < smooth; it++) { const Q = P.map(p => p.slice()); for (let i = 1; i < P.length - 1; i++) P[i] = [(Q[i-1][0] + 2*Q[i][0] + Q[i+1][0]) / 4, (Q[i-1][1] + 2*Q[i][1] + Q[i+1][1]) / 4]; }
+        for (let i = 1; i < P.length - 1; i++) { const dx = P[i][0] - O[i][0], dy = P[i][1] - O[i][1], dl = Math.hypot(dx, dy); if (dl > lim) P[i] = [O[i][0] + dx / dl * lim, O[i][1] + dy / dl * lim]; }
+      }
+      const sg = samples[a].seg, len = P.reduce((acc, p, i) => acc + (i ? Math.hypot(p[0] - P[i-1][0], p[1] - P[i-1][1]) : 0), 0);
+      return { P, T, sg, len, line: false };
+    });
+    const along = (P, fromEnd, w) => { // a point about w along the piece from one end
+      let acc = 0; const idx = i => fromEnd ? P.length - 1 - i : i;
+      for (let i = 1; i < P.length; i++) { const a = P[idx(i - 1)], b = P[idx(i)]; acc += Math.hypot(b[0] - a[0], b[1] - a[1]); if (acc >= w) return b; }
+      return P[idx(P.length - 1)];
+    };
+    for (const pc of pieces) if (straight && straight(pc.sg)) { // a straight segment: a clean line when it is close to one
+      const A = pc.P[0], B = pc.P[pc.P.length - 1], L = Math.hypot(B[0]-A[0], B[1]-A[1]) || 1e-9; let dev = 0;
+      for (const p of pc.P) dev = Math.max(dev, Math.abs((p[0]-A[0])*(B[1]-A[1]) - (p[1]-A[1])*(B[0]-A[0])) / L);
+      pc.line = dev <= Math.max(tol, 0.15);
+    }
+    const N = pieces.length;
+    const tanIn = q => { const pc = pieces[q], w = Math.min(2, pc.len / 4); return nrm([pc.P[0][0] - along(pc.P, false, w)[0] * 0 - pc.P[0][0] + along(pc.P, false, w)[0], along(pc.P, false, w)[1] - pc.P[0][1]]); };
+    const tanOut = q => { const pc = pieces[q], w = Math.min(2, pc.len / 4), e = pc.P[pc.P.length - 1], b = along(pc.P, true, w); return nrm([e[0] - b[0], e[1] - b[1]]); };
+    // direction at the node where piece q starts: shared with the previous piece when the node is smooth
+    const nodeDir = q => {
+      const own = tanIn(q), pq = (q - 1 + N) % N;
+      if (!corner || corner(pieces[q].sg)) return own;
+      const prev = pieces[pq], w = Math.min(2, prev.len / 4, pieces[q].len / 4), a = along(prev.P, true, w), b = along(pieces[q].P, false, w);
+      const both = nrm([b[0] - a[0], b[1] - a[1]]);
+      if (!both || !own) return own || both;
+      const pt = tanOut(pq); if (pt && pt[0] * own[0] + pt[1] * own[1] < 0.5) return own; // a real bend in the outline stays a bend
+      return both;
+    };
+    const dirs = pieces.map((_, q) => nodeDir(q));
+    pieces.forEach((pc, q) => {
+      const A = pc.P[0], B = pc.P[pc.P.length - 1];
+      if (pc.line) { out.push([A, [A[0] + (B[0]-A[0])/3, A[1] + (B[1]-A[1])/3], [A[0] + 2*(B[0]-A[0])/3, A[1] + 2*(B[1]-A[1])/3], B]); meta.push({ fixed: true, sharp: true }); return; }
+      const first = out.length;
+      rec(pc.P, pc.T, null, null, 0);
+      meta[first].sharp = !corner || corner(pc.sg); // where the piece starts: a sharp node only if the decal point is a corner
+    });
+    // smooth nodes: let both curves leave the node in one shared direction (no visible kink), then refit them to their points
+    const M = out.length, dirOut = c => nrm([c[1][0] - c[0][0], c[1][1] - c[0][1]]), dirIn = c => nrm([c[3][0] - c[2][0], c[3][1] - c[2][1]]);
+    const tS = new Array(M).fill(null), tE = new Array(M).fill(null);
+    for (let j = 0; j < M; j++) {
+      if (meta[j].sharp) continue;
+      const pj = (j - 1 + M) % M, a = dirIn(out[pj]), b = dirOut(out[j]); if (!a || !b) continue;
+      if (a[0] * b[0] + a[1] * b[1] < Math.cos(20 * Math.PI / 180)) continue; // a real bend stays a bend
+      const t = nrm([a[0] + b[0], a[1] + b[1]]); if (!t) continue;
+      if (!meta[j].fixed) tS[j] = t; if (!meta[pj].fixed) tE[pj] = t;
+    }
+    for (let j = 0; j < M; j++) {
+      if (meta[j].fixed || (!tS[j] && !tE[j])) continue;
+      const { P } = meta[j]; let T = meta[j].T;
+      const tA = tS[j] || dirOut(out[j]), tB = tE[j] || dirIn(out[j]); if (!tA || !tB) continue;
+      let r = fit(P, T, tA, tB);
+      for (let it = 0; it < 8; it++) { const T2 = newton(r.seg, P, T), r2 = fit(P, T2, tA, tB); if (r2.err >= r.err) break; r = r2; T = T2; }
+      if (r.err <= tol * 1.5) out[j] = r.seg; // only when it still follows the outline closely
     }
     return out;
   }
@@ -1198,7 +1303,7 @@ const UNIT = { mm: 1, cm: 10, m: 1000, in: 25.4 };
 const S = {
   model: null, source: null, decals: [], active: null, drawing: null, mode: 'draw',
   showStretch: false, sel: null, nextId: 1, lineStyle: 'straight', clipDist: 2, mirrorDefault: true, mirrorAxis: 'auto',
-  sheet: { w: 1500, h: 600, gap: 6, labels: true, border: true, mirror: false, curves: true },
+  sheet: { w: 1500, h: 600, gap: 6, labels: true, border: true, mirror: false, curves: true, tol: 0.1 },
   packing: null, busy: false,
 };
 
@@ -1810,7 +1915,7 @@ function loadProject(text, fname) {
   if (pj.app !== 'decal-unwrap') { alert('This JSON file is not a Decal Studio project.'); return; }
   if (S.decals.length && S.dirty && !confirm('Opening a project replaces the current frame and decals. Continue?')) return;
   const restore = () => {
-    if (pj.sheet) { Object.assign(S.sheet, pj.sheet); $('#sw').value = S.sheet.w; $('#shh').value = S.sheet.h; $('#sgap').value = S.sheet.gap; $('#slab').checked = S.sheet.labels; $('#sbor').checked = S.sheet.border; $('#smir').checked = S.sheet.mirror; $('#scurve').checked = S.sheet.curves !== false; }
+    if (pj.sheet) { Object.assign(S.sheet, pj.sheet); $('#sw').value = S.sheet.w; $('#shh').value = S.sheet.h; $('#sgap').value = S.sheet.gap; $('#slab').checked = S.sheet.labels; $('#sbor').checked = S.sheet.border; $('#smir').checked = S.sheet.mirror; $('#scurve').checked = S.sheet.curves !== false; $('#stol').value = S.sheet.tol || 0.1; }
     if (pj.mirrorAxis) { S.mirrorAxis = pj.mirrorAxis; $('#mirrorAxis').value = pj.mirrorAxis; }
     if (typeof pj.mirrorDefault === 'boolean') S.mirrorDefault = pj.mirrorDefault;
     if (typeof pj.modelOpacity === 'number') setModelOpacity(pj.modelOpacity);
@@ -2589,6 +2694,7 @@ $('#modeCut').addEventListener('click', () => setMode('cut'));
 $('#modeKnife').addEventListener('click', () => setMode('knife'));
 $('#knifeApply').addEventListener('click', applyKnife);
 $('#knifeClear').addEventListener('click', clearKnife);
+$('#simpBtn').addEventListener('click', simplifyCurve);
 $('#knifeThrough').addEventListener('click', () => setKnifeThrough(!S.knifeThrough));
 S.drawShape = 'free';
 document.querySelectorAll('#drawShape [data-shape]').forEach(b => b.addEventListener('click', () => { S.drawShape = b.dataset.shape; updateUI(); }));
@@ -2618,7 +2724,7 @@ document.querySelectorAll('[data-orbit]').forEach(b => b.addEventListener('click
 
 // ---------- views ----------
 S.views = [];
-function closeViewMenu() { $('#viewMenu').hidden = true; $('#views').setAttribute('aria-expanded', 'false'); }
+function closeViewMenu() { if (layout.viewMenu) return; $('#viewMenu').hidden = true; $('#views').setAttribute('aria-expanded', 'false'); }
 $('#views').addEventListener('click', e => { e.stopPropagation(); const m = $('#viewMenu'); m.hidden = !m.hidden; $('#views').setAttribute('aria-expanded', String(!m.hidden)); if (!m.hidden) renderViews(); });
 document.addEventListener('pointerdown', e => { if (!$('#viewMenu').hidden && !e.target.closest('#viewMenu, #views')) closeViewMenu(); });
 document.querySelectorAll('#viewMenu [data-axis]').forEach(b => b.addEventListener('click', () => axisView(+b.dataset.axis, +b.dataset.sign)));
@@ -2710,7 +2816,7 @@ function updateUI() {
     document.querySelectorAll('#ptType button').forEach(b => { b.disabled = !L.length; b.setAttribute('aria-pressed', types.size === 1 && types.has(b.dataset.t)); });
     $('#mergeBtn').disabled = L.length < 2; $('#delPts').disabled = !L.length;
     const sd = S.sel?.decal; $('#splitBtn').disabled = !(sd && sd.closed && (L.length === 1 || L.length === 2)); $('#splitBtn').textContent = L.length === 1 ? 'Open here' : 'Split';
-    $('#smoothBtn').textContent = L.length ? 'Smooth curve' : 'Smooth all'; $('#roundBtn').textContent = L.length ? 'Round corners' : 'Round all';
+    $('#smoothBtn').textContent = L.length ? 'Smooth curve' : 'Smooth all'; $('#roundBtn').textContent = L.length ? 'Round corners' : 'Round all'; $('#simpBtn').textContent = L.length ? 'Simplify' : 'Simplify all';
   }
   renderSheet(); renderList();
 }
@@ -2755,11 +2861,14 @@ function solvedPieces() {
     if (!d.closed) continue;
     if (d.holeOf) continue; // holes are cut as part of their parent piece
     const kids = holesOf(d);
-    const fit = (pts, smp) => pts && smp ? Core.fitCurves(pts, smp, 0.02) : null;
-    if (d.res && !d.res.error) { const poly = d.res.outline.map(([x, y]) => [x, -y]), hr = kids.map(k => ({ r: holeRings(d.res, k, false), s: k.res?.samples || k.samples })).filter(h => h.r);
-      out.push({ id: 'd' + d.id, decal: d, name: d.name, poly, holes: hr.map(h => h.r), curves: [fit(poly, d.res.samples), ...hr.map(h => fit(h.r, h.s))] }); }
-    if (d.mirror && d.twin?.res && !d.twin.res.error) { const poly = d.twin.res.outline.map(([x, y]) => [x, -y]), hr = kids.map(k => ({ r: holeRings(d.twin.res, k, true), s: k.twin?.res?.samples })).filter(h => h.r);
-      out.push({ id: 'm' + d.id, decal: d, name: d.name + ' mirror', poly, holes: hr.map(h => h.r), curves: [fit(poly, d.twin.res.samples), ...hr.map(h => fit(h.r, h.s))] }); }
+    const tol = Math.max(0.01, +S.sheet.tol || 0.1);
+    const straightOf = x => { const C = x.mergedMap || x.ctrl, m = C.length; return sg => ptype(C[sg % m]) === 'corner' && ptype(C[(sg + 1) % m]) === 'corner'; };
+    const cornerOf = x => { const C = x.mergedMap || x.ctrl, m = C.length; return sg => ptype(C[sg % m]) === 'corner' || C[sg % m].broken; };
+    const fit = (pts, smp, owner) => pts && smp ? Core.fitCurves(pts, smp, tol, straightOf(owner), 3, cornerOf(owner)) : null;
+    if (d.res && !d.res.error) { const poly = d.res.outline.map(([x, y]) => [x, -y]), hr = kids.map(k => ({ r: holeRings(d.res, k, false), s: k.res?.samples || k.samples, k })).filter(h => h.r);
+      out.push({ id: 'd' + d.id, decal: d, name: d.name, poly, holes: hr.map(h => h.r), curves: [fit(poly, d.res.samples, d), ...hr.map(h => fit(h.r, h.s, h.k))] }); }
+    if (d.mirror && d.twin?.res && !d.twin.res.error) { const poly = d.twin.res.outline.map(([x, y]) => [x, -y]), hr = kids.map(k => ({ r: holeRings(d.twin.res, k, true), s: k.twin?.res?.samples, k })).filter(h => h.r);
+      out.push({ id: 'm' + d.id, decal: d, name: d.name + ' mirror', poly, holes: hr.map(h => h.r), curves: [fit(poly, d.twin.res.samples, d), ...hr.map(h => fit(h.r, h.s, h.k))] }); }
   }
   return out;
 }
@@ -2790,6 +2899,7 @@ function renderSheet() {
 }
 
 for (const [id, k] of [['#sw','w'],['#shh','h'],['#sgap','gap']]) $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (v > 0 || (k === 'gap' && v >= 0)) S.sheet[k] = v; else e.target.value = S.sheet[k]; renderSheet(); renderList(); });
+$('#stol').addEventListener('change', e => { S.sheet.tol = Math.max(0.01, +e.target.value || 0.1); e.target.value = S.sheet.tol; renderSheet(); });
 for (const [id, k] of [['#slab','labels'],['#sbor','border'],['#smir','mirror'],['#scurve','curves']]) $(id).addEventListener('change', e => { S.sheet[k] = e.target.checked; renderSheet(); });
 
 // ---------- cut, smooth and round tools ----------
@@ -2882,6 +2992,49 @@ function targetIdx() {
   const L = selList(); if (L.length) return { d: S.sel.decal, L };
   if (S.active) return { d: S.active, L: S.active.ctrl.map((_, i) => i) };
   return null;
+}
+// ---------- simplify: drop points the outline does not need ----------
+// how far P lies from the straight surface line between A and B (the chord dropped onto the surface)
+function surfDev(A, B, P, piece) {
+  const ab = [0,1,2].map(k => B[k] - A[k]), L2 = ab[0]*ab[0] + ab[1]*ab[1] + ab[2]*ab[2] || 1e-12;
+  const t = Math.max(0, Math.min(1, ((P[0]-A[0])*ab[0] + (P[1]-A[1])*ab[1] + (P[2]-A[2])*ab[2]) / L2)), q = [0,1,2].map(k => A[k] + ab[k] * t);
+  const h = Core.closestPoint(S.model.mesh, S.model.grid, q, 80, piece != null ? f => S.model.topo.piece[f] === piece : undefined);
+  return h ? dist3(h.point, P) : dist3(q, P);
+}
+// Douglas–Peucker along a chain of points, measured on the surface; keep[] marks points that must stay
+function thinChain(P, keep, tol, piece, closed) {
+  const n = P.length; if (n < 3) return keep.map(() => true);
+  const K = keep.slice();
+  if (closed && !K.some(Boolean)) { K[0] = true; let m = 0; P.forEach((p, i) => { if (dist3(p, P[0]) > dist3(P[m], P[0])) m = i; }); K[m] = true; }
+  if (closed && K.filter(Boolean).length === 1) { const i0 = K.indexOf(true); let m = i0; P.forEach((p, i) => { if (dist3(p, P[i0]) > dist3(P[m], P[i0])) m = i; }); K[m] = true; }
+  if (!closed) { K[0] = K[n - 1] = true; }
+  const rec = (a, b) => { // indices along the chain, b may pass the end on a closed outline
+    let mi = -1, md = tol; const A = P[a % n], B = P[b % n];
+    for (let i = a + 1; i < b; i++) { const dd = surfDev(A, B, P[i % n], piece); if (dd > md) { md = dd; mi = i; } }
+    if (mi >= 0) { K[mi % n] = true; rec(a, mi); rec(mi, b); }
+  };
+  const ks = K.map((k, i) => k ? i : -1).filter(i => i >= 0);
+  for (let j = 0; j < ks.length - (closed ? 0 : 1); j++) { const a = ks[j], b = j + 1 < ks.length ? ks[j + 1] : ks[0] + n; rec(a, b); }
+  return K;
+}
+function simplifyCurve() {
+  const T = targetIdx(); if (!T) return; const { d, L } = T, n = d.ctrl.length;
+  const tol = Math.max(0.05, parseFloat($('#simpTol').value) || 0.5);
+  if (n <= (d.closed ? 3 : 2)) { flash('This outline already has the fewest points.'); return; }
+  const sel = new Set(L), piece = S.model.topo.piece[d.ctrl[0].face];
+  const keep = d.ctrl.map((c, i) => !sel.has(i) || !!c.plane);
+  let K = thinChain(d.ctrl.map(c => c.p), keep, tol, piece, d.closed);
+  if (d.closed && K.filter(Boolean).length < 3) { const order = d.ctrl.map((_, i) => i).filter(i => !K[i]); while (K.filter(Boolean).length < 3 && order.length) K[order.splice(Math.floor(order.length / 2), 1)[0]] = true; }
+  const removed = K.filter(k => !k).length;
+  if (!removed) { flash(`No points can go without moving the outline more than ${tol} mm.`); return; }
+  pushHistory();
+  const nc = [];
+  d.ctrl.forEach((c, i) => { if (!K[i]) return; const prevGone = !K[(i - 1 + n) % n], nextGone = !K[(i + 1) % n];
+    if ((prevGone || nextGone) && ptype(c) !== 'corner' && ptype(c) !== 'auto') { c.type = 'auto'; delete c.hin; delete c.hout; c.broken = false; } // its neighbours changed, so fixed handles would bend wrongly
+    nc.push(c); });
+  d.ctrl = nc; S.sel = null;
+  flash(`Removed ${removed} of ${n} points.`);
+  refresh(d);
 }
 // even out wobbly points and give them automatic handles
 function smoothCurve() {
@@ -3125,18 +3278,18 @@ function closeViewLine() {
   const stretches = []; let cur = [];
   for (const q of rot) { if (q) cur.push(q); else if (cur.length) { stretches.push(cur); cur = []; } }
   if (cur.length) stretches.push(cur);
-  const thin = P => { // keep clicked points, the ends, and wherever the projected line bends away by more than 0.4 mm
-    if (P.length < 3) return P;
-    const keep = new Uint8Array(P.length); keep[0] = keep[P.length - 1] = 1; P.forEach((q, i) => { if (q.anchor) keep[i] = 1; });
-    const rec = (a, b) => { const A = P[a].point, B = P[b].point, ab = [0,1,2].map(k => B[k] - A[k]), L = Math.hypot(...ab) || 1e-12; let mi = -1, md = 0.4;
-      for (let i = a + 1; i < b; i++) { const Q = P[i].point, ap = [0,1,2].map(k => Q[k] - A[k]), cr = [ap[1]*ab[2]-ap[2]*ab[1], ap[2]*ab[0]-ap[0]*ab[2], ap[0]*ab[1]-ap[1]*ab[0]], dd = Math.hypot(...cr) / L; if (dd > md) { md = dd; mi = i; } }
-      if (mi >= 0) { keep[mi] = 1; rec(a, mi); rec(mi, b); } };
-    let a = 0; for (let i = 1; i < P.length; i++) if (keep[i]) { rec(a, i); a = i; }
-    return P.filter((_, i) => keep[i]);
-  };
-  const ctrl = [];
-  for (const st of stretches) for (const q of thin(st)) { const l = ctrl[ctrl.length - 1]; if (l && dist3(l.p, q.point) < (q.anchor ? 0.3 : 1)) continue; ctrl.push({ p: q.point.slice(), face: q.face, type: 'corner' }); }
-  if (ctrl.length > 3 && dist3(ctrl[0].p, ctrl[ctrl.length - 1].p) < 0.3) ctrl.pop();
+  // tiny slivers where the line grazes the tube's edge would only add stray points
+  const len = st => st.reduce((a, q, i) => a + (i ? dist3(q.point, st[i - 1].point) : 0), 0);
+  const kept = stretches.filter(st => st.some(q => q.anchor) || len(st) >= 2);
+  const trim = st => { // the last couple of mm before the surface edge only add bunched points
+    const cut = (A) => { let acc = 0, i = A.length - 1; while (i > 1 && !A[i].anchor && acc + dist3(A[i].point, A[i - 1].point) < 2) { acc += dist3(A[i].point, A[i - 1].point); i--; } return A.slice(0, i + 1); };
+    let A = cut(st); A = cut(A.slice().reverse()).reverse(); return A.length >= 2 ? A : st; };
+  const all = (kept.length ? kept : stretches).map(trim).flatMap(st => st.map((q, i) => ({ ...q, end: i === 0 || i === st.length - 1 })));
+  // keep clicked points and the places where the line meets the surface edge; elsewhere only what the shape needs
+  const K = thinChain(all.map(q => q.point), all.map(q => !!q.anchor || q.end), 0.6, target, true);
+  const ctrl = []; // clicked points and edge points are corners; points in between bend the line smoothly
+  all.forEach((q, i) => { if (!K[i]) return; const l = ctrl[ctrl.length - 1], type = q.anchor || q.end ? 'corner' : 'auto'; if (l && dist3(l.p, q.point) < (q.anchor ? 0.3 : 1.5)) { if (q.anchor) { l.p = q.point.slice(); l.face = q.face; l.type = 'corner'; } return; } ctrl.push({ p: q.point.slice(), face: q.face, type }); });
+  if (ctrl.length > 3 && dist3(ctrl[0].p, ctrl[ctrl.length - 1].p) < 1) ctrl.pop();
   if (ctrl.length < 3) { flash('Too little of the outline lies on the model. Draw it further over the tube.'); return; }
   S.vline = null;
   const id = S.nextId++;
@@ -4158,6 +4311,84 @@ $('#export').addEventListener('click', async () => {
 });
 
 updateUI();
+// ---------- floating panels: drag by the grip, drop near an edge to pin it there; the pin button frees or docks a panel ----------
+const PANEL_IDS = ['railPanel', 'topPanel', 'viewPanel', 'pointbar', 'viewMenu'];
+const floatLayer = document.createElement('div'); floatLayer.id = 'floatLayer'; stage.appendChild(floatLayer);
+const dockHint = document.createElement('div'); dockHint.id = 'dockHint'; dockHint.hidden = true; stage.appendChild(dockHint);
+const panelHome = {};
+var layout = {}; try { layout = JSON.parse(localStorage.getItem('decal-studio-layout') || '{}') || {}; } catch (e) { layout = {}; }
+const saveLayout = () => { try { localStorage.setItem('decal-studio-layout', JSON.stringify(layout)); } catch (e) {} };
+const GRIP_SVG = '<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.3"/><circle cx="7" cy="3" r="1.3"/><circle cx="3" cy="8" r="1.3"/><circle cx="7" cy="8" r="1.3"/><circle cx="3" cy="13" r="1.3"/><circle cx="7" cy="13" r="1.3"/></g></svg>';
+const PIN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
+function placePanel(id) {
+  const el = document.getElementById(id); if (!el) return;
+  const st = layout[id], pin = el.querySelector(':scope > .phead .ppin');
+  if (!st) { // its place in the default layout
+    if (el.parentNode === floatLayer) { const h = panelHome[id]; h.parent.insertBefore(el, h.next && h.next.parentNode === h.parent ? h.next : null); }
+    el.classList.remove('floating', 'pinned'); el.style.left = el.style.top = '';
+    const on = id !== 'viewMenu'; pin.setAttribute('aria-pressed', on);
+    pin.title = id === 'viewMenu' ? 'Pin the Views panel so it stays open' : 'Pinned. Click to let it float';
+    return;
+  }
+  if (el.parentNode !== floatLayer) floatLayer.appendChild(el);
+  el.classList.add('floating'); el.classList.toggle('pinned', st.mode === 'pin');
+  const W = stage.clientWidth, H = stage.clientHeight, w = el.offsetWidth, h = el.offsetHeight, m = 12, cl = (v, lo, hi) => Math.max(lo, Math.min(Math.max(lo, hi), v));
+  let x, y;
+  if (st.mode === 'float') { x = cl(st.x, 0, W - w); y = cl(st.y, 0, H - h); }
+  else { const e = st.edge; x = e === 'left' ? m : e === 'right' ? W - w - m : cl(st.off, m, W - w - m); y = e === 'top' ? m : e === 'bottom' ? H - h - m : cl(st.off, m, H - h - m); }
+  el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
+  pin.setAttribute('aria-pressed', st.mode === 'pin');
+  pin.title = st.mode === 'pin' ? (id === 'viewMenu' ? 'Pinned open. Click to let it float' : 'Pinned. Click to let it float') : 'Floating. Click to pin it to the nearest edge';
+}
+function nearEdge(id) {
+  const el = document.getElementById(id), x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight, W = stage.clientWidth, H = stage.clientHeight;
+  const c = [['left', x], ['right', W - x - w], ['top', y], ['bottom', H - y - h]].sort((a, b) => a[1] - b[1])[0];
+  return { edge: c[0], d: c[1] };
+}
+function pinTo(id, edge) { const el = document.getElementById(id); layout[id] = { mode: 'pin', edge, off: edge === 'left' || edge === 'right' ? el.offsetTop : el.offsetLeft }; placePanel(id); saveLayout(); }
+function floatAt(id) { const el = document.getElementById(id), r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(); layout[id] = { mode: 'float', x: r.left - sr.left, y: r.top - sr.top }; placePanel(id); saveLayout(); }
+function togglePin(id) {
+  const st = layout[id], el = document.getElementById(id);
+  if (id === 'viewMenu') { // the Views panel: pinned means it stays open
+    if (!st) { el.hidden = false; renderViews(); floatAt(id); pinTo(id, nearEdge(id).edge); }
+    else if (st.mode === 'pin') floatAt(id);
+    else { delete layout[id]; placePanel(id); saveLayout(); closeViewMenu(); }
+    return;
+  }
+  if (!st || st.mode === 'pin') floatAt(id); else pinTo(id, nearEdge(id).edge);
+}
+function showDock(id) {
+  const ne = nearEdge(id); if (ne.d > 40) { dockHint.hidden = true; return; }
+  const el = document.getElementById(id), W = stage.clientWidth, H = stage.clientHeight, w = el.offsetWidth, h = el.offsetHeight, m = 8;
+  const r = { left: [m, el.offsetTop, w, h], right: [W - w - m, el.offsetTop, w, h], top: [el.offsetLeft, m, w, h], bottom: [el.offsetLeft, H - h - m, w, h] }[ne.edge];
+  Object.assign(dockHint.style, { left: r[0] + 'px', top: Math.max(m, Math.min(H - r[3] - m, r[1])) + 'px', width: r[2] + 'px', height: r[3] + 'px' }); dockHint.hidden = false;
+}
+function startPanelDrag(e, id) {
+  if (e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  const el = document.getElementById(id), r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
+  if (id === 'viewMenu') el.hidden = false;
+  floatAt(id); el.classList.add('dragging');
+  const mv = ev => { layout[id] = { mode: 'float', x: ev.clientX - sr.left - dx, y: ev.clientY - sr.top - dy }; placePanel(id); showDock(id); };
+  const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); el.classList.remove('dragging'); dockHint.hidden = true;
+    const ne = nearEdge(id); if (ne.d < 40) pinTo(id, ne.edge); else saveLayout(); };
+  addEventListener('pointermove', mv); addEventListener('pointerup', up);
+}
+for (const id of PANEL_IDS) {
+  const el = document.getElementById(id); if (!el) continue;
+  panelHome[id] = { parent: el.parentNode, next: el.nextSibling };
+  const head = document.createElement('div'); head.className = 'phead';
+  head.innerHTML = `<span class="pgrip" title="Drag to move this panel. Drop it at an edge to pin it there">${GRIP_SVG}</span><button class="ppin" aria-pressed="false">${PIN_SVG}</button>`;
+  el.insertBefore(head, el.firstChild); el.classList.add('fpanel');
+  head.querySelector('.pgrip').addEventListener('pointerdown', e => startPanelDrag(e, id));
+  head.querySelector('.ppin').addEventListener('click', e => { e.stopPropagation(); togglePin(id); });
+  new ResizeObserver(() => { if (layout[id]) placePanel(id); }).observe(el);
+}
+new ResizeObserver(() => PANEL_IDS.forEach(id => layout[id] && placePanel(id))).observe(stage);
+PANEL_IDS.forEach(placePanel);
+if (layout.viewMenu) { $('#viewMenu').hidden = false; renderViews(); }
+$('#resetPanels').addEventListener('click', () => { layout = {}; saveLayout(); PANEL_IDS.forEach(placePanel); $('#viewMenu').hidden = true; $('#views').setAttribute('aria-expanded', 'false'); flash('Panels are back in their default places.'); });
+
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
@@ -4315,6 +4546,13 @@ const DE = {
   'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.': 'Klicke weiter auf oder neben das Modell. Klicke den ersten Punkt, Enter oder Form schließen zum Abschließen; die Kontur wird auf die sichtbare Fläche projiziert. Rücktaste entfernt den letzten Punkt, Esc bricht ab.',
   'Outline cancelled.': 'Kontur verworfen.', 'Click at least three points for an outline.': 'Klicke mindestens drei Punkte für eine Kontur.', 'The outline has to cross the model. Draw it over a tube.': 'Die Kontur muss über das Modell gehen. Zeichne sie über ein Rohr.',
   'Too little of the outline lies on the model. Draw it further over the tube.': 'Zu wenig der Kontur liegt auf dem Modell. Zeichne sie weiter über das Rohr.', 'Outline projected onto the surface. Switch to Edit to adjust its points.': 'Kontur auf die Fläche projiziert. Wechsle zu Bearbeiten, um die Punkte anzupassen.',
+  'Simplify': 'Vereinfachen', 'Simplify all': 'Alle vereinfachen', 'How far the simplified outline may move away from the original': 'Wie weit die vereinfachte Kontur vom Original abweichen darf',
+  'Remove points the shape does not need (decimate). Works on the selected points, or the whole decal': 'Punkte entfernen, die die Form nicht braucht (dezimieren). Wirkt auf die ausgewählten Punkte oder das ganze Decal',
+  'This outline already has the fewest points.': 'Diese Kontur hat schon die wenigsten Punkte.',
+  'Drag to move this panel. Drop it at an edge to pin it there': 'Ziehen, um dieses Panel zu verschieben. An einem Rand ablegen, um es dort anzuheften', 'Pinned. Click to let it float': 'Angeheftet. Klicken, um es frei schweben zu lassen',
+  'Floating. Click to pin it to the nearest edge': 'Frei. Klicken, um es am nächsten Rand anzuheften', 'Pin the Views panel so it stays open': 'Ansichten anheften, damit sie offen bleiben', 'Pinned open. Click to let it float': 'Offen angeheftet. Klicken, um es frei schweben zu lassen',
+  'Reset panels': 'Panels zurücksetzen', 'Put all panels back in their default places': 'Alle Panels an ihren Standardplatz zurücksetzen', 'Panels are back in their default places.': 'Die Panels sind wieder an ihrem Standardplatz.',
+  'How far exported curves may stray from the unwrapped outline. Higher gives fewer, smoother nodes': 'Wie weit exportierte Kurven von der abgewickelten Kontur abweichen dürfen. Höher ergibt weniger, glattere Knoten',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
@@ -4346,6 +4584,7 @@ const DE_PAT = [ // {0}, {1}… stand for the parts that change
   ['Cut the loop out of {0} decal{1}.', 'Schleife aus {0} Decal(s) ausgeschnitten.'], ['{0} added. Switch to Edit to adjust its points.', '{0} hinzugefügt. Wechsle zu Bearbeiten, um die Punkte anzupassen.'],
   ['{0} open path was skipped.', '{0} offener Pfad wurde übersprungen.'], ['{0} open paths were skipped.', '{0} offene Pfade wurden übersprungen.'],
   ['Added {0} shape{1} from {2}. Ctrl+Z removes them again.', '{0} Form(en) aus {2} hinzugefügt. Strg+Z entfernt sie wieder.'], ['({0} nodes, smooth curves)', '({0} Knoten, weiche Kurven)'], ['({0} nodes)', '({0} Knoten)'],
+  ['No points can go without moving the outline more than {0} mm.', 'Kein Punkt kann weg, ohne die Kontur um mehr als {0} mm zu verschieben.'], ['Removed {0} of {1} points.', '{0} von {1} Punkten entfernt.'],
   ['{0}: {1} mm', '{0*}: {1} mm'], ['{0}-gon', '{0}-Eck'], ['Rectangle {0}', 'Rechteck {0}'], ['Circle {0}', 'Kreis {0}'], ['Fork leg {0}', 'Gabelbein {0}'], ['{0} (edited)', '{0} (bearbeitet)'],
 ];
 const DE_RE = DE_PAT.map(([en, de]) => [new RegExp('^' + en.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d)\}/g, '(.*?)') + '$'), en, de]);

@@ -8,16 +8,20 @@ It is one self-contained `index.html` — no build step, no install. Open it in 
 
 1. **Frame** – load a GLB / GLTF / OBJ / STL (STL is read as Z-up, like Blender and CAD exports), or generate a frame from geometry (Road, Gravel, MTB, carbon/aero presets, or paste a geometry chart).
 2. **Draw** – Pen (straight lines by default, Bézier handles), Rectangle, Circle, or Polygon with a set number of sides and corner radius. Shapes are projected from the current view onto the visible surface.
-3. **Edit** – move, add (Ctrl+click), delete (Alt+click), merge or split points, auto-smooth, round corners, boolean union / subtract / intersect, Knife cuts. The Knife cuts through the whole model by default (front and back of every tube under the line); switch **Cut through** off (or press T) to cut only the visible side. Closed knife loops cut an area out, or leave a hole.
+3. **Edit** – move, add (Ctrl+click), delete (Alt+click), merge or split points, auto-smooth, round corners, boolean union / subtract / intersect, Knife cuts. The Knife cuts through the whole model by default (front and back of every tube under the line); switch **Cut through** off (or press T) to cut only the visible side. Closed knife loops cut an area out, or leave a hole. **Simplify** removes points the shape does not need, within a tolerance you set. Pen outlines can start off the model; they are projected onto the visible surface and follow the tube's edge.
 4. **Mirror** – on by default: decals are mirrored across the frame's centre plane, with clipping and an adjustable snap distance. Knife cuts and booleans apply to both sides. Mirroring can be applied to make independent copies.
 5. **Import SVG** – project vector artwork onto the frame with a live placement preview (Alt+scroll = size, Ctrl+scroll = rotate, 1° snapping). Holes such as donut shapes are kept.
-6. **Unwrap & export** – each decal is flattened (LSCM + ARAP), checked for stretch, packed, and exported as a simplified Bézier SVG in mm.
+6. **Unwrap & export** – each decal is flattened (LSCM + ARAP), checked for stretch, packed, and exported as clean Bézier curves in mm: one curve per decal segment where possible, straight segments as lines, smooth points without kinks, and the mesh's small wobble evened out within the export tolerance (default ±0.1 mm).
 
 Projects save and load as `.json` (frame + decals + views).
 
 ## Views
 
 Z is the vertical axis. Named views: Front, Back, Left, Right, Top, Bottom (keys 1, 3, 7, Ctrl for the opposite side), perspective / orthographic, 45° turns, saved views, grid with 2.5D snapping, and adjustable frame opacity (Alt+Z).
+
+## Panels
+
+The tool bar, tool options, view bar, point tools and Views panel float: drag one by its grip, drop it near an edge to pin it there, or use its pin button. Pin the Views panel to keep it open. **Reset panels** (in Views) puts everything back.
 
 ## Language
 
