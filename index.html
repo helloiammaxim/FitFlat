@@ -135,12 +135,20 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .ppin:hover{ opacity:1; background:var(--fill); }
 .ppin[aria-pressed="true"]{ color:var(--accent); opacity:1; }
 .rail > .phead{ justify-content:center; margin-bottom:4px; }
-.rail.pin-top, .rail.pin-bottom{ display:flex; align-items:center; gap:4px; }
-.rail.pin-top > .phead, .rail.pin-bottom > .phead{ flex-direction:column; margin:0 2px 0 0; }
-.rail.pin-top .railgrp, .rail.pin-bottom .railgrp{ flex-direction:row; }
+/* every bar has the same height: 48px, 6px padding around 36px controls */
+.topbar, .viewbar, .rail.horiz{ box-sizing:border-box; min-height:48px; padding:6px; }
+.pointbar{ box-sizing:border-box; min-height:48px; padding-top:6px; padding-bottom:6px; }
+.rail.horiz{ display:flex; align-items:center; gap:4px; }
+.rail.horiz > .phead{ margin:0 2px 0 0; }
+.rail.horiz .railgrp{ flex-direction:row; }
+.rail.horiz .railgrp button{ flex-direction:row; width:auto; height:36px; padding:0 12px 0 10px; gap:6px; font-size:13px; }
+.rail.horiz .railgrp button svg{ width:18px; height:18px; }
 .viewmenu > .phead{ position:absolute; top:8px; right:8px; }
 #dockHint{ position:absolute; background:color-mix(in srgb, var(--accent) 22%, transparent); border:1.5px dashed var(--accent); border-radius:10px; pointer-events:none; z-index:6; }
 .stolw{ display:inline-flex; align-items:center; gap:4px; } .stolw input{ width:58px; border:0; background:var(--fill); border-radius:7px; padding:4px 6px; color:var(--ink); font:inherit; font-variant-numeric:tabular-nums; }
+.open-up .viewmenu{ top:auto; bottom:calc(100% + 10px); }
+.open-right .viewmenu{ right:auto; left:0; }
+.floating .viewmenu{ max-height:calc(100vh - 160px); overflow:auto; }
 .viewmenu .keys{ font-size:11.5px; color:var(--muted); margin:8px 0 0; }
 
 /* side panel */
@@ -4328,50 +4336,67 @@ const panelHome = {};
 var layout = {}; try { layout = JSON.parse(localStorage.getItem('decal-studio-layout') || '{}') || {}; } catch (e) { layout = {}; }
 const saveLayout = () => { try { localStorage.setItem('decal-studio-layout', JSON.stringify(layout)); } catch (e) {} };
 const GRIP_SVG = '<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><g fill="currentColor"><circle cx="3" cy="3" r="1.3"/><circle cx="7" cy="3" r="1.3"/><circle cx="3" cy="8" r="1.3"/><circle cx="7" cy="8" r="1.3"/><circle cx="3" cy="13" r="1.3"/><circle cx="7" cy="13" r="1.3"/></g></svg>';
+const ORIENT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="10" height="4" rx="1"/><rect x="15" y="3" width="4" height="10" rx="1"/><path d="M7 17a6 6 0 0 0 10 0"/><path d="M17 14v3h-3"/></svg>';
 const PIN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
+// layout[id]: { mode: 'float', x, y } or { mode: 'pin', ex: 'left'|'right'|null, ey: 'top'|'bottom'|null, x, y } (a corner pins both), plus orient 'h'|'v' for the tool panel
+for (const k in layout) { const st = layout[k]; if (st && st.mode === 'pin' && st.edge) { // older saved layouts
+  const e = st.edge; layout[k] = { mode: 'pin', ex: e === 'left' || e === 'right' ? e : null, ey: e === 'top' || e === 'bottom' ? e : null, x: st.off, y: st.off, orient: st.orient }; } }
+const isH = (id, st) => id === 'railPanel' && (st?.orient ? st.orient === 'h' : !!(st && st.mode === 'pin' && st.ey && !st.ex));
 function placePanel(id) {
   const el = document.getElementById(id); if (!el) return;
   const st = layout[id], pin = el.querySelector(':scope > .phead .ppin');
-  if (!st) { // its place in the default layout
+  el.classList.toggle('horiz', isH(id, st));
+  if (!st || st.mode === 'home') { // its place in the default layout
     if (el.parentNode === floatLayer) { const h = panelHome[id]; h.parent.insertBefore(el, h.next && h.next.parentNode === h.parent ? h.next : null); }
-    el.classList.remove('floating', 'pinned', 'pin-left', 'pin-right', 'pin-top', 'pin-bottom'); el.style.left = el.style.top = '';
-    const on = id !== 'viewMenu'; pin.setAttribute('aria-pressed', on);
+    el.classList.remove('floating', 'pinned', 'open-up', 'open-right'); el.style.left = el.style.top = '';
+    pin.setAttribute('aria-pressed', id !== 'viewMenu');
     pin.title = id === 'viewMenu' ? 'Pin the Views panel so it stays open' : 'Pinned. Click to let it float';
     return;
   }
   if (el.parentNode !== floatLayer) floatLayer.appendChild(el);
   el.classList.add('floating'); el.classList.toggle('pinned', st.mode === 'pin');
-  for (const e of ['left', 'right', 'top', 'bottom']) el.classList.toggle('pin-' + e, st.mode === 'pin' && st.edge === e); // the tool panel lies along a top or bottom edge
   const W = stage.clientWidth, H = stage.clientHeight, w = el.offsetWidth, h = el.offsetHeight, m = 12, cl = (v, lo, hi) => Math.max(lo, Math.min(Math.max(lo, hi), v));
   let x, y;
   if (st.mode === 'float') { x = cl(st.x, 0, W - w); y = cl(st.y, 0, H - h); }
-  else { const e = st.edge; x = e === 'left' ? m : e === 'right' ? W - w - m : cl(st.off, m, W - w - m); y = e === 'top' ? m : e === 'bottom' ? H - h - m : cl(st.off, m, H - h - m); }
+  else { x = st.ex === 'left' ? m : st.ex === 'right' ? W - w - m : cl(st.x, m, W - w - m); y = st.ey === 'top' ? m : st.ey === 'bottom' ? H - h - m : cl(st.y, m, H - h - m); }
   el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
+  // menus inside a bar open towards the middle of the view, so they stay on screen wherever the bar sits
+  el.classList.toggle('open-up', y + h / 2 > H / 2); el.classList.toggle('open-right', x + w / 2 < W / 2);
   pin.setAttribute('aria-pressed', st.mode === 'pin');
   pin.title = st.mode === 'pin' ? (id === 'viewMenu' ? 'Pinned open. Click to let it float' : 'Pinned. Click to let it float') : 'Floating. Click to pin it to the nearest edge';
 }
-function nearEdge(id) {
+// which edges a panel is close to: one edge, or two at a corner
+function snapEdges(id, dist) {
   const el = document.getElementById(id), x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight, W = stage.clientWidth, H = stage.clientHeight;
-  const c = [['left', x], ['right', W - x - w], ['top', y], ['bottom', H - y - h]].sort((a, b) => a[1] - b[1])[0];
-  return { edge: c[0], d: c[1] };
+  const dl = x, dr = W - x - w, dt = y, db = H - y - h;
+  const ex = Math.min(dl, dr) < dist ? (dl <= dr ? 'left' : 'right') : null, ey = Math.min(dt, db) < dist ? (dt <= db ? 'top' : 'bottom') : null;
+  return { ex, ey, nearest: [['left', dl], ['right', dr], ['top', dt], ['bottom', db]].sort((a, b) => a[1] - b[1])[0][0] };
 }
-function pinTo(id, edge) { const el = document.getElementById(id); layout[id] = { mode: 'pin', edge, off: edge === 'left' || edge === 'right' ? el.offsetTop : el.offsetLeft }; placePanel(id); saveLayout(); }
-function floatAt(id) { const el = document.getElementById(id), r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(); layout[id] = { mode: 'float', x: r.left - sr.left, y: r.top - sr.top }; placePanel(id); saveLayout(); }
+function pinAt(id, ex, ey) { const el = document.getElementById(id), o = layout[id]?.orient; layout[id] = { mode: 'pin', ex, ey, x: el.offsetLeft, y: el.offsetTop }; if (o) layout[id].orient = o; placePanel(id); saveLayout(); }
+function floatAt(id) { const el = document.getElementById(id), r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), o = layout[id]?.orient; layout[id] = { mode: 'float', x: r.left - sr.left, y: r.top - sr.top }; if (o) layout[id].orient = o; placePanel(id); saveLayout(); }
+function pinNearest(id) { const n = snapEdges(id, 0).nearest; pinAt(id, n === 'left' || n === 'right' ? n : null, n === 'top' || n === 'bottom' ? n : null); }
 function togglePin(id) {
   const st = layout[id], el = document.getElementById(id);
   if (id === 'viewMenu') { // the Views panel: pinned means it stays open
-    if (!st) { el.hidden = false; renderViews(); floatAt(id); pinTo(id, nearEdge(id).edge); }
+    if (!st) { el.hidden = false; renderViews(); floatAt(id); pinNearest(id); }
     else if (st.mode === 'pin') floatAt(id);
     else { delete layout[id]; placePanel(id); saveLayout(); closeViewMenu(); }
     return;
   }
-  if (!st || st.mode === 'pin') floatAt(id); else pinTo(id, nearEdge(id).edge);
+  if (!st || st.mode === 'pin') floatAt(id); else pinNearest(id);
+}
+// the tool panel can lie along a row or stand as a column, wherever it is
+function toggleOrient(id) {
+  const el = document.getElementById(id), st = layout[id];
+  const now = isH(id, st) ? 'h' : 'v';
+  if (!st) floatAt(id);
+  layout[id].orient = now === 'h' ? 'v' : 'h'; placePanel(id); saveLayout();
 }
 function showDock(id) {
-  const ne = nearEdge(id); if (ne.d > 40) { dockHint.hidden = true; return; }
+  const { ex, ey } = snapEdges(id, 40); if (!ex && !ey) { dockHint.hidden = true; return; }
   const el = document.getElementById(id), W = stage.clientWidth, H = stage.clientHeight, w = el.offsetWidth, h = el.offsetHeight, m = 8;
-  const r = { left: [m, el.offsetTop, w, h], right: [W - w - m, el.offsetTop, w, h], top: [el.offsetLeft, m, w, h], bottom: [el.offsetLeft, H - h - m, w, h] }[ne.edge];
-  Object.assign(dockHint.style, { left: r[0] + 'px', top: Math.max(m, Math.min(H - r[3] - m, r[1])) + 'px', width: r[2] + 'px', height: r[3] + 'px' }); dockHint.hidden = false;
+  const x = ex === 'left' ? m : ex === 'right' ? W - w - m : el.offsetLeft, y = ey === 'top' ? m : ey === 'bottom' ? H - h - m : el.offsetTop;
+  Object.assign(dockHint.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' }); dockHint.hidden = false;
 }
 function startPanelDrag(e, id) {
   if (e.button !== 0) return;
@@ -4379,19 +4404,21 @@ function startPanelDrag(e, id) {
   const el = document.getElementById(id), r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
   if (id === 'viewMenu') el.hidden = false;
   floatAt(id); el.classList.add('dragging');
-  const mv = ev => { layout[id] = { mode: 'float', x: ev.clientX - sr.left - dx, y: ev.clientY - sr.top - dy }; placePanel(id); showDock(id); };
+  const o = layout[id].orient;
+  const mv = ev => { layout[id] = { mode: 'float', x: ev.clientX - sr.left - dx, y: ev.clientY - sr.top - dy }; if (o) layout[id].orient = o; placePanel(id); showDock(id); };
   const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); el.classList.remove('dragging'); dockHint.hidden = true;
-    const ne = nearEdge(id); if (ne.d < 40) pinTo(id, ne.edge); else saveLayout(); };
+    const { ex, ey } = snapEdges(id, 40); if (ex || ey) pinAt(id, ex, ey); else saveLayout(); };
   addEventListener('pointermove', mv); addEventListener('pointerup', up);
 }
 for (const id of PANEL_IDS) {
   const el = document.getElementById(id); if (!el) continue;
   panelHome[id] = { parent: el.parentNode, next: el.nextSibling };
   const head = document.createElement('div'); head.className = 'phead';
-  head.innerHTML = `<span class="pgrip" title="Drag to move this panel. Drop it at an edge to pin it there">${GRIP_SVG}</span><button class="ppin" aria-pressed="false">${PIN_SVG}</button>`;
+  head.innerHTML = `<span class="pgrip" title="Drag to move this panel. Drop it at an edge or a corner to pin it there">${GRIP_SVG}</span><button class="ppin" aria-pressed="false">${PIN_SVG}</button>` + (id === 'railPanel' ? `<button class="ppin porient" title="Turn the panel: row or column">${ORIENT_SVG}</button>` : '');
   el.insertBefore(head, el.firstChild); el.classList.add('fpanel');
   head.querySelector('.pgrip').addEventListener('pointerdown', e => startPanelDrag(e, id));
   head.querySelector('.ppin').addEventListener('click', e => { e.stopPropagation(); togglePin(id); });
+  head.querySelector('.porient')?.addEventListener('click', e => { e.stopPropagation(); toggleOrient(id); });
   new ResizeObserver(() => { if (layout[id]) placePanel(id); }).observe(el);
 }
 new ResizeObserver(() => PANEL_IDS.forEach(id => layout[id] && placePanel(id))).observe(stage);
@@ -4559,7 +4586,7 @@ const DE = {
   'Simplify': 'Vereinfachen', 'Simplify all': 'Alle vereinfachen', 'How far the simplified outline may move away from the original': 'Wie weit die vereinfachte Kontur vom Original abweichen darf',
   'Remove points the shape does not need (decimate). Works on the selected points, or the whole decal': 'Punkte entfernen, die die Form nicht braucht (dezimieren). Wirkt auf die ausgewählten Punkte oder das ganze Decal',
   'This outline already has the fewest points.': 'Diese Kontur hat schon die wenigsten Punkte.',
-  'Drag to move this panel. Drop it at an edge to pin it there': 'Ziehen, um dieses Panel zu verschieben. An einem Rand ablegen, um es dort anzuheften', 'Pinned. Click to let it float': 'Angeheftet. Klicken, um es frei schweben zu lassen',
+  'Drag to move this panel. Drop it at an edge or a corner to pin it there': 'Ziehen, um dieses Panel zu verschieben. An einem Rand oder in einer Ecke ablegen, um es dort anzuheften', 'Turn the panel: row or column': 'Panel drehen: Zeile oder Spalte', 'Pinned. Click to let it float': 'Angeheftet. Klicken, um es frei schweben zu lassen',
   'Floating. Click to pin it to the nearest edge': 'Frei. Klicken, um es am nächsten Rand anzuheften', 'Pin the Views panel so it stays open': 'Ansichten anheften, damit sie offen bleiben', 'Pinned open. Click to let it float': 'Offen angeheftet. Klicken, um es frei schweben zu lassen',
   'Reset panels': 'Panels zurücksetzen', 'Put all panels back in their default places': 'Alle Panels an ihren Standardplatz zurücksetzen', 'Panels are back in their default places.': 'Die Panels sind wieder an ihrem Standardplatz.',
   'How far exported curves may stray from the unwrapped outline. Higher gives fewer, smoother nodes': 'Wie weit exportierte Kurven von der abgewickelten Kontur abweichen dürfen. Höher ergibt weniger, glattere Knoten',
