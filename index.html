@@ -1997,7 +1997,7 @@ function ghostsOf(d) {
 function selHandles() {
   const L = selList(); if (L.length !== 1) return null;
   const d = S.sel.decal, i = L[0], c = d.ctrl[i]; if (!c || ptype(c) === 'corner' || d.ctrl.length < 2) return null;
-  const [hin, hout] = Core.handlesFor(d.ctrl, i, d.closed);
+  const [hin, hout] = handlesOf(d, i);
   const out = { hin, hout, c, d, i, ghost: null };
   const g = ghostsOf(d).find(q => q.o === i);
   if (g) out.ghost = { p: g.p, hin: reflect(hin), hout: reflect(hout) };
@@ -2132,6 +2132,12 @@ function mergedCtrl(d) {
   }
   return out;
 }
+// a point's handles as the curve really uses them: on a symmetric decal the mirrored half is part of the curve,
+// so a point on the centre plane gets its direction from both sides
+function handlesOf(d, i) {
+  if (d.mirror && d.ctrl[i]) { const mc = mergedCtrl(d); if (mc) { const mi = mc.findIndex(m => m.map && m.map.o === i && !m.map.m); if (mi >= 0) return Core.handlesFor(mc, mi, true); } }
+  return Core.handlesFor(d.ctrl, i, d.closed);
+}
 function mirrorOn() { return S.active ? S.active.mirror : S.mirrorDefault; }
 let planeObj = null;
 function renderPlane() {
@@ -2161,7 +2167,7 @@ function pickFor(press, x, y, fine) {
 function startDrag(e, hh, x, y) {
   const d = hh.decal;
   const orig = d.ctrl.map(c => ({ p: c.p.slice(), hin: c.hin && c.hin.slice(), hout: c.hout && c.hout.slice() }));
-  if (hh.kind !== 'p') { const H = Core.handlesFor(d.ctrl, hh.index, d.closed); orig[hh.index].hin = H[0]; orig[hh.index].hout = H[1]; }
+  if (hh.kind !== 'p') { const H = handlesOf(d, hh.index); orig[hh.index].hin = H[0]; orig[hh.index].hout = H[1]; }
   press = { type: 'drag', ...hh, x0: x, y0: y, lx: x, ly: y, fx: x, fy: y, moved: false, orig, hist: false };
   canvas.setPointerCapture(e.pointerId);
 }
@@ -2453,7 +2459,7 @@ function insertPoint(d, s) {
   const np = { p: s.point, face: s.face, type: 'auto' };
   if (ptype(a) === 'bezier' || ptype(b) === 'bezier') {
     const sp = Core.splitAt(d.ctrl, d.closed, s.seg, s.t);
-    const ha = Core.handlesFor(d.ctrl, s.seg, d.closed), hb = Core.handlesFor(d.ctrl, (s.seg + 1) % n, d.closed);
+    const ha = handlesOf(d, s.seg), hb = handlesOf(d, (s.seg + 1) % n);
     if (ptype(a) !== 'corner') { a.type = 'bezier'; a.hin = ha[0]; a.hout = sp.prevOut; }
     if (ptype(b) !== 'corner') { b.type = 'bezier'; b.hin = sp.nextIn; b.hout = hb[1]; }
     Object.assign(np, { type: 'bezier', hin: sp.hin, hout: sp.hout });
@@ -2501,7 +2507,7 @@ function setPointType(t) {
     const c = d.ctrl[i];
     if (t === 'auto') { c.type = 'auto'; delete c.hin; delete c.hout; c.broken = false; continue; }
     if (t === 'corner') { c.type = 'corner'; delete c.hin; delete c.hout; c.broken = false; continue; }
-    if (ptype(c) !== 'bezier') { const was = c.type; c.type = 'auto'; const H = Core.handlesFor(d.ctrl, i, d.closed); c.type = was; c.hin = H[0]; c.hout = H[1]; }
+    if (ptype(c) !== 'bezier') { const was = c.type; c.type = 'auto'; const H = handlesOf(d, i); c.type = was; c.hin = H[0]; c.hout = H[1]; }
     if (t === 'smooth' && c.broken) { // realign the in handle to the out handle
       const v = [0,1,2].map(k => c.hout[k] - c.p[k]), vl = Math.hypot(...v) || 1e-9, il = Math.hypot(...[0,1,2].map(k => c.hin[k] - c.p[k]));
       c.hin = [0,1,2].map(k => c.p[k] - v[k] / vl * il);
@@ -2908,7 +2914,7 @@ function insertExact(d, seg, t, point, face) {
   const n = d.ctrl.length, j = (seg + 1) % n, a = d.ctrl[seg], b = d.ctrl[j];
   const sp = Core.splitAt(d.ctrl, d.closed, seg, t);
   if (!point) { const h = Core.closestPoint(S.model.mesh, S.model.grid, sp.point, 80, f => S.model.topo.piece[f] === S.model.topo.piece[a.face]) || Core.closestPoint(S.model.mesh, S.model.grid, sp.point, 80); point = h.point; face = h.face; }
-  const ha = Core.handlesFor(d.ctrl, seg, d.closed), hb = Core.handlesFor(d.ctrl, j, d.closed);
+  const ha = handlesOf(d, seg), hb = handlesOf(d, j);
   if (ptype(a) !== 'corner') { a.type = 'bezier'; a.hin = ha[0]; a.hout = sp.prevOut; a.broken = a.broken || false; }
   if (ptype(b) !== 'corner') { b.type = 'bezier'; b.hin = sp.nextIn; b.hout = hb[1]; b.broken = b.broken || false; }
   d.ctrl.splice(seg + 1, 0, { p: point, face, type: 'bezier', hin: sp.hin, hout: sp.hout, broken: false });
@@ -3055,7 +3061,7 @@ function smoothCurve() {
 }
 // parameter t on segment seg whose point lies dist away from the start (fromEnd=false) or the end
 function tAtDist(d, seg, dist, fromEnd) {
-  const n = d.ctrl.length, j = (seg + 1) % n, H0 = Core.handlesFor(d.ctrl, seg, d.closed), H1 = Core.handlesFor(d.ctrl, j, d.closed);
+  const n = d.ctrl.length, j = (seg + 1) % n, H0 = handlesOf(d, seg), H1 = handlesOf(d, j);
   const P0 = d.ctrl[seg].p, P1 = H0[1], P2 = H1[0], P3 = d.ctrl[j].p, ref = fromEnd ? P3 : P0;
   const at = t => { const u = 1 - t; return [0,1,2].map(k => u*u*u*P0[k] + 3*u*u*t*P1[k] + 3*u*t*t*P2[k] + t*t*t*P3[k]); };
   let prevT = fromEnd ? 1 : 0, prevD = 0;
@@ -3077,7 +3083,7 @@ function roundCorners(rIn) {
   for (const c0 of L) {
     const n = d.ctrl.length, C = d.ctrl[c0], P0 = d.ctrl[(c0 - 1 + n) % n], N1 = d.ctrl[(c0 + 1) % n];
     const sub = (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]], len = v => Math.hypot(...v), nrm = v => { const l = len(v) || 1e-9; return v.map(x => x / l); };
-    const Hc = Core.handlesFor(d.ctrl, c0, d.closed);
+    const Hc = handlesOf(d, c0);
     // tangents leaving the corner along each side
     const t1 = nrm(len(sub(Hc[0], C.p)) > 1e-6 ? sub(Hc[0], C.p) : sub(P0.p, C.p)), t2 = nrm(len(sub(Hc[1], C.p)) > 1e-6 ? sub(Hc[1], C.p) : sub(N1.p, C.p));
     const alpha = Math.acos(Math.max(-1, Math.min(1, t1[0]*t2[0] + t1[1]*t2[1] + t1[2]*t2[2])));
