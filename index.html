@@ -227,6 +227,9 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 
 /* dialogs */
 dialog.geo{ border:0; border-radius:18px; padding:0; width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); background:var(--surface); color:var(--ink); box-shadow:0 24px 80px rgba(0,0,0,.25); }
+dialog.unitdlg{ width:min(480px, calc(100vw - 24px)); }
+dialog.unitdlg .modes{ display:grid; grid-template-columns:1fr; gap:6px; }
+dialog.unitdlg i{ font-style:normal; color:var(--accent); font-weight:500; }
 dialog.geo::backdrop{ background:rgba(0,0,0,.28); backdrop-filter:blur(4px); }
 .geo form{ display:flex; flex-direction:column; max-height:calc(100vh - 42px); }
 .geo header{ padding:20px 22px 6px; }
@@ -336,8 +339,10 @@ select optgroup{ font-weight:600; color:#6E6E73; }
               <button data-shape="rect" aria-pressed="false" title="Drag from corner to corner (Shift: square, Alt: from centre)">Rect</button>
               <button data-shape="circle" aria-pressed="false" title="Drag from the centre (Shift: from edge to edge)">Circle</button>
               <button data-shape="poly" aria-pressed="false" title="Drag from the centre; the drag direction sets the rotation">Polygon</button>
+              <button data-shape="pill" aria-pressed="false" title="A pill (stadium): drag its length and width, or type the size and click to place it">Pill</button>
             </div>
             <label class="clip" id="polySidesWrap" hidden title="Number of sides">Sides <input type="number" id="polySides" value="6" min="3" max="64" step="1"></label>
+            <label class="clip" id="pillWrap" hidden title="Pill size in mm: click on the model to place one at this size, or drag to draw any size">L <input type="number" id="pillL" value="60" min="1" step="1"> × W <input type="number" id="pillW" value="20" min="1" step="1"> mm</label>
             <label class="clip" id="shapeRoundWrap" hidden title="Corner radius for rectangles and polygons">r <input type="number" id="shapeRound" value="0" min="0" step="0.5"> mm</label>
             <button class="btn tog" id="shapeMid" aria-pressed="false" hidden title="Snap the shape's centre onto the mirror plane, so it sits exactly in the middle">Centre on mirror</button>
             <div class="seg" id="lineStyle" role="group" aria-label="New points">
@@ -502,6 +507,20 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     </aside>
   </main>
 </div>
+<dialog class="geo unitdlg" id="unitDlg" aria-labelledby="unitTitle">
+  <form method="dialog" onsubmit="return false">
+    <header><h2 id="unitTitle">Check the model size</h2>
+      <p>Model files often do not say which unit they use. Pick the one that gives the real size; decals, stretch and the cut sheet are all measured from it.</p></header>
+    <div class="body">
+      <p class="note"><b id="unitName"></b> · <span id="unitTris"></span></p>
+      <div class="modes" id="unitList"></div>
+    </div>
+    <footer><span class="spacer"></span>
+      <button type="button" class="btn" id="unitCancel">Cancel</button>
+      <button type="button" class="btn primary" id="unitOk">Open model</button>
+    </footer>
+  </form>
+</dialog>
 <dialog class="geo" id="svgDlg" aria-labelledby="svgTitle">
   <form method="dialog" onsubmit="return false">
     <header><h2 id="svgTitle">Place SVG artwork</h2>
@@ -1876,6 +1895,21 @@ $('#gDelPreset').addEventListener('click', () => {
 $('#file').addEventListener('change', e => { const f = e.target.files[0]; if (f) openFile(f); e.target.value = ''; });
 // the tool works Y-up inside; Z-up files (STL from Blender, CAD, 3D printing) are turned so Z stays vertical
 function zUpToYUp(raw) { const p = raw.pos; for (let i = 0; i < p.length; i += 3) { const y = p[i+1], z = p[i+2]; p[i+1] = z; p[i+2] = -y; } return raw; }
+// before a model is built, show its size in each unit so a wrong scale is caught straight away
+function askUnits(raw, fmt, name) {
+  let mn = [1e30, 1e30, 1e30], mx = [-1e30, -1e30, -1e30];
+  for (let i = 0; i < raw.pos.length; i += 3) for (let d = 0; d < 3; d++) { mn[d] = Math.min(mn[d], raw.pos[i+d]); mx[d] = Math.max(mx[d], raw.pos[i+d]); }
+  const size = mx.map((v, d) => v - mn[d]), guess = guessUnits(raw, fmt), dlg = $('#unitDlg');
+  const fmtMm = v => v >= 100 ? Math.round(v) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+  const shown = u => [size[0], size[2], size[1]].map(v => fmtMm(v * UNIT[u])).join(' × ') + ' mm'; // Z up: length × width × height
+  const looks = u => { const L = Math.max(...size) * UNIT[u]; return L < 100 ? 'very small' : L < 2500 ? 'bicycle size' : L < 7000 ? 'car size' : 'very large'; };
+  $('#unitName').textContent = name; $('#unitTris').textContent = `${Math.round(raw.idx.length / 3).toLocaleString()} triangles`;
+  $('#unitList').innerHTML = ['mm', 'cm', 'm', 'in'].map(u => `<label><input type="radio" name="unitPick" value="${u}"${u === guess ? ' checked' : ''}><span>${{ mm: 'Millimetres', cm: 'Centimetres', m: 'Metres', in: 'Inches' }[u]}${u === guess ? ' <i>(detected)</i>' : ''}<small>${shown(u)} · ${looks(u)}</small></span></label>`).join('');
+  i18nTree?.(dlg);
+  dlg.returnValue = ''; dlg.showModal();
+  $('#unitOk').onclick = () => { const u = dlg.querySelector('input[name=unitPick]:checked')?.value || guess; dlg.close(); $('#units').value = u; loadSource(raw, fmt, name); };
+  $('#unitCancel').onclick = () => dlg.close();
+}
 function openFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (ext === 'svg') { openSVG(file); return; }
@@ -1887,9 +1921,9 @@ function openFile(file) {
   rd.onload = () => {
     const buf = rd.result;
     try {
-      if (ext === 'glb' || ext === 'gltf') new THREE.GLTFLoader().parse(buf, '', gl => loadSource(collect(gl.scene), ext, file.name), err => alert('This glTF could not be read. Export it as a single .glb file. ' + (err?.message || '')));
-      else if (ext === 'obj') loadSource(collect(new THREE.OBJLoader().parse(new TextDecoder().decode(buf))), ext, file.name);
-      else loadSource(zUpToYUp(collect(new THREE.Mesh(new THREE.STLLoader().parse(buf)))), ext, file.name); // STL files are Z-up
+      if (ext === 'glb' || ext === 'gltf') new THREE.GLTFLoader().parse(buf, '', gl => askUnits(collect(gl.scene), ext, file.name), err => alert('This glTF could not be read. Export it as a single .glb file. ' + (err?.message || '')));
+      else if (ext === 'obj') askUnits(collect(new THREE.OBJLoader().parse(new TextDecoder().decode(buf))), ext, file.name);
+      else askUnits(zUpToYUp(collect(new THREE.Mesh(new THREE.STLLoader().parse(buf)))), ext, file.name); // STL files are Z-up
     } catch (e) { alert('This file could not be read: ' + e.message); }
   };
   rd.readAsArrayBuffer(file);
@@ -2380,7 +2414,11 @@ canvas.addEventListener('pointerup', endPress);
 canvas.addEventListener('pointercancel', () => { press = null; clearStrokePreview(); $('#box').hidden = true; });
 function endPress(e) {
   if (!press) return; const p = press; press = null;
-  if (p.type === 'shape') { $('#placeGhost').hidden = true; if (Math.hypot(p.x - p.x0, p.y - p.y0) > 6) makeShape(p); else flash('Drag to size the shape.'); return; }
+  if (p.type === 'shape') { $('#placeGhost').hidden = true;
+    if (Math.hypot(p.x - p.x0, p.y - p.y0) > 6) makeShape(p);
+    else if (S.drawShape === 'pill') placePill(p.x0, p.y0);
+    else flash('Drag to size the shape.');
+    return; }
   if (p.type === 'vline') { if (!p.moved) addViewPoint(p.x0, p.y0); return; }
   if (p.type === 'move') { if (p.moved && xform && xform.d === p.d) { solve(p.d); flash(`${p.d.name} moved.`); } return; }
   if (p.type === 'place') { if (!p.moved) { const hit = pickAt(p.x0, p.y0); if (hit) placeSVG(hit); } return; }
@@ -2912,7 +2950,7 @@ function hintText() {
   if (L.length === 1) return 'Ctrl-click adds a point, Alt-click deletes one. Drag to move (hold Shift for fine moves, arrow keys nudge). Drag the pink handles to bend the curve; Alt-drag breaks them apart. Drop onto a neighbour to merge. F zooms in.';
   if (S.active && !S.active.closed) return S.mode === 'draw' ? 'Open line selected. Click on the model to continue it from the end (select the first point to continue from the start).' : 'Open line: drag points, Ctrl-click to add a point (past an end to extend it), Alt-click a point to delete it. Close shape turns it into a decal; switch to Draw to extend it.';
   if (S.active && S.active.closed) return (S.mode === 'edit' ? 'Drag inside the decal to move it; Ctrl + scroll turns it, Alt + scroll sizes it (Shift for bigger steps). ' : '') + 'Shift-click another decal to combine the two (union, subtract, intersect). Click a point to select it, Shift-drag a box to select several. Ctrl-click the line or the model to add a point, Alt-click a point to delete it. ' + (S.mode === 'draw' ? 'Click elsewhere on the model to start a new decal.' : 'Drag anywhere else to turn the view.');
-  if (S.mode === 'draw' && S.drawShape && S.drawShape !== 'free') return { rect: 'Rectangle: drag from corner to corner. Shift makes a square, Alt draws from the centre.', circle: 'Circle: drag from the centre outwards. Shift drags from edge to edge.', poly: 'Polygon: drag from the centre; the drag direction sets the rotation. Set the number of sides in the toolbar.' }[S.drawShape] + ' The shape is projected from your view onto the surface; turn the view to line it up with a tube.';
+  if (S.mode === 'draw' && S.drawShape && S.drawShape !== 'free') return { rect: 'Rectangle: drag from corner to corner. Shift makes a square, Alt draws from the centre.', circle: 'Circle: drag from the centre outwards. Shift drags from edge to edge.', poly: 'Polygon: drag from the centre; the drag direction sets the rotation. Set the number of sides in the toolbar.', pill: 'Pill: drag its length and width (Alt draws from the centre), or set L × W in the toolbar and click to place one at that size.' }[S.drawShape] + ' The shape is projected from your view onto the surface; turn the view to line it up with a tube.';
   if (S.mode === 'draw') return (S.lineStyle === 'curved' ? 'Clicks make smooth curves. ' : 'Clicks make straight lines; double-click a point later to curve it. ') + 'Click on the model to place points, or press and drag to sketch a freehand outline. Click off the model to draw an outline in the view; where it runs off the model it follows the edge of the surface. Drag the background, or hold Alt or Space and drag, to turn the view; right-drag pans.' + (mirrorOn() ? ' Points near the pink centre plane snap to it; start and end there for one symmetric decal.' : '');
   return 'Click a decal to select it, then drag its points to reshape it.';
 }
@@ -2929,6 +2967,7 @@ function updateUI() {
   document.querySelectorAll('#drawShape [data-shape]').forEach(b => b.setAttribute('aria-pressed', b.dataset.shape === S.drawShape));
   $('#polySidesWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'poly';
   $('#shapeRoundWrap').hidden = S.mode !== 'draw' || !['rect', 'poly'].includes(S.drawShape);
+  $('#pillWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'pill';
   $('#shapeMid').hidden = S.mode !== 'draw' || !S.drawShape || S.drawShape === 'free' || !S.mirrorDefault; $('#shapeMid').setAttribute('aria-pressed', !!S.shapeMid);
   $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', S.knifeThrough); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
   $('#lsStraight').setAttribute('aria-pressed', S.lineStyle !== 'curved'); $('#lsCurved').setAttribute('aria-pressed', S.lineStyle === 'curved');
@@ -4114,10 +4153,28 @@ function shapeOutline(p) {
   if (!w) { const v = knifeViewPoint(c[0], c[1]); if (!v) return o; v[pl.k] = pl.c; w = v; }
   const sc = screenOf(w), dx = sc.x - c[0], dy = sc.y - c[1];
   o.pts = o.pts.map(([x, y]) => [x + dx, y + dy]); if (o.circle) { o.circle.cx += dx; o.circle.cy += dy; }
+  if (o.h) o.h = o.h.map(hh => hh.map(([x, y]) => [x + dx, y + dy])); if (o.dense) o.dense = o.dense.map(([x, y]) => [x + dx, y + dy]);
   return o;
+}
+// a pill (stadium) in screen space: six anchors with exact Bézier handles, plus a dense outline for projecting off the model
+function pillOutline(cx, cy, len, wid, ang) {
+  const u = [Math.cos(ang), Math.sin(ang)], v = [-u[1], u[0]], r = wid / 2, a = Math.max(0, len / 2 - r), k = 0.5523 * r;
+  const P = (su, sv) => [cx + u[0] * su + v[0] * sv, cy + u[1] * su + v[1] * sv], add = (q, du, dv) => [q[0] + u[0] * du + v[0] * dv, q[1] + u[1] * du + v[1] * dv];
+  const A = P(-a, -r), B = P(a, -r), C = P(a + r, 0), D = P(a, r), E = P(-a, r), F = P(-a - r, 0), s = 2 * a / 3;
+  const pts = [A, B, C, D, E, F], h = [[add(A, -k, 0), add(A, s, 0)], [add(B, -s, 0), add(B, k, 0)], [add(C, 0, -k), add(C, 0, k)], [add(D, k, 0), add(D, -s, 0)], [add(E, s, 0), add(E, -k, 0)], [add(F, 0, k), add(F, 0, -k)]];
+  const dense = []; // along the outline, for shapes partly off the model
+  const n = 12; for (let i = 0; i <= n; i++) dense.push(P(-a + 2 * a * i / n, -r));
+  for (let i = 1; i < n; i++) { const t = -Math.PI / 2 + Math.PI * i / n; dense.push(P(a + r * Math.cos(t), r * Math.sin(t))); }
+  for (let i = 0; i <= n; i++) dense.push(P(a - 2 * a * i / n, r));
+  for (let i = 1; i < n; i++) { const t = Math.PI / 2 + Math.PI * i / n; dense.push(P(-a + r * Math.cos(t), r * Math.sin(t))); }
+  return { pts, h, dense, corner: Array(6).fill(false), pill: true };
 }
 function shapeOutlineRaw(p) {
   const sh = S.drawShape, dx = p.x - p.x0, dy = p.y - p.y0;
+  if (sh === 'pill') { // drag a box: the long side is the pill's length; Alt draws from the centre
+    const x0 = p.alt ? p.x0 - dx : p.x0, y0 = p.alt ? p.y0 - dy : p.y0, x1 = p.x0 + dx, y1 = p.y0 + dy, w = Math.abs(x1 - x0), h = Math.abs(y1 - y0);
+    return pillOutline((x0 + x1) / 2, (y0 + y1) / 2, Math.max(w, h), Math.max(1, Math.min(w, h)), w >= h ? 0 : Math.PI / 2);
+  }
   if (sh === 'rect') {
     let w = dx, h = dy;
     if (p.shift) { const m = Math.max(Math.abs(w), Math.abs(h)); w = Math.sign(w || 1) * m; h = Math.sign(h || 1) * m; }
@@ -4141,28 +4198,42 @@ function drawShapeGhost(p) {
     const xs = o.pts.map(q => q[0]), ys = o.pts.map(q => q[1]);
     label = S.drawShape === 'rect' ? `${Math.round((Math.max(...xs) - Math.min(...xs)) / ppm)} × ${Math.round((Math.max(...ys) - Math.min(...ys)) / ppm)} mm` : `Ø ${Math.round(2 * (o.circle ? o.circle.r : Math.hypot(p.x - p.x0, p.y - p.y0)) / ppm)} mm`;
   }
-  const path = o.circle ? `<circle cx="${o.circle.cx}" cy="${o.circle.cy}" r="${o.circle.r}"/>` : `<polygon points="${o.pts.map(q => q.join(',')).join(' ')}"/>`;
+  if (hit && o.pill) { const ppm = camera.isOrthographicCamera ? canvas.clientHeight / (camera.top - camera.bottom) : canvas.clientHeight / (2 * new THREE.Vector3(...hit.p).distanceTo(camera.position) * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+    const L = Math.hypot(o.pts[2][0] - o.pts[5][0], o.pts[2][1] - o.pts[5][1]), W = Math.hypot(o.pts[0][0] - o.pts[4][0], o.pts[0][1] - o.pts[4][1]); label = `${Math.round(L / ppm)} × ${Math.round(W / ppm)} mm`; }
+  const path = o.circle ? `<circle cx="${o.circle.cx}" cy="${o.circle.cy}" r="${o.circle.r}"/>` : o.h ? `<path d="M${o.pts[0].join(' ')}${o.pts.map((q, i) => { const j = (i + 1) % o.pts.length; return ` C${o.h[i][1].join(' ')} ${o.h[j][0].join(' ')} ${o.pts[j].join(' ')}`; }).join('')}Z"/>` : `<polygon points="${o.pts.map(q => q.join(',')).join(' ')}"/>`;
   g.hidden = false;
   g.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}"><g fill="rgba(229,0,126,.10)" stroke="#E5007E" stroke-width="1.5" stroke-dasharray="5 4">${path}</g>${label ? `<text x="${p.x + 12}" y="${p.y - 10}" font-size="12" font-family="-apple-system,Segoe UI,sans-serif" fill="#E5007E" stroke="#fff" stroke-width="3" paint-order="stroke">${label}</text>` : ''}</svg>`;
+}
+// a pill of the typed length and width, centred where you click, lying along the screen's horizontal
+function placePill(x, y) {
+  const hit = pickAt(x, y); if (!hit) { flash('Click on the model to place the pill.'); return; }
+  const L = Math.max(1, +$('#pillL').value || 60), W = Math.max(1, Math.min(L, +$('#pillW').value || 20));
+  const ppm = camera.isOrthographicCamera ? canvas.clientHeight / (camera.top - camera.bottom) : canvas.clientHeight / (2 * new THREE.Vector3(...hit.p).distanceTo(camera.position) * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+  makeShape({ x0: x - L * ppm / 2, y0: y - W * ppm / 2, x: x + L * ppm / 2, y: y + W * ppm / 2 });
 }
 function makeShape(p) {
   const o = shapeOutline(p);
   let ctrl = [];
   for (let i = 0; i < o.pts.length; i++) {
     const h = pickAt(o.pts[i][0], o.pts[i][1]); if (!h) { ctrl = null; break; }
-    const sn = snapHit(h);
-    ctrl.push({ p: sn.p, face: sn.face, type: o.corner[i] ? 'corner' : 'auto' });
+    const sn = snapHit(h), c = { p: sn.p, face: sn.face, type: o.corner[i] ? 'corner' : 'auto' };
+    if (o.h) { // exact round ends: handles laid onto the surface the same way as the points
+      const hi = pickAt(...o.h[i][0]), ho = pickAt(...o.h[i][1]);
+      if (hi && ho) Object.assign(c, { type: 'bezier', hin: hi.p, hout: ho.p, broken: false });
+    }
+    ctrl.push(c);
   }
   const piece = ctrl && S.model.topo.piece[ctrl[0].face];
   if (!ctrl || ctrl.some(c => S.model.topo.piece[c.face] !== piece)) { // part of the shape is off the model: project it like a pen outline, following the tube's edge
-    const P = o.circle ? [...Array(32)].map((_, i) => [o.circle.cx + o.circle.r * Math.cos(i / 32 * 2 * Math.PI), o.circle.cy + o.circle.r * Math.sin(i / 32 * 2 * Math.PI)]) : o.pts;
-    const anchors = P.map(([x, y], i) => { const h = pickAt(x, y), sn = h ? snapHit(h) : null; return { w: sn ? sn.p : knifeViewPoint(x, y), face: sn ? sn.face : null, soft: !!o.circle, smooth: !!o.circle }; });
+    const P = o.circle ? [...Array(32)].map((_, i) => [o.circle.cx + o.circle.r * Math.cos(i / 32 * 2 * Math.PI), o.circle.cy + o.circle.r * Math.sin(i / 32 * 2 * Math.PI)]) : o.dense || o.pts;
+    const soft = !!(o.circle || o.dense);
+    const anchors = P.map(([x, y], i) => { const h = pickAt(x, y), sn = h ? snapHit(h) : null; return { w: sn ? sn.p : knifeViewPoint(x, y), face: sn ? sn.face : null, soft, smooth: soft }; });
     if (anchors.some(a => !a.w)) { flash('The shape could not be placed from this view.'); return; }
     const r = outlineFromView(anchors); if (r.error) { flash(r.error); return; }
     ctrl = r.ctrl;
   }
   pushHistory();
-  const id = S.nextId++, name = tr({ rect: 'Rectangle', circle: 'Circle', poly: `${o.pts.length}-gon` }[S.drawShape]);
+  const id = S.nextId++, name = tr({ rect: 'Rectangle', circle: 'Circle', poly: `${o.pts.length}-gon`, pill: 'Pill' }[S.drawShape]);
   const d = { id, name: `${name} ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
   mirrorNewDecal(d);
   S.decals.push(d); S.active = d; S.sel = null;
@@ -4985,6 +5056,11 @@ const DE = {
   'Move only along the X axis (front to back). X while dragging': 'Nur entlang der X-Achse verschieben (vorne–hinten). X beim Ziehen',
   'Move only along the Y axis (side to side). Y while dragging': 'Nur entlang der Y-Achse verschieben (seitlich). Y beim Ziehen',
   'Move only along the Z axis (up and down). Z while dragging': 'Nur entlang der Z-Achse verschieben (hoch–runter). Z beim Ziehen', 'Moving freely over the surface.': 'Freies Verschieben über die Fläche.',
+  'Check the model size': 'Modellgröße prüfen', 'Model files often do not say which unit they use. Pick the one that gives the real size; decals, stretch and the cut sheet are all measured from it.': 'Modelldateien sagen oft nicht, welche Einheit sie verwenden. Wähle die, die die echte Größe ergibt; Decals, Dehnung und Schneidebogen werden daraus gemessen.',
+  'Open model': 'Modell öffnen', 'Millimetres': 'Millimeter', 'Centimetres': 'Zentimeter', 'Metres': 'Meter', 'Inches': 'Zoll', '(detected)': '(erkannt)', 'very small': 'sehr klein', 'bicycle size': 'Fahrradgröße', 'car size': 'Autogröße', 'very large': 'sehr groß',
+  'Pill': 'Pille', 'A pill (stadium): drag its length and width, or type the size and click to place it': 'Eine Pille (Langloch): Länge und Breite aufziehen, oder Größe eingeben und klicken zum Platzieren',
+  'Pill size in mm: click on the model to place one at this size, or drag to draw any size': 'Pillengröße in mm: auf das Modell klicken platziert eine in dieser Größe, Ziehen zeichnet jede Größe',
+  'Click on the model to place the pill.': 'Klicke auf das Modell, um die Pille zu platzieren.', 'Pill: drag its length and width (Alt draws from the centre), or set L × W in the toolbar and click to place one at that size.': 'Pille: Länge und Breite aufziehen (Alt zeichnet von der Mitte aus), oder L × B in der Werkzeugleiste eingeben und klicken, um eine in dieser Größe zu platzieren.',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
@@ -5021,6 +5097,8 @@ const DE_PAT = [ // {0}, {1}… stand for the parts that change
   ['Turned {0}°', 'Gedreht {0}°'], ['Size {0}%', 'Größe {0} %'],
   ['Turning around the {0} axis through the middle of the tube.', 'Drehen um die {0}-Achse durch die Rohrmitte.'],
   ['Moving along the {0} axis only.', 'Verschieben nur entlang der {0}-Achse.'],
+  ['{0} triangles', '{0} Dreiecke'], ['{0} mm · {1}', '{0} mm · {1*}'],
+  ['Pill {0}', 'Pille {0}'],
   ['{0}: {1} mm', '{0*}: {1} mm'], ['{0}-gon', '{0}-Eck'], ['Rectangle {0}', 'Rechteck {0}'], ['Circle {0}', 'Kreis {0}'], ['Fork leg {0}', 'Gabelbein {0}'], ['{0} (edited)', '{0} (bearbeitet)'],
 ];
 const DE_RE = DE_PAT.map(([en, de]) => [new RegExp('^' + en.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d)\}/g, '(.*?)') + '$'), en, de]);
