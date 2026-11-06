@@ -2576,10 +2576,16 @@ function addStroke(pts) {
 }
 function insertAtClick(d, hit, x, y) {
   hit = snapHit(hit);
-  let best = null, bd = 1e30;
-  for (const s of d.samples || []) { const q = screenOf(s.point), dd = (q.x - x) ** 2 + (q.y - y) ** 2; if (dd < bd && facing(s.point, s.face)) { bd = dd; best = s; } }
+  // the nearest outline: the decal's own, or its mirrored copy (which maps back onto the same segments)
+  let best = null, bd = 1e30, onTwin = false;
+  for (const s of d.samples || []) { const q = screenOf(s.point), dd = (q.x - x) ** 2 + (q.y - y) ** 2; if (dd < bd && facing(s.point, s.face)) { bd = dd; best = s; onTwin = false; } }
+  if (d.mirror && !d.mergedMap) for (const s of d.twin?.res?.samples || []) { const q = screenOf(s.point), dd = (q.x - x) ** 2 + (q.y - y) ** 2; if (dd < bd && facing(s.point, s.face)) { bd = dd; best = s; onTwin = true; } }
   if (!best) return -1;
-  const os = origSample(d, best); if (!os) return -1;
+  const os = onTwin ? { seg: best.seg, t: best.t } : origSample(d, best); if (!os) return -1;
+  // clicked on the mirrored half or the mirrored copy: the new point goes to the matching spot on the decal itself
+  if (onTwin || (d.mergedMap && os.point && os.point !== best.point)) {
+    const h = Core.closestPoint(S.model.mesh, S.model.grid, reflect(hit.p), 80); if (h) hit = { p: h.point, face: h.face };
+  }
   if (!d.closed && ((os.seg === 0 && os.t < 0.02) || (os.seg === d.ctrl.length - 2 && os.t > 0.98))) { // past an end of an open line: extend it
     pushHistory(); const ch = clipHit(d, hit, false), np = { p: ch.p, face: ch.face, type: S.lineStyle === 'curved' ? 'auto' : 'corner', plane: ch.plane };
     if (os.seg === 0 && os.t < 0.02) { d.ctrl.unshift(np); updateDecalVisual(d, true); return 0; }
