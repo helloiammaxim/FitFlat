@@ -2955,7 +2955,68 @@ function hintText() {
   return 'Click a decal to select it, then drag its points to reshape it.';
 }
 
+// ---------- relief cuts: where a decal stretches too much, a notch from the edge lets the film lie flat ----------
+const RELIEF_AT = 0.03; // the red stretch level
+function reliefSuggest(d) {
+  const r = d.res; if (!r || r.error || !r.faceStretch || !(r.stretchMax >= RELIEF_AT) || !r.samples?.length) return [];
+  const { mesh } = S.model, T = mesh.tri, P = mesh.pos, cen = f => [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3);
+  const inside = r.insideFaces.map(cen), mid = [0, 1, 2].map(k => inside.reduce((a, c) => a + c[k], 0) / inside.length);
+  const hot = [...r.faceStretch].filter(([, st]) => st >= RELIEF_AT).sort((a, b) => b[1] - a[1]);
+  const sep = Math.max(12, Math.sqrt(r.area) * 0.3), peaks = []; // the worst spots, kept apart
+  for (const [f, st] of hot) { const c = cen(f); if (peaks.every(p => dist3(p.c, c) > sep)) peaks.push({ f, st, c }); if (peaks.length >= 6) break; }
+  const smp = r.samples, n = smp.length, piece = S.model.topo.piece[smp[0].face];
+  return peaks.map(pk => {
+    let bi = 0, bd = 1e30; smp.forEach((q, i) => { const dd = dist3(q.point, pk.c); if (dd < bd) { bd = dd; bi = i; } });
+    const E = smp[bi].point, toMid = dist3(E, mid); if (toMid < 4) return null;
+    // from the edge towards the middle, through the stretched spot and a little past it
+    const dir = bd > 2 ? v3.sub(pk.c, E) : v3.sub(mid, E), dl = v3.len(dir) || 1, len = Math.min(Math.max(bd * 1.3, toMid * 0.3, 5), toMid * 0.7);
+    const pts = []; for (let i = 0; i <= 10; i++) { const h = Core.closestPoint(S.model.mesh, S.model.grid, v3.add(E, v3.mul(dir, len / dl * i / 10)), 80, f => S.model.topo.piece[f] === piece); if (h) pts.push(h); }
+    if (pts.length < 2) return null;
+    const tg = v3.sub(smp[(bi + 2) % n].point, smp[(bi - 2 + n) % n].point);
+    return { E, Eface: smp[bi].face, pts, tan: v3.mul(tg, 1 / (v3.len(tg) || 1)), st: pk.st, len };
+  }).filter(Boolean);
+}
+let reliefObj = null, reliefKey = '';
+function renderRelief() {
+  const key = S.showStretch + '|' + S.decals.map(d => d.id + ':' + (d.res && !d.res.error ? d.res.area.toFixed(1) + '/' + d.res.stretchMax.toFixed(3) : '-')).join(',');
+  if (key === reliefKey) return; reliefKey = key;
+  if (reliefObj) { scene.remove(reliefObj); reliefObj.children.forEach(disposeObj); reliefObj = null; }
+  if (!S.model || !S.showStretch) return;
+  const grp = new THREE.Group(), k = hOff() * 1.6;
+  for (const d of S.decals) for (const c of (d.closed && !d.holeOf ? reliefSuggest(d) : [])) {
+    const l = fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat('#FF3B30', 2.5, 1, false));
+    l.material.dashed = true; l.material.dashSize = 2; l.material.gapSize = 1.5; l.material.needsUpdate = true; l.computeLineDistances(); grp.add(l);
+  }
+  grp.children.forEach(o => o.renderOrder = 11); scene.add(grp); reliefObj = grp;
+}
+// cut the suggested notches: a narrow V from just outside the edge to the end of each suggested line
+function applyRelief(d) {
+  const cuts = reliefSuggest(d); if (!cuts.length) { flash(`${d.name} lies flat enough; no relief cuts needed.`); return; }
+  const before = snapshot(); let target = d, made = 0;
+  setBusy('Cutting…');
+  setTimeout(() => {
+    const piece = S.model.topo.piece[d.ctrl[0].face], onS = q => Core.closestPoint(S.model.mesh, S.model.grid, q, 80, f => S.model.topo.piece[f] === piece);
+    for (const c of cuts) {
+      if (!S.decals.includes(target)) break;
+      const tip = c.pts[c.pts.length - 1].point, inn = v3.sub(c.pts[Math.min(2, c.pts.length - 1)].point, c.E), il = v3.len(inn) || 1, out = v3.mul(inn, -2.5 / il);
+      const w = Math.min(4, Math.max(1.2, c.len * c.st * 3)); // wider notches where the film stretches more
+      const B = v3.add(c.E, out), b1 = onS(v3.add(B, v3.mul(c.tan, w / 2))), b2 = onS(v3.add(B, v3.mul(c.tan, -w / 2))), tp = onS(tip);
+      if (!b1 || !b2 || !tp) continue;
+      const ctrl = [b1, tp, b2].map(h => ({ p: h.point, face: h.face, type: 'corner' }));
+      const res = Core.solveDecal(S.model, ctrl, false); if (res.error) continue; res.insideSet = new Set(res.insideFaces);
+      const r = booleanCore('difference', target, { ctrl, closed: true, res, mirror: false, name: 'relief' });
+      if (r.error || !r.made?.length) continue;
+      for (const h of [...holesOf(target), target]) removeDecal(h, true);
+      for (const nd of r.made) { S.decals.push(nd); solveNow(nd); }
+      target = r.made.find(x => !x.holeOf) || r.made[0]; made++;
+    }
+    setBusy(false);
+    if (made) { HIST.undo.push(before); HIST.redo = []; S.dirty = true; S.active = target; renderHandles(); updateUI(); flash(`Added ${made} relief cut${made === 1 ? '' : 's'}. Stretch now ${(target.res?.stretchMax * 100 || 0).toFixed(1)}%.`); }
+    else flash('The relief cuts could not be added here. Try splitting the decal with the Knife.');
+  }, 20);
+}
 function updateUI() {
+  try { renderRelief(); } catch (e) {}
   $('#hint').textContent = hintText();
   const has = !!S.model, L = selList();
   $('#undo').disabled = !has || !HIST.undo.length;
@@ -3015,12 +3076,13 @@ function renderList() {
     else if (d.res) info = `<div class="info">${dims('d' + d.id, d.res)}</div>`;
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
-    li.innerHTML = `<span class="swatch" style="--c:${d.color}"></span><input class="name" aria-label="Decal name" value="${d.name.replace(/"/g,'&quot;')}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.closed ? '<button data-a="flip" title="Use the area on the other side of the outline">Swap side</button>' : ''}<button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${d.color}"></span><input class="name" aria-label="Decal name" value="${d.name.replace(/"/g,'&quot;')}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.closed ? '<button data-a="flip" title="Use the area on the other side of the outline">Swap side</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= RELIEF_AT ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}<button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, d); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
     li.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.a === 'del') { pushHistory(); removeDecal(d); }
+      if (b.dataset.a === 'relief') { applyRelief(d); return; }
       if (b.dataset.a === 'lock') { pushHistory(); d.locked = !d.locked; if (d.locked && S.active === d) { S.active = null; S.sel = null; } renderHandles(); updateUI(); flash(d.locked ? `${d.name} is locked. You can draw over it now.` : `${d.name} is unlocked.`); }
       if (b.dataset.a === 'applymir') applyMirror(d);
       if (b.dataset.a === 'unhole') { pushHistory(); delete d.holeOf; updateDecalVisual(d, false); updateUI(); }
@@ -5061,6 +5123,8 @@ const DE = {
   'Pill': 'Pille', 'A pill (stadium): drag its length and width, or type the size and click to place it': 'Eine Pille (Langloch): Länge und Breite aufziehen, oder Größe eingeben und klicken zum Platzieren',
   'Pill size in mm: click on the model to place one at this size, or drag to draw any size': 'Pillengröße in mm: auf das Modell klicken platziert eine in dieser Größe, Ziehen zeichnet jede Größe',
   'Click on the model to place the pill.': 'Klicke auf das Modell, um die Pille zu platzieren.', 'Pill: drag its length and width (Alt draws from the centre), or set L × W in the toolbar and click to place one at that size.': 'Pille: Länge und Breite aufziehen (Alt zeichnet von der Mitte aus), oder L × B in der Werkzeugleiste eingeben und klicken, um eine in dieser Größe zu platzieren.',
+  'Relief cuts': 'Entlastungsschnitte', 'Cut small notches where the film stretches too much (the red lines with Stretch on)': 'Kleine Kerben schneiden, wo die Folie zu stark gedehnt wird (die roten Linien bei eingeschalteter Dehnung)',
+  'The relief cuts could not be added here. Try splitting the decal with the Knife.': 'Die Entlastungsschnitte ließen sich hier nicht setzen. Teile das Decal mit dem Messer.',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
@@ -5099,6 +5163,8 @@ const DE_PAT = [ // {0}, {1}… stand for the parts that change
   ['Moving along the {0} axis only.', 'Verschieben nur entlang der {0}-Achse.'],
   ['{0} triangles', '{0} Dreiecke'], ['{0} mm · {1}', '{0} mm · {1*}'],
   ['Pill {0}', 'Pille {0}'],
+  ['{0} lies flat enough; no relief cuts needed.', '{0} liegt flach genug; keine Entlastungsschnitte nötig.'],
+  ['Added {0} relief cut{1}. Stretch now {2}%.', '{0} Entlastungsschnitt(e) gesetzt. Dehnung jetzt {2} %.'],
   ['{0}: {1} mm', '{0*}: {1} mm'], ['{0}-gon', '{0}-Eck'], ['Rectangle {0}', 'Rechteck {0}'], ['Circle {0}', 'Kreis {0}'], ['Fork leg {0}', 'Gabelbein {0}'], ['{0} (edited)', '{0} (bearbeitet)'],
 ];
 const DE_RE = DE_PAT.map(([en, de]) => [new RegExp('^' + en.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d)\}/g, '(.*?)') + '$'), en, de]);

@@ -44,7 +44,7 @@ Decal Studio ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeic
 ## 2. Einen Rahmen laden
 
 ### Eigenes Modell öffnen
-**Öffnen** einer `.glb`-, `.gltf`-, `.obj`- oder `.stl`-Datei, oder die Datei auf die 3D-Ansicht ziehen. Die *Modelleinheit* wird automatisch erkannt; ändere sie, wenn die angezeigte Größe neben dem Dateinamen nicht stimmt. STL-Dateien werden mit Z nach oben gelesen, wie Blender und CAD-Programme sie exportieren.
+**Öffnen** einer `.glb`-, `.gltf`-, `.obj`- oder `.stl`-Datei, oder die Datei auf die 3D-Ansicht ziehen. Das Fenster **Modellgröße prüfen** zeigt die Größe des Modells in Millimetern, Zentimetern, Metern und Zoll, die erkannte Einheit ist markiert — wähle die, die die echte Größe ergibt. Alles (Decals, Dehnung, Schneidebogen) wird daraus gemessen, und eine falsche Einheit lässt auch das Zoomen falsch wirken. Später änderst du sie über *Modelleinheit* in der oberen Leiste. STL-Dateien werden mit Z nach oben gelesen, wie Blender und CAD-Programme sie exportieren.
 
 Das echte Rahmenmodell ergibt die genauesten Produktionsschnitte.
 
@@ -67,7 +67,7 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 
 - **Drehen:** Hintergrund ziehen, oder Alt bzw. Leertaste halten und ziehen (auch über dem Modell).
 - **Verschieben:** mit rechts ziehen.
-- **Zoomen:** scrollen (zum Punkt unter dem Mauszeiger) oder mit der mittleren Taste ziehen.
+- **Zoomen:** scrollen — es zoomt um den Punkt unter dem Mauszeiger — oder mit der mittleren Taste ziehen. Auch ein Trackpad-Pinch zoomt.
 - Menü **Ansichten**: *Vorne, Hinten, Links, Rechts, Oben, Unten*, Drehen in 45°-Schritten und **gespeicherte Ansichten** (dreh das Modell in einen passenden Winkel und speichere ihn). Hefte das Ansichten-Panel an, damit es offen bleibt.
 - **Ortho** schaltet auf orthografische Ansicht (ohne Perspektive) — ideal mit den Achsenansichten für genaue Layouts.
 - **Raster** zeigt ein Raster und kann Punkte daran fangen (2,5D: das Raster bestimmt die Position in der Ebene, die Rahmenoberfläche die Tiefe). Rasterebene und Schritt wählst du im Raster-Menü.
@@ -80,7 +80,7 @@ Z ist die senkrechte Achse. X verläuft von vorne nach hinten entlang des Rads, 
 
 ## 4. Decals zeichnen
 
-Wähle **Zeichnen**. Die Formen sind **Stift**, **Rechteck**, **Kreis** und **Polygon**.
+Wähle **Zeichnen**. Die Formen sind **Stift**, **Rechteck**, **Kreis**, **Polygon** und **Pille**.
 
 ### Stift
 - **Klicke** auf das Modell, um Punkte zu setzen. Standardmäßig werden Punkte mit geraden Linien verbunden (*Gerade*); wähle *Kurvig* für weiche Kurven. Später kannst du einen Punkt doppelklicken, um zwischen Kurve und Ecke zu wechseln.
@@ -92,6 +92,7 @@ Wähle **Zeichnen**. Die Formen sind **Stift**, **Rechteck**, **Kreis** und **Po
 - **Ziehen** zum Zeichnen. Beim Ziehen wird die Größe in mm angezeigt.
 - Rechteck: Umschalt macht ein Quadrat, Alt zeichnet von der Mitte aus. Kreis: Umschalt zieht von Rand zu Rand. Polygon: die Anzahl der **Ecken** (3–64) einstellen; die Zugrichtung bestimmt die Drehung.
 - **r** rundet die Ecken von Rechtecken und Polygonen ab.
+- **Pille** (Langloch mit runden Enden): Länge und Breite aufziehen (Alt von der Mitte aus), oder **L × B** in mm in der Werkzeugleiste eingeben und auf das Modell klicken, um eine in genau dieser Größe zu platzieren.
 - Formen werden aus deiner Ansicht auf die Fläche projiziert — dreh die Ansicht, um sie an einem Rohr auszurichten. Sie dürfen über das Rohr hinausgehen; das Decal endet am Rand des Rohrs.
 - **Auf Spiegel zentrieren** (nur im Spiegelmodus) setzt die Mitte der Form auf die Mittelebene, damit sie genau mittig liegt.
 
@@ -217,6 +218,8 @@ Jede Zeile zeigt den Namen des Decals (anklicken zum Umbenennen), seine flache G
 
 Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Seite tauschen** (die Fläche auf der anderen Seite der Kontur nutzen), **Lösen** (ein Loch zu einem eigenen Teil machen), **🔒 Sperren**, **Löschen**.
 
+**Entlastungsschnitte** erscheint, wenn ein Decal zu stark gedehnt wird (rot). Es schneidet kleine V-Kerben vom Rand in die am stärksten gedehnten Bereiche, damit die Folie flach liegen kann. Schalte **Dehnung** in der Ansichtsleiste ein, um die vorgeschlagenen Schnitte vorher als rote gestrichelte Linien zu sehen. Bei stark gewölbten Flächen hilft oft mehr, das Decal mit dem Messer zu teilen.
+
 **Sperren** macht ein Decal auf dem Modell nicht mehr auswählbar und bearbeitbar, damit du darüber zeichnen kannst. Das Messer lässt gesperrte Decals in Ruhe.
 
 ---
@@ -280,7 +283,8 @@ Auf dem Mac ⌘ statt Strg verwenden.
 
 - **„Die Kontur springt auf ein getrenntes Teil des Modells“** — halte jedes Decal auf einer zusammenhängenden Fläche (einem Rohr).
 - **„Diese Form umschließt ein Rohr ganz“** — lass eine kleine Lücke, damit die Folie flach liegen kann.
-- **Hohe Dehnung (rot)** — mach das Decal um das Rohr herum schmaler, setze mit dem Messer einen Entlastungsschnitt oder teile es.
+- **Hohe Dehnung (rot)** — schalte *Dehnung* ein, um zu sehen, wo Entlastungsschnitte hingehören, drück *Entlastungsschnitte* in der Liste, mach das Decal um das Rohr herum schmaler oder teile es mit dem Messer.
+- **Modell wirkt winzig oder riesig, oder Zoomen fühlt sich falsch an** — die Einheit stimmt nicht. Wähle die richtige unter *Modelleinheit* (obere Leiste) oder öffne das Modell neu.
 - **Zu viele Punkte** — nutze *Vereinfachen*. Für den Export erhöhe die Toleranz **±** unter *Saubere Kurven*.
 - **Ein Decal lässt sich nicht anklicken, weil ein anderes darüber liegt** — sperre das störende.
 - **Auf der Rückseite zeichnen** — mach den Rahmen durchsichtig (Alt+Z) oder dreh die Ansicht.

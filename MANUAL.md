@@ -44,7 +44,7 @@ Open `index.html` in a current browser (Chrome, Edge, Safari, Firefox). Nothing 
 ## 2. Getting a frame
 
 ### Open your own model
-**Open** a `.glb`, `.gltf`, `.obj` or `.stl` file, or drop it onto the 3D view. *Model units* is set automatically; change it if the size shown next to the file name is wrong. STL files are read Z-up, the way Blender and CAD programs export them.
+**Open** a `.glb`, `.gltf`, `.obj` or `.stl` file, or drop it onto the 3D view. A **Check the model size** window shows the model's size in millimetres, centimetres, metres and inches, with the detected unit marked — pick the one that gives the real size. Everything (decals, stretch, the cut sheet) is measured from it, and a wrong unit also makes zooming feel wrong. You can change it later with *Model units* in the top bar. STL files are read Z-up, the way Blender and CAD programs export them.
 
 The real frame model gives the most accurate production patterns.
 
@@ -67,7 +67,7 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 
 - **Turn:** drag the background, or hold Alt or Space and drag (also over the model).
 - **Pan:** right-drag.
-- **Zoom:** scroll (towards the point under the cursor) or middle-drag.
+- **Zoom:** scroll — it zooms around the point under the cursor — or middle-drag. A trackpad pinch zooms too.
 - **Views** menu: *Front, Back, Left, Right, Top, Bottom*, turns by 45°, and **saved views** (turn the model to an angle you like and save it). Pin the Views panel to keep it open.
 - **Ortho** switches to an orthographic view (no perspective) — good with the axis views for exact layouts.
 - **Grid** shows a grid and can snap points to it (2.5D: the grid sets the position in the plane, the frame surface gives the depth). Choose the grid plane and step in the Grid menu.
@@ -80,7 +80,7 @@ Z is the vertical axis. X runs front to back along the bike, Y side to side.
 
 ## 4. Drawing decals
 
-Choose **Draw**. The shape buttons are **Pen**, **Rect**, **Circle** and **Polygon**.
+Choose **Draw**. The shape buttons are **Pen**, **Rect**, **Circle**, **Polygon** and **Pill**.
 
 ### Pen
 - **Click** on the model to place points. By default points join with straight lines (*Straight*); choose *Curved* for smooth curves. You can double-click a point later to switch it between curve and corner.
@@ -92,6 +92,7 @@ Choose **Draw**. The shape buttons are **Pen**, **Rect**, **Circle** and **Polyg
 - **Drag** to draw. The size in mm is shown while you drag.
 - Rect: Shift makes a square, Alt draws from the centre. Circle: Shift drags from edge to edge. Polygon: set the number of **Sides** (3–64); the drag direction sets the rotation.
 - **r** rounds the corners of rectangles and polygons.
+- **Pill** (a stadium with round ends): drag its length and width (Alt from the centre), or set **L × W** in mm in the toolbar and click on the model to place one at exactly that size.
 - Shapes are projected from your view onto the surface — turn the view to line them up with a tube. They may extend past the tube; the decal stops at the tube's edge.
 - **Centre on mirror** (mirror mode only) snaps the shape's centre onto the centre plane, so it sits exactly in the middle.
 
@@ -217,6 +218,8 @@ Each row shows the decal's name (click to rename), its flat size in mm and its *
 
 Row buttons: **Mirror**, **Apply** (mirror), **Swap side** (use the area on the other side of the outline), **Detach** (make a hole a separate piece), **🔒 Lock**, **Delete**.
 
+**Relief cuts** appears when a decal stretches too much (red). It cuts small V-notches from the edge into the most stretched areas so the film can lie flat. Turn on **Stretch** in the view bar to see the suggested cuts as red dashed lines first. For strongly curved areas, splitting the decal with the Knife often helps more.
+
 **Lock** makes a decal unselectable and uneditable on the model, so you can draw over it. The Knife leaves locked decals alone.
 
 ---
@@ -280,7 +283,8 @@ On a Mac use ⌘ instead of Ctrl.
 
 - **"The outline jumps onto a separate part of the model"** — keep each decal on one connected surface (one tube).
 - **"This shape wraps all the way around a tube"** — leave a small gap so the film can lie flat.
-- **High stretch (red)** — make the decal narrower around the tube, add a relief cut with the Knife, or split it.
+- **High stretch (red)** — turn on *Stretch* to see where relief cuts belong, press *Relief cuts* in the list, make the decal narrower around the tube, or split it with the Knife.
+- **Model looks tiny or huge, or zooming feels wrong** — the unit is wrong. Choose the right one in *Model units* (top bar) or open the model again.
 - **Too many points** — use *Simplify*. For the export, raise the **±** tolerance under *Clean curves*.
 - **Can't click a decal because another one is on top** — lock the one in the way.
 - **Draw on the far side** — make the frame see-through (Alt+Z), or turn the view.
