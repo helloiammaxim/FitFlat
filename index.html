@@ -325,6 +325,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             </div>
             <label class="clip" id="polySidesWrap" hidden title="Number of sides">Sides <input type="number" id="polySides" value="6" min="3" max="64" step="1"></label>
             <label class="clip" id="shapeRoundWrap" hidden title="Corner radius for rectangles and polygons">r <input type="number" id="shapeRound" value="0" min="0" step="0.5"> mm</label>
+            <button class="btn tog" id="shapeMid" aria-pressed="false" hidden title="Snap the shape's centre onto the mirror plane, so it sits exactly in the middle">Centre on mirror</button>
             <div class="seg" id="lineStyle" role="group" aria-label="New points">
               <button id="lsStraight" aria-pressed="true" title="Clicked points join with straight lines">Straight</button>
               <button id="lsCurved" aria-pressed="false" title="Clicked points join with smooth curves">Curved</button>
@@ -1680,7 +1681,7 @@ function buildFromGeometry(geo, tubesIn, name, carryDecals, meta) {
   if (carryDecals && S.source?.tubes && S.decals.length) {
     const old = S.source.tubes;
     carry = S.decals.filter(d => d.ctrl.length).map(d => ({
-      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side,
+      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side, locked: !!d.locked,
       ctrl: d.ctrl.map(c => ({ p: toTube(c.p, old), hin: c.hin && toTube(c.hin, old), hout: c.hout && toTube(c.hout, old), type: c.type, plane: c.plane })),
     }));
   }
@@ -1891,7 +1892,7 @@ function projectJSON() {
     frame: src.tubes ? { tubes: src.tubes, geo: src.geo, tubeSizes: src.tubeSizes, presetName: src.presetName, sizeIndex: src.sizeIndex } : null,
     presets: userPresets,
     decals: S.decals.filter(d => d.ctrl.length).map(d => ({
-      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0,
+      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked,
       ctrl: d.ctrl.map(c => ({ p: r3(c.p), type: c.type || 'auto', hin: r3(c.hin), hout: r3(c.hout), plane: !!c.plane })),
     })),
   });
@@ -1917,7 +1918,7 @@ function restoreDecals(list, msg, fname) {
       const id = S.nextId++; if (dd.id != null) idMap.set(dd.id, id);
       const ctrl = dd.ctrl.map(c => { const h = c.p && Core.closestPoint(mesh, grid, c.p, 120); return h && { p: h.point, face: h.face, type: c.type, hin: c.hin || undefined, hout: c.hout || undefined, plane: !!c.plane }; }).filter(Boolean);
       if (!ctrl.length) continue;
-      const d = { id, name: dd.name || `Decal ${id}`, color: dd.color || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, res: null, twin: null, obj: [], _hole: dd.holeOf };
+      const d = { id, name: dd.name || `Decal ${id}`, color: dd.color || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, res: null, twin: null, obj: [], _hole: dd.holeOf };
       S.decals.push(d); made.push(d);
     }
     for (const d of made) { if (d._hole != null && idMap.has(d._hole)) d.holeOf = idMap.get(d._hole); delete d._hole; }
@@ -2001,7 +2002,7 @@ function selectPoints(d, idxs, add) {
 }
 function handleTargets() {
   const out = [];
-  for (const d of [S.drawing, S.active]) if (d && !out.includes(d)) out.push(d);
+  for (const d of [S.drawing, S.active]) if (d && !d.locked && !out.includes(d)) out.push(d);
   return out;
 }
 // mirrored copies of points, editable like the originals
@@ -2045,7 +2046,7 @@ function hitHandle(x, y) {
   return best;
 }
 function hitLine(x, y) {
-  const d = S.active; if (!d || !d.samples || d === S.drawing) return null;
+  const d = S.active; if (!d || d.locked || !d.samples || d === S.drawing) return null;
   let best = null, bd = 8;
   for (const s of d.samples) {
     if (!facing(s.point, s.face)) continue;
@@ -2057,7 +2058,7 @@ function hitLine(x, y) {
 
 // ---------- history ----------
 const HIST = { undo: [], redo: [] };
-const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf,
+const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked,
   ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken })) });
 const snapshot = () => JSON.stringify({ decals: S.decals.map(decalState), drawing: S.drawing?.id ?? null });
 function pushHistory() { HIST.undo.push(snapshot()); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; }
@@ -2195,7 +2196,7 @@ function onDown(e) {
   if (S.placing) { press = { type: 'place', x0: x, y0: y, moved: false }; return; } // let the view turn on drag; a click places
   if (S.boolOp) {
     const h = hitLineAny(x, y), hit = h ? null : pickAt(x, y);
-    const B = h ? h.d : hit ? S.decals.find(d => d.res?.insideSet?.has(hit.face)) : null;
+    const B = h ? h.d : hit ? S.decals.find(d => !d.locked && d.res?.insideSet?.has(hit.face)) : null;
     if (B) { stopAll(e); runBoolean(S.boolOp.op, S.boolOp.a, B); return; }
   }
   if (S.mode === 'knife') { // the knife works in the view: clicks off the model are fine
@@ -2242,7 +2243,28 @@ const lineHit = hitLine(x, y);
     if (hit) { stopAll(e); press = { type: 'stroke', x0: x, y0: y, pts: [{ x, y, hit }], moved: false }; canvas.setPointerCapture(e.pointerId); return; }
     if (!S.drawShape || S.drawShape === 'free') { press = { type: 'vline', x0: x, y0: y, moved: false }; return; } // a click off the model starts an outline drawn in the view
   }
+  if (S.mode === 'edit' && S.active && !S.active.locked && S.active.closed && !addKey) { // dragging inside the selected decal moves all of it
+    const hit = pickAt(x, y), d = S.active;
+    if (hit && (d.res?.insideSet?.has(hit.face) || d.twin?.res?.insideSet?.has(hit.face))) {
+      stopAll(e); canvas.setPointerCapture(e.pointerId);
+      press = { type: 'move', d, x0: x, y0: y, last: hit.p, twin: !d.res?.insideSet?.has(hit.face), moved: false };
+      return;
+    }
+  }
   press = { type: 'select', x0: x, y0: y, hit: pickAt(x, y), moved: false };
+}
+function moveDecalTo(p, x, y) {
+  const hit = pickAt(x, y); if (!hit) return;
+  const X = ensureXform(p.d); if (!X) return;
+  let dl = v3.sub(hit.p, p.last); p.last = hit.p;
+  const pl = p.d.mirror ? mirrorPlane() : null;
+  if (pl && p.twin) dl[pl.k] = -dl[pl.k]; // dragging the mirrored copy moves the original the mirrored way
+  if (X.sym) dl[pl.k] = 0; // a symmetric decal slides along the centre plane
+  // the drag step in the layout's directions at the decal's current centre
+  const mv = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [E1, E2] = mv.carry;
+  const a11 = v3.dot(E1, E1), a12 = v3.dot(E1, E2), a22 = v3.dot(E2, E2), b1 = v3.dot(dl, E1), b2 = v3.dot(dl, E2), det = a11*a22 - a12*a12 || 1e-12;
+  X.du += (a22*b1 - a12*b2) / det; X.dv += (a11*b2 - a12*b1) / det; X.t = performance.now();
+  applyXform();
 }
 function applyDrag(e, x, y) {
   const p = press, d = p.decal;
@@ -2293,6 +2315,7 @@ canvas.addEventListener('pointermove', e => {
   if (!press) { if (S.placing) ghostAt(x, y); else hoverCursor(x, y, e); return; }
   if (Math.hypot(x - press.x0, y - press.y0) > 4) press.moved = true;
   if (press.type === 'shape') { press.x = x; press.y = y; press.shift = e.shiftKey; press.alt = e.altKey; drawShapeGhost(press); return; }
+  if (press.type === 'move') { if (press.moved) moveDecalTo(press, x, y); return; }
   if (press.type === 'stroke') {
     const last = press.pts[press.pts.length - 1];
     if (Math.hypot(x - last.x, y - last.y) >= 5) { const hit = pickAt(x, y); if (hit) { press.pts.push({ x, y, hit }); drawStrokePreview(); } }
@@ -2312,6 +2335,7 @@ function endPress(e) {
   if (!press) return; const p = press; press = null;
   if (p.type === 'shape') { $('#placeGhost').hidden = true; if (Math.hypot(p.x - p.x0, p.y - p.y0) > 6) makeShape(p); else flash('Drag to size the shape.'); return; }
   if (p.type === 'vline') { if (!p.moved) addViewPoint(p.x0, p.y0); return; }
+  if (p.type === 'move') { if (p.moved && xform && xform.d === p.d) { solve(p.d); flash(`${p.d.name} moved.`); } return; }
   if (p.type === 'place') { if (!p.moved) { const hit = pickAt(p.x0, p.y0); if (hit) placeSVG(hit); } return; }
   if (p.type === 'stroke') {
     clearStrokePreview(); pushHistory();
@@ -2335,7 +2359,7 @@ function endPress(e) {
     }
   } else if (p.type === 'box' && Math.hypot(p.x - p.x0, p.y - p.y0) < 4) { // Shift-click on a decal's area picks it as the second decal
     $('#box').hidden = true;
-    const hit = pickAt(p.x0, p.y0), d = hit && S.decals.find(d => !d.holeOf && (d.res?.insideSet?.has(hit.face)));
+    const hit = pickAt(p.x0, p.y0), d = hit && S.decals.find(d => !d.holeOf && !d.locked && (d.res?.insideSet?.has(hit.face)));
     if (d && S.active && d !== S.active) toggleSecond(d); else if (d && !S.active) setActive(d);
   } else if (p.type === 'box') {
     $('#box').hidden = true;
@@ -2347,7 +2371,7 @@ function endPress(e) {
       selectPoints(d, [...hits], true); if (!S.sel?.idx.size) S.sel = null;
     }
   } else if (p.type === 'select' && !p.moved) {
-    const d = p.hit ? S.decals.find(d => d.res?.insideSet?.has(p.hit.face) || d.twin?.res?.insideSet?.has(p.hit.face)) : null;
+    const d = p.hit ? S.decals.find(d => !d.locked && (d.res?.insideSet?.has(p.hit.face) || d.twin?.res?.insideSet?.has(p.hit.face))) : null;
     if (!(S.mode === 'draw' && S.drawing && !d)) { S.sel = null; setActive(d || null); } // a stray click while drawing keeps the line
   }
   renderHandles(); updateUI();
@@ -2360,6 +2384,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 // zoom towards the point under the cursor
 canvas.addEventListener('wheel', e => {
   if (!S.model || e.deltaY >= 0) return;
+  if ((e.altKey || e.ctrlKey || e.metaKey) && (S.placing || xformTarget())) return; // those scrolls size and turn, they do not zoom
   const { x, y } = rel(e), hit = pickAt(x, y); if (!hit) return;
   const shift = new THREE.Vector3(...hit.p).sub(controls.target).multiplyScalar(0.16);
   controls.target.add(shift); camera.position.add(shift);
@@ -2720,6 +2745,7 @@ $('#modeKnife').addEventListener('click', () => setMode('knife'));
 $('#knifeApply').addEventListener('click', applyKnife);
 $('#knifeClear').addEventListener('click', clearKnife);
 $('#simpBtn').addEventListener('click', simplifyCurve);
+$('#shapeMid').addEventListener('click', () => { S.shapeMid = !S.shapeMid; updateUI(); flash(S.shapeMid ? 'Shapes snap their centre onto the mirror plane.' : 'Shapes sit where you draw them.'); });
 // the tips panel folds down to a small button; the choice is remembered
 function setHintOpen(open) { $('#hintBox').classList.toggle('collapsed', !open); const t = $('#hintTog'); t.setAttribute('aria-expanded', open); t.title = open ? 'Hide the tips' : 'Show the tips'; try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
 $('#hintTog').addEventListener('click', () => setHintOpen($('#hintBox').classList.contains('collapsed')));
@@ -2805,7 +2831,7 @@ function hintText() {
   if (L.length > 1) return `${L.length} points selected. Drag one to move them together, M merges them, Delete removes them. Shift-click adds or removes points.`;
   if (L.length === 1) return 'Ctrl-click adds a point, Alt-click deletes one. Drag to move (hold Shift for fine moves, arrow keys nudge). Drag the pink handles to bend the curve; Alt-drag breaks them apart. Drop onto a neighbour to merge. F zooms in.';
   if (S.active && !S.active.closed) return S.mode === 'draw' ? 'Open line selected. Click on the model to continue it from the end (select the first point to continue from the start).' : 'Open line: drag points, Ctrl-click to add a point (past an end to extend it), Alt-click a point to delete it. Close shape turns it into a decal; switch to Draw to extend it.';
-  if (S.active && S.active.closed) return 'Shift-click another decal to combine the two (union, subtract, intersect). Click a point to select it, Shift-drag a box to select several. Ctrl-click the line or the model to add a point, Alt-click a point to delete it. ' + (S.mode === 'draw' ? 'Click elsewhere on the model to start a new decal.' : 'Drag anywhere else to turn the view.');
+  if (S.active && S.active.closed) return (S.mode === 'edit' ? 'Drag inside the decal to move it; Ctrl + scroll turns it, Alt + scroll sizes it (Shift for bigger steps). ' : '') + 'Shift-click another decal to combine the two (union, subtract, intersect). Click a point to select it, Shift-drag a box to select several. Ctrl-click the line or the model to add a point, Alt-click a point to delete it. ' + (S.mode === 'draw' ? 'Click elsewhere on the model to start a new decal.' : 'Drag anywhere else to turn the view.');
   if (S.mode === 'draw' && S.drawShape && S.drawShape !== 'free') return { rect: 'Rectangle: drag from corner to corner. Shift makes a square, Alt draws from the centre.', circle: 'Circle: drag from the centre outwards. Shift drags from edge to edge.', poly: 'Polygon: drag from the centre; the drag direction sets the rotation. Set the number of sides in the toolbar.' }[S.drawShape] + ' The shape is projected from your view onto the surface; turn the view to line it up with a tube.';
   if (S.mode === 'draw') return (S.lineStyle === 'curved' ? 'Clicks make smooth curves. ' : 'Clicks make straight lines; double-click a point later to curve it. ') + 'Click on the model to place points, or press and drag to sketch a freehand outline. Click off the model to draw an outline in the view; where it runs off the model it follows the edge of the surface. Drag the background, right-drag, or hold Alt to turn the view.' + (mirrorOn() ? ' Points near the pink centre plane snap to it; start and end there for one symmetric decal.' : '');
   return 'Click a decal to select it, then drag its points to reshape it.';
@@ -2823,6 +2849,7 @@ function updateUI() {
   document.querySelectorAll('#drawShape [data-shape]').forEach(b => b.setAttribute('aria-pressed', b.dataset.shape === S.drawShape));
   $('#polySidesWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'poly';
   $('#shapeRoundWrap').hidden = S.mode !== 'draw' || !['rect', 'poly'].includes(S.drawShape);
+  $('#shapeMid').hidden = S.mode !== 'draw' || !S.drawShape || S.drawShape === 'free' || !S.mirrorDefault; $('#shapeMid').setAttribute('aria-pressed', !!S.shapeMid);
   $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', S.knifeThrough); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
   $('#lsStraight').setAttribute('aria-pressed', S.lineStyle !== 'curved'); $('#lsCurved').setAttribute('aria-pressed', S.lineStyle === 'curved');
   for (const id of ['#modeDraw','#modeEdit','#stretch','#fit','#mirror','#mirrorAxis','#views']) $(id).disabled = !has;
@@ -2869,12 +2896,13 @@ function renderList() {
     else if (d.res) info = `<div class="info">${dims('d' + d.id, d.res)}</div>`;
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
-    li.innerHTML = `<span class="swatch" style="--c:${d.color}"></span><input class="name" aria-label="Decal name" value="${d.name.replace(/"/g,'&quot;')}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.closed ? '<button data-a="flip" title="Use the area on the other side of the outline">Swap side</button>' : ''}<button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${d.color}"></span><input class="name" aria-label="Decal name" value="${d.name.replace(/"/g,'&quot;')}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.closed ? '<button data-a="flip" title="Use the area on the other side of the outline">Swap side</button>' : ''}<button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, d); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
     li.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.a === 'del') { pushHistory(); removeDecal(d); }
+      if (b.dataset.a === 'lock') { pushHistory(); d.locked = !d.locked; if (d.locked && S.active === d) { S.active = null; S.sel = null; } renderHandles(); updateUI(); flash(d.locked ? `${d.name} is locked. You can draw over it now.` : `${d.name} is unlocked.`); }
       if (b.dataset.a === 'applymir') applyMirror(d);
       if (b.dataset.a === 'unhole') { pushHistory(); delete d.holeOf; updateDecalVisual(d, false); updateUI(); }
       if (b.dataset.a === 'flip') { pushHistory(); d.flip = !d.flip; solve(d); }
@@ -2958,13 +2986,15 @@ function origSample(d, s) {
 }
 function hitLineAny(x, y) {
   let best = null, bd = 9;
-  for (const d of S.decals) for (const s of d.samples || []) {
+  for (const d of S.decals) if (!d.locked) for (const s of d.samples || []) { // locked decals cannot be picked on the model
     if (!facing(s.point, s.face)) continue;
     const q = screenOf(s.point), dd = Math.hypot(q.x - x, q.y - y);
     if (dd < bd) { bd = dd; best = { d, s }; }
   }
   return best;
 }
+const LOCK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+const UNLOCK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>';
 const cloneC = c => ({ ...c, p: c.p.slice(), hin: c.hin && c.hin.slice(), hout: c.hout && c.hout.slice() });
 function newDecalFrom(src, ctrl, closed, suffix) {
   const id = S.nextId++;
@@ -3069,6 +3099,20 @@ function simplifyCurve() {
   flash(`Removed ${removed} of ${n} points.`);
   refresh(d);
 }
+// a new decal in mirror mode: when it crosses the centre plane it is cut there and the other half comes from the mirror
+// (one symmetric decal, no overlapping copies); otherwise it simply gets a mirrored copy
+function mirrorNewDecal(d) {
+  d.mirror = false; if (!S.mirrorDefault) return;
+  const pl = mirrorPlane(), sg = d.ctrl.map(c => c.p[pl.k] - pl.c), sum = sg.reduce((a, b) => a + b, 0);
+  const camSide = Math.sign(camera.position.getComponent(pl.k) - pl.c) || 1;
+  if (sg.some(v => v > 0.5) && sg.some(v => v < -0.5)) {
+    const side = Math.abs(sum) / sg.length < 1 ? camSide : Math.sign(sum); // centred shapes keep the half facing you
+    const keep = d.ctrl.map(c => ({ ...c, p: c.p.slice(), hin: c.hin && c.hin.slice(), hout: c.hout && c.hout.slice() }));
+    if (halveSymmetric(d, { side, ctrl: d.ctrl })) { d.mirror = true; d.side = side; return; }
+    d.ctrl = keep;
+  }
+  d.mirror = true; d.side = Math.sign(sum) || camSide;
+}
 // even out wobbly points and give them automatic handles
 function smoothCurve() {
   const T = targetIdx(); if (!T) return; const { d, L } = T, n = d.ctrl.length;
@@ -3103,7 +3147,7 @@ function tAtDist(d, seg, dist, fromEnd) {
 function roundCorners(rIn) {
   const r = typeof rIn === 'number' ? rIn : parseFloat($('#roundR').value); if (!(r > 0)) { flash('Enter a corner radius in millimetres.'); return; }
   const T = targetIdx(); if (!T) return; const d = T.d;
-  const L = [...T.L].sort((a, b) => b - a).filter(i => d.closed || (i > 0 && i < d.ctrl.length - 1));
+  const L = [...T.L].sort((a, b) => b - a).filter(i => (d.closed || (i > 0 && i < d.ctrl.length - 1)) && !(d.mirror && d.ctrl[i].plane)); // points on the centre plane stay where the halves meet
   if (!L.length) { flash('Select the corner points to round.'); return; }
   pushHistory();
   let done = 0;
@@ -3293,18 +3337,19 @@ function drawViewLineOverlay() {
   const last = pts[pts.length - 1], first = pts[0];
   el.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}"><polyline points="${pts.map(p => p.x + ',' + p.y).join(' ')}" fill="none" stroke="#E5007E" stroke-width="1.5" stroke-dasharray="5 4"/>${m && last ? `<line x1="${last.x}" y1="${last.y}" x2="${m.x}" y2="${m.y}" stroke="#E5007E" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"/>` : ''}${pts.length >= 3 && m ? `<line x1="${m.x}" y1="${m.y}" x2="${first.x}" y2="${first.y}" stroke="#E5007E" stroke-width="1" stroke-dasharray="2 5" opacity="0.35"/>` : ''}${pts.map((p, i) => `<circle cx="${p.x}" cy="${p.y}" r="${i === 0 && pts.length >= 3 ? 6 : 4}" fill="${i === 0 ? '#FFD60A' : '#fff'}" stroke="#E5007E" stroke-width="1.5"/>`).join('')}</svg>`;
 }
-function closeViewLine() {
-  const V = S.vline; if (!V) return;
-  if (V.pts.length < 3) { flash('Click at least three points for an outline.'); return; }
-  const runs = [...V.runs, projectKnifeSeg(V.pts[V.pts.length - 1], V.pts[0])];
+// a closed outline drawn in the view (points may sit off the model) projected onto the visible surface.
+// pts: [{ w, face, soft?, smooth? }]: soft points need not be kept exactly, smooth points become automatic curve points
+function outlineFromView(pts, runs) {
+  runs = runs || pts.map((a, i) => projectKnifeSeg(a, pts[(i + 1) % pts.length]));
+  if (runs.length < pts.length) runs = [...runs, projectKnifeSeg(pts[pts.length - 1], pts[0])];
   // samples around the loop; a clicked point on the model is kept exactly where it was clicked
   const smp = [];
-  runs.forEach((run, r) => run.forEach((q, i) => { if (i === run.length - 1) return; const a = V.pts[r];
-    if (i === 0 && a.face != null) smp.push({ point: a.w, face: a.face, anchor: true }); else smp.push(q ? { point: q.point, face: q.face } : null); }));
+  runs.forEach((run, r) => run.forEach((q, i) => { if (i === run.length - 1) return; const a = pts[r];
+    if (i === 0 && a.face != null) smp.push({ point: a.w, face: a.face, anchor: !a.soft, smooth: !!a.smooth }); else smp.push(q ? { point: q.point, face: q.face } : null); }));
   const piece = f => S.model.topo.piece[f], cnt = new Map();
   for (const q of smp) if (q) cnt.set(piece(q.face), (cnt.get(piece(q.face)) || 0) + 1);
-  if (!cnt.size) { flash('The outline has to cross the model. Draw it over a tube.'); return; }
-  const firstA = V.pts.find(a => a.face != null), target = firstA ? piece(firstA.face) : [...cnt].sort((a, b) => b[1] - a[1])[0][0];
+  if (!cnt.size) return { error: 'The outline has to cross the model. Draw it over a tube.' };
+  const firstA = pts.find(a => a.face != null), target = firstA ? piece(firstA.face) : [...cnt].sort((a, b) => b[1] - a[1])[0][0];
   for (let i = 0; i < smp.length; i++) if (smp[i] && piece(smp[i].face) !== target) smp[i] = null; // other tubes seen through the outline are left out
   // stretches on the model; between them the outline jumps along the surface edge
   const gap = smp.findIndex(q => !q), rot = gap < 0 ? smp : [...smp.slice(gap), ...smp.slice(0, gap)];
@@ -3321,13 +3366,20 @@ function closeViewLine() {
   // keep clicked points and the places where the line meets the surface edge; elsewhere only what the shape needs
   const K = thinChain(all.map(q => q.point), all.map(q => !!q.anchor || q.end), 0.6, target, true);
   const ctrl = []; // clicked points and edge points are corners; points in between bend the line smoothly
-  all.forEach((q, i) => { if (!K[i]) return; const l = ctrl[ctrl.length - 1], type = q.anchor || q.end ? 'corner' : 'auto'; if (l && dist3(l.p, q.point) < (q.anchor ? 0.3 : 1.5)) { if (q.anchor) { l.p = q.point.slice(); l.face = q.face; l.type = 'corner'; } return; } ctrl.push({ p: q.point.slice(), face: q.face, type }); });
+  all.forEach((q, i) => { if (!K[i]) return; const l = ctrl[ctrl.length - 1], type = (q.anchor && !q.smooth) || q.end ? 'corner' : 'auto'; if (l && dist3(l.p, q.point) < (q.anchor ? 0.3 : 1.5)) { if (q.anchor) { l.p = q.point.slice(); l.face = q.face; l.type = 'corner'; } return; } ctrl.push({ p: q.point.slice(), face: q.face, type }); });
   if (ctrl.length > 3 && dist3(ctrl[0].p, ctrl[ctrl.length - 1].p) < 1) ctrl.pop();
-  if (ctrl.length < 3) { flash('Too little of the outline lies on the model. Draw it further over the tube.'); return; }
+  if (ctrl.length < 3) return { error: 'Too little of the outline lies on the model. Draw it further over the tube.' };
+  return { ctrl };
+}
+function closeViewLine() {
+  const V = S.vline; if (!V) return;
+  if (V.pts.length < 3) { flash('Click at least three points for an outline.'); return; }
+  const o = outlineFromView(V.pts, V.runs); if (o.error) { flash(o.error); return; }
+  const ctrl = o.ctrl;
   S.vline = null;
   const id = S.nextId++;
-  const d = { id, name: `Decal ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: S.mirrorDefault, side: 0, res: null, twin: null, obj: [] };
-  if (d.mirror) { const pl = mirrorPlane(); d.side = Math.sign(ctrl.reduce((s, c) => s + c.p[pl.k] - pl.c, 0)) || 1; }
+  const d = { id, name: `Decal ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
+  mirrorNewDecal(d);
   S.decals.push(d); S.active = d; S.sel = null; S.dirty = true;
   setBusy('Unwrapping…');
   setTimeout(() => { solveNow(d); setBusy(false); renderHandles(); updateUI(); flash(d.res?.error ? d.res.error : 'Outline projected onto the surface. Switch to Edit to adjust its points.'); }, 20);
@@ -3504,10 +3556,10 @@ function withMirror(Ks) {
 function knifeCutAll(Ks, before) {
   {
     let expanded = 0;
-    if (S.mirrorDefault) for (const d of S.decals.filter(d => d.closed && d.mergedMap && !d.holeOf)) if (Ks.some(k => knifeCrossings(d, k).length >= 2)) { expandSymmetric(d); expanded++; }
+    if (S.mirrorDefault) for (const d of S.decals.filter(d => d.closed && d.mergedMap && !d.holeOf && !d.locked)) if (Ks.some(k => knifeCrossings(d, k).length >= 2)) { expandSymmetric(d); expanded++; }
     let cuts = 0, guard = 0;
     for (const KK of Ks) {
-      const queue = S.decals.filter(d => d.closed && !d.holeOf);
+      const queue = S.decals.filter(d => d.closed && !d.holeOf && !d.locked);
       while (queue.length && guard++ < 400) {
         const d = queue.shift(); if (!S.decals.includes(d)) continue;
         const made = knifeCutOnce(d, KK);
@@ -3906,7 +3958,7 @@ function applyKnifeLoopThrough() {
     let removed = 0, holes = 0;
     // pieces that now sit inside the drawn area go
     for (const d of [...S.decals]) {
-      if (!d.closed || d.holeOf || !S.decals.includes(d)) continue;
+      if (!d.closed || d.holeOf || d.locked || !S.decals.includes(d)) continue;
       const pts = (d.res?.samples?.length ? d.res.samples.map(q => q.point) : d.ctrl.map(c => c.p)).filter((_, i, a) => a.length < 200 || i % Math.ceil(a.length / 200) === 0);
       if (within(pts) || (S.mirrorDefault && within(pts.map(reflect)))) { for (const h of [...holesOf(d), d]) removeDecal(h, true); removed++; }
     }
@@ -3920,7 +3972,7 @@ function applyKnifeLoopThrough() {
       const res = Core.solveDecal(S.model, ctrl, false); if (res.error) continue;
       res.insideSet = new Set(res.insideFaces);
       const cutter = { ctrl, closed: true, res, mirror: false, name: 'knife' };
-      for (const A of S.decals.filter(d => d.closed && !d.holeOf && d.res && !d.res.error && knifeCrossings(d, K).length < 2 && K.filter(q => d.res.insideSet?.has(q.face)).length > K.length * 0.85)) {
+      for (const A of S.decals.filter(d => d.closed && !d.holeOf && !d.locked && d.res && !d.res.error && knifeCrossings(d, K).length < 2 && K.filter(q => d.res.insideSet?.has(q.face)).length > K.length * 0.85)) {
         const b = booleanCore('difference', A, cutter);
         if (b.error && !b.empty) continue;
         for (const h of [...holesOf(A), A]) removeDecal(h, true);
@@ -3950,7 +4002,7 @@ function applyKnifeLoop() {
     if (!tr.error) { tr.insideSet = new Set(tr.insideFaces); cutter.mirror = true; cutter.twin = { ctrl: tc, res: tr }; }
   }
   const hitsCutter = f => res.insideSet.has(f) || cutter.twin?.res.insideSet.has(f);
-  const targets = S.decals.filter(d => d.closed && !d.holeOf && d.res && !d.res.error && (d.res.insideFaces.some(hitsCutter) || d.twin?.res?.insideFaces?.some(hitsCutter)));
+  const targets = S.decals.filter(d => d.closed && !d.holeOf && !d.locked && d.res && !d.res.error && (d.res.insideFaces.some(hitsCutter) || d.twin?.res?.insideFaces?.some(hitsCutter)));
   if (!targets.length) { flash('The knife loop does not overlap any decal.'); return; }
   setBusy('Cutting…');
   setTimeout(() => {
@@ -3970,7 +4022,21 @@ function applyKnifeLoop() {
 
 // ---------- shapes: rectangle, circle, polygon, drawn in the view and projected onto the visible surface ----------
 // returns { pts: screen points, corner: bool[] }
+// the shape as drawn, moved so its centre sits on the mirror plane when Centre on mirror is on
 function shapeOutline(p) {
+  const o = shapeOutlineRaw(p);
+  if (!S.shapeMid || !S.mirrorDefault || !S.model) return o;
+  const xs = o.pts.map(q => q[0]), ys = o.pts.map(q => q[1]);
+  const c = o.circle ? [o.circle.cx, o.circle.cy] : S.drawShape === 'rect' ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [p.x0, p.y0];
+  const pl = mirrorPlane(), h = pickAt(c[0], c[1]);
+  let w = null;
+  if (h) { const sn = snapToPlane(h.p, h.face); if (sn) w = sn.p; }
+  if (!w) { const v = knifeViewPoint(c[0], c[1]); if (!v) return o; v[pl.k] = pl.c; w = v; }
+  const sc = screenOf(w), dx = sc.x - c[0], dy = sc.y - c[1];
+  o.pts = o.pts.map(([x, y]) => [x + dx, y + dy]); if (o.circle) { o.circle.cx += dx; o.circle.cy += dy; }
+  return o;
+}
+function shapeOutlineRaw(p) {
   const sh = S.drawShape, dx = p.x - p.x0, dy = p.y - p.y0;
   if (sh === 'rect') {
     let w = dx, h = dy;
@@ -4000,19 +4066,25 @@ function drawShapeGhost(p) {
   g.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}"><g fill="rgba(229,0,126,.10)" stroke="#E5007E" stroke-width="1.5" stroke-dasharray="5 4">${path}</g>${label ? `<text x="${p.x + 12}" y="${p.y - 10}" font-size="12" font-family="-apple-system,Segoe UI,sans-serif" fill="#E5007E" stroke="#fff" stroke-width="3" paint-order="stroke">${label}</text>` : ''}</svg>`;
 }
 function makeShape(p) {
-  const o = shapeOutline(p), ctrl = [];
+  const o = shapeOutline(p);
+  let ctrl = [];
   for (let i = 0; i < o.pts.length; i++) {
-    const h = pickAt(o.pts[i][0], o.pts[i][1]);
-    if (!h) { flash('Part of the shape is off the model. Draw it fully over the surface.'); return; }
+    const h = pickAt(o.pts[i][0], o.pts[i][1]); if (!h) { ctrl = null; break; }
     const sn = snapHit(h);
     ctrl.push({ p: sn.p, face: sn.face, type: o.corner[i] ? 'corner' : 'auto' });
   }
-  const piece = S.model.topo.piece[ctrl[0].face];
-  if (ctrl.some(c => S.model.topo.piece[c.face] !== piece)) { flash('The shape spans two separate parts of the model. Keep it on one surface.'); return; }
+  const piece = ctrl && S.model.topo.piece[ctrl[0].face];
+  if (!ctrl || ctrl.some(c => S.model.topo.piece[c.face] !== piece)) { // part of the shape is off the model: project it like a pen outline, following the tube's edge
+    const P = o.circle ? [...Array(32)].map((_, i) => [o.circle.cx + o.circle.r * Math.cos(i / 32 * 2 * Math.PI), o.circle.cy + o.circle.r * Math.sin(i / 32 * 2 * Math.PI)]) : o.pts;
+    const anchors = P.map(([x, y], i) => { const h = pickAt(x, y), sn = h ? snapHit(h) : null; return { w: sn ? sn.p : knifeViewPoint(x, y), face: sn ? sn.face : null, soft: !!o.circle, smooth: !!o.circle }; });
+    if (anchors.some(a => !a.w)) { flash('The shape could not be placed from this view.'); return; }
+    const r = outlineFromView(anchors); if (r.error) { flash(r.error); return; }
+    ctrl = r.ctrl;
+  }
   pushHistory();
   const id = S.nextId++, name = tr({ rect: 'Rectangle', circle: 'Circle', poly: `${o.pts.length}-gon` }[S.drawShape]);
-  const d = { id, name: `${name} ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: S.mirrorDefault, side: 0, res: null, twin: null, obj: [] };
-  if (d.mirror) { const pl = mirrorPlane(); d.side = Math.sign(ctrl.reduce((s, c) => s + c.p[pl.k] - pl.c, 0)) || 1; }
+  const d = { id, name: `${name} ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
+  mirrorNewDecal(d);
   S.decals.push(d); S.active = d; S.sel = null;
   const r = parseFloat($('#shapeRound').value);
   setBusy('Unwrapping…');
@@ -4318,6 +4390,101 @@ $('#pbW').addEventListener('change', () => setWidth(parseFloat($('#pbW').value) 
 $('#pbRot').addEventListener('change', () => setRotation(parseFloat($('#pbRot').value) || 0));
 for (const id of ['#pbSnap', '#pbSizeStep', '#pbSnapOn']) $(id).addEventListener('change', () => { setRotation(parseFloat($('#pbRot').value) || 0); setWidth(parseFloat($('#pbW').value) || svgImport.w); });
 // Alt + scroll resizes, Ctrl/Cmd + scroll rotates (Shift for bigger steps)
+// ---------- move, turn and size a whole decal along the surface ----------
+// Each point keeps its unwrapped position relative to the decal's centre and is walked along the surface from the centre,
+// so on a tube a decal keeps its true size and shape when it slides around or along it, turns or grows.
+const xformTarget = () => S.mode === 'edit' && S.active && S.active.closed && !S.active.locked && !S.placing ? S.active : null;
+let xform = null, xformT = null;
+const v3 = { add: (a, b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]], sub: (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]], mul: (a, k) => [a[0]*k, a[1]*k, a[2]*k], dot: (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2], len: a => Math.hypot(a[0], a[1], a[2]) };
+const v3cross = (a, b) => [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]];
+// follow the surface from C along the tangent vector v; vectors in carry are carried along, staying tangent
+function surfWalk(C, faceC, v, piece, carry = []) {
+  const { mesh, grid, topo } = S.model, L = v3.len(v); let x = C.slice(), face = faceC, cv = carry.map(c => c.slice());
+  if (L < 1e-9) return { p: x, face, carry: cv };
+  let dir = v3.mul(v, 1 / L), rem = L; const step = Math.max(1, S.model.L);
+  while (rem > 1e-9) {
+    const st = Math.min(step, rem), h = Core.closestPoint(mesh, grid, v3.add(x, v3.mul(dir, st)), 80, f => topo.piece[f] === piece); if (!h) break;
+    x = h.point; face = h.face; rem -= st;
+    const n = fnorm(face), t = v3.sub(dir, v3.mul(n, v3.dot(dir, n))), tl = v3.len(t); if (tl > 1e-9) dir = v3.mul(t, 1 / tl);
+    cv = cv.map(c => { const l = v3.len(c), t2 = v3.sub(c, v3.mul(n, v3.dot(c, n))), l2 = v3.len(t2); return l2 > 1e-9 ? v3.mul(t2, l / l2) : c; });
+  }
+  return { p: x, face, carry: cv };
+}
+// affine coordinates of p in face f's plane (may lie outside the triangle)
+function affineBary(p, f) {
+  const { mesh } = S.model, T = mesh.tri, P = mesh.pos, A = [P[T[3*f]*3], P[T[3*f]*3+1], P[T[3*f]*3+2]], B = [P[T[3*f+1]*3], P[T[3*f+1]*3+1], P[T[3*f+1]*3+2]], C = [P[T[3*f+2]*3], P[T[3*f+2]*3+1], P[T[3*f+2]*3+2]];
+  const e1 = v3.sub(B, A), e2 = v3.sub(C, A), r = v3.sub(p, A), a11 = v3.dot(e1, e1), a12 = v3.dot(e1, e2), a22 = v3.dot(e2, e2), b1 = v3.dot(r, e1), b2 = v3.dot(r, e2), det = a11*a22 - a12*a12 || 1e-12;
+  const a = (a22*b1 - a12*b2) / det, b = (a11*b2 - a12*b1) / det; return [1 - a - b, a, b];
+}
+// a point's position in the decal's unwrapped layout; points just outside it use a nearby face of the layout
+function uvAt(res, p, face) {
+  const { topo } = S.model; let ring = [face]; const seen = new Set(ring);
+  for (let r = 0; r < 4; r++) {
+    for (const f of ring) { const uv = res.uvOf(f, affineBary(p, f)); if (uv) return uv; }
+    const nx = []; for (const f of ring) for (let k = 0; k < 3; k++) { const g = topo.fnb[3*f+k]; if (g >= 0 && !seen.has(g)) { seen.add(g); nx.push(g); } } ring = nx;
+  }
+  return null;
+}
+function startXform(d) {
+  const res = d.res; if (!res || res.error || !res.uvOf) return null;
+  const piece = S.model.topo.piece[d.ctrl[0].face], sym = !!(d.mirror && d.ctrl.some(c => c.plane));
+  const all = (d.mergedMap || d.ctrl).map(c => c.p), m = [0, 1, 2].map(k => all.reduce((a, p) => a + p[k], 0) / all.length);
+  let h = Core.closestPoint(S.model.mesh, S.model.grid, m, 300, f => S.model.topo.piece[f] === piece); if (!h) return null;
+  if (sym) { const s2 = snapToPlane(h.point, h.face); if (s2) h = { point: s2.p, face: s2.face }; }
+  const C = h.point, fc = h.face, uvC = uvAt(res, C, fc); if (!uvC) return null;
+  // the layout's directions at the centre, as 3D tangent vectors
+  const { mesh } = S.model, T = mesh.tri, P = mesh.pos, vtx = k => [P[T[3*fc+k]*3], P[T[3*fc+k]*3+1], P[T[3*fc+k]*3+2]];
+  let fl = fc, uvs = [0, 1, 2].map(k => res.uvOf(fc, [k === 0 ? 1 : 0, k === 1 ? 1 : 0, k === 2 ? 1 : 0]));
+  if (uvs.some(u => !u)) return null;
+  const A3 = vtx(0), du1 = [uvs[1][0] - uvs[0][0], uvs[1][1] - uvs[0][1]], du2 = [uvs[2][0] - uvs[0][0], uvs[2][1] - uvs[0][1]], dt = du1[0]*du2[1] - du1[1]*du2[0];
+  if (Math.abs(dt) < 1e-12) return null;
+  const g1 = v3.sub(vtx(1), A3), g2 = v3.sub(vtx(2), A3);
+  const J = w => { const a = (w[0]*du2[1] - w[1]*du2[0]) / dt, b = (du1[0]*w[1] - du1[1]*w[0]) / dt; return v3.add(v3.mul(g1, a), v3.mul(g2, b)); };
+  const items = [];
+  for (const c of d.ctrl) { const uv = uvAt(res, c.p, c.face); if (!uv) return null; items.push({ w: [uv[0] - uvC[0], uv[1] - uvC[1]], o: cloneC(c) }); }
+  const n0 = fnorm(fc), sgn = Math.sign(v3.dot(v3cross(J([1, 0]), J([0, 1])), n0)) || 1; // which way the layout turns relative to the surface
+  return { d, piece, sym, C, fc, E1: J([1, 0]), E2: J([0, 1]), sgn, items, du: 0, dv: 0, ang: 0, sc: 1, before: snapshot(), t: performance.now() };
+}
+function applyXform() {
+  const X = xform, d = X.d, th = X.sgn * X.ang * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
+  const mv = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [E1, E2] = mv.carry;
+  const nC = fnorm(mv.face);
+  d.ctrl.forEach((c, i) => {
+    const it = X.items[i], w = [X.sc * (it.w[0]*cs - it.w[1]*sn), X.sc * (it.w[0]*sn + it.w[1]*cs)];
+    const r = surfWalk(mv.p, mv.face, v3.add(v3.mul(E1, w[0]), v3.mul(E2, w[1])), X.piece);
+    let q = r.p, face = r.face;
+    if (c.plane) { const s2 = snapToPlane(q, face); if (s2) { q = s2.p; face = s2.face; } }
+    c.p = q; c.face = face;
+    // handles turn and grow with the decal, lying in the surface at the new spot
+    const n = fnorm(face), o = it.o, hv = hh => { if (!hh) return hh; let v = v3.mul(v3.sub(hh, o.p), X.sc); const ax = fnorm(o.face);
+      const cr = v3cross(ax, v), dt2 = v3.dot(ax, v); v = v3.add(v3.add(v3.mul(v, Math.cos(th)), v3.mul(cr, Math.sin(th))), v3.mul(ax, dt2 * (1 - Math.cos(th))));
+      const l = v3.len(v), t = v3.sub(v, v3.mul(n, v3.dot(v, n))), tl = v3.len(t); return v3.add(q, tl > 1e-9 ? v3.mul(t, l / tl) : v); };
+    if (o.hin) c.hin = hv(o.hin); if (o.hout) c.hout = hv(o.hout);
+  });
+  X.sig = ctrlSig(d);
+  updateDecalVisual(d, true);
+}
+const ctrlSig = d => d.ctrl.map(c => c.p.map(v => v.toFixed(4)).join(',')).join(';');
+function ensureXform(d) {
+  if (xform && xform.d === d && xform.sig === ctrlSig(d)) return xform; // the same gesture goes on while nothing else changed the decal
+  if (xformT) { clearTimeout(xformT); xformT = null; if (S.decals.includes(d)) solveNow(d); } // start from a fresh layout
+  xform = startXform(d); if (!xform) return null; xform.sig = ctrlSig(d);
+  HIST.undo.push(xform.before); HIST.redo = []; S.dirty = true; return xform;
+}
+canvas.addEventListener('wheel', e => {
+  const d = xformTarget(); if (!d || !(e.altKey || e.ctrlKey || e.metaKey)) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  const turning = !e.altKey, sym = d.mirror && d.ctrl.some(c => c.plane);
+  if (turning && sym) { flash('A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.'); return; }
+  if (!ensureXform(d)) { flash('Unwrap this decal first (it has no valid layout yet).'); return; }
+  const dir = e.deltaY < 0 ? 1 : -1, big = e.shiftKey;
+  if (turning) xform.ang = Math.round((xform.ang + dir * (big ? 15 : 1)) * 10) / 10;
+  else xform.sc = Math.max(0.05, Math.round((xform.sc * (1 + dir * (big ? 0.1 : 0.01))) * 1000) / 1000);
+  xform.t = performance.now();
+  applyXform();
+  flash(turning ? `Turned ${xform.ang}°` : `Size ${Math.round(xform.sc * 100)}%`);
+  clearTimeout(xformT); xformT = setTimeout(() => { xformT = null; if (xform && S.decals.includes(xform.d)) solve(xform.d); }, 350);
+}, { capture: true, passive: false });
 canvas.addEventListener('wheel', e => {
   if (!S.placing || !(e.altKey || e.ctrlKey || e.metaKey)) return;
   e.preventDefault(); e.stopImmediatePropagation();
@@ -4598,7 +4765,7 @@ const DE = {
   // shape names
   'Outline in the view: click on or off the model to add points. Where the line runs off the model, the decal follows the edge of the surface. Backspace removes the last point, Esc cancels.': 'Kontur in der Ansicht: klicke auf oder neben das Modell, um Punkte zu setzen. Wo die Linie neben dem Modell verläuft, folgt das Decal dem Rand der Fläche. Rücktaste entfernt den letzten Punkt, Esc bricht ab.',
   'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.': 'Klicke weiter auf oder neben das Modell. Klicke den ersten Punkt, Enter oder Form schließen zum Abschließen; die Kontur wird auf die sichtbare Fläche projiziert. Rücktaste entfernt den letzten Punkt, Esc bricht ab.',
-  'Outline cancelled.': 'Kontur verworfen.', 'Click at least three points for an outline.': 'Klicke mindestens drei Punkte für eine Kontur.', 'The outline has to cross the model. Draw it over a tube.': 'Die Kontur muss über das Modell gehen. Zeichne sie über ein Rohr.',
+  'Outline cancelled.': 'Kontur verworfen.', 'The shape could not be placed from this view.': 'Die Form ließ sich aus dieser Ansicht nicht platzieren.', 'Click at least three points for an outline.': 'Klicke mindestens drei Punkte für eine Kontur.', 'The outline has to cross the model. Draw it over a tube.': 'Die Kontur muss über das Modell gehen. Zeichne sie über ein Rohr.',
   'Too little of the outline lies on the model. Draw it further over the tube.': 'Zu wenig der Kontur liegt auf dem Modell. Zeichne sie weiter über das Rohr.', 'Outline projected onto the surface. Switch to Edit to adjust its points.': 'Kontur auf die Fläche projiziert. Wechsle zu Bearbeiten, um die Punkte anzupassen.',
   'Simplify': 'Vereinfachen', 'Simplify all': 'Alle vereinfachen', 'How far the simplified outline may move away from the original': 'Wie weit die vereinfachte Kontur vom Original abweichen darf',
   'Remove points the shape does not need (decimate). Works on the selected points, or the whole decal': 'Punkte entfernen, die die Form nicht braucht (dezimieren). Wirkt auf die ausgewählten Punkte oder das ganze Decal',
@@ -4608,6 +4775,12 @@ const DE = {
   'Reset panels': 'Panels zurücksetzen', 'Put all panels back in their default places': 'Alle Panels an ihren Standardplatz zurücksetzen', 'Panels are back in their default places.': 'Die Panels sind wieder an ihrem Standardplatz.',
   'How far exported curves may stray from the unwrapped outline. Higher gives fewer, smoother nodes': 'Wie weit exportierte Kurven von der abgewickelten Kontur abweichen dürfen. Höher ergibt weniger, glattere Knoten',
   'Hide the tips': 'Tipps ausblenden', 'Show the tips': 'Tipps einblenden',
+  'Centre on mirror': 'Auf Spiegel zentrieren', "Snap the shape's centre onto the mirror plane, so it sits exactly in the middle": 'Die Mitte der Form auf die Spiegelebene setzen, damit sie genau mittig liegt',
+  'Shapes snap their centre onto the mirror plane.': 'Formen rasten mit ihrer Mitte auf der Spiegelebene ein.', 'Shapes sit where you draw them.': 'Formen liegen dort, wo du sie zeichnest.',
+  'Locked: it cannot be picked or changed on the model. Click to unlock': 'Gesperrt: kann auf dem Modell nicht gewählt oder geändert werden. Klicken zum Entsperren', 'Lock it, so you can draw over it without picking it': 'Sperren, damit du darüber zeichnen kannst, ohne es auszuwählen',
+  'Drag inside the decal to move it; Ctrl + scroll turns it, Alt + scroll sizes it (Shift for bigger steps).': 'Zieh innerhalb des Decals, um es zu verschieben; Strg + Scrollen dreht es, Alt + Scrollen ändert die Größe (Umschalt für größere Schritte).',
+  'A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.': 'Ein symmetrisches Decal bleibt auf der Mittellinie und kann nicht gedreht werden. Wende zuerst die Spiegelung an, um es frei zu drehen.',
+  'Unwrap this decal first (it has no valid layout yet).': 'Wickle dieses Decal zuerst ab (es hat noch kein gültiges Layout).',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
@@ -4640,6 +4813,8 @@ const DE_PAT = [ // {0}, {1}… stand for the parts that change
   ['{0} open path was skipped.', '{0} offener Pfad wurde übersprungen.'], ['{0} open paths were skipped.', '{0} offene Pfade wurden übersprungen.'],
   ['Added {0} shape{1} from {2}. Ctrl+Z removes them again.', '{0} Form(en) aus {2} hinzugefügt. Strg+Z entfernt sie wieder.'], ['({0} nodes, smooth curves)', '({0} Knoten, weiche Kurven)'], ['({0} nodes)', '({0} Knoten)'],
   ['No points can go without moving the outline more than {0} mm.', 'Kein Punkt kann weg, ohne die Kontur um mehr als {0} mm zu verschieben.'], ['Removed {0} of {1} points.', '{0} von {1} Punkten entfernt.'],
+  ['{0} is locked. You can draw over it now.', '{0} ist gesperrt. Du kannst jetzt darüber zeichnen.'], ['{0} is unlocked.', '{0} ist entsperrt.'], ['{0} moved.', '{0} verschoben.'],
+  ['Turned {0}°', 'Gedreht {0}°'], ['Size {0}%', 'Größe {0} %'],
   ['{0}: {1} mm', '{0*}: {1} mm'], ['{0}-gon', '{0}-Eck'], ['Rectangle {0}', 'Rechteck {0}'], ['Circle {0}', 'Kreis {0}'], ['Fork leg {0}', 'Gabelbein {0}'], ['{0} (edited)', '{0} (bearbeitet)'],
 ];
 const DE_RE = DE_PAT.map(([en, de]) => [new RegExp('^' + en.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d)\}/g, '(.*?)') + '$'), en, de]);
