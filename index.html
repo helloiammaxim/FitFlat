@@ -94,7 +94,12 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .clip input[type=number]{ width:48px; border:0; background:var(--fill); border-radius:6px; padding:4px 6px; color:var(--ink); font-variant-numeric:tabular-nums; }
 .opac input[type=range]{ width:70px; accent-color:var(--accent); }
 .opac span{ min-width:34px; text-align:right; font-variant-numeric:tabular-nums; }
-.hint{ position:absolute; left:12px; bottom:12px; max-width:540px; border-radius:12px; padding:9px 13px; font-size:13px; color:var(--ink); pointer-events:none; }
+.hint{ position:absolute; left:12px; bottom:12px; max-width:540px; border-radius:12px; padding:9px 13px 9px 8px; font-size:13px; color:var(--ink); pointer-events:none; display:flex; gap:6px; align-items:flex-start; }
+.hinttog{ pointer-events:auto; flex:none; border:0; background:transparent; color:var(--muted); width:22px; height:22px; margin:-2px 0; padding:0; border-radius:6px; display:grid; place-items:center; cursor:pointer; }
+.hinttog:hover{ background:var(--fill); color:var(--ink); }
+.hint.collapsed{ padding:6px; }
+.hint.collapsed #hint{ display:none; }
+.hint.collapsed .hinttog{ margin:0; color:var(--accent); }
 .busy{ position:absolute; inset:0; display:none; place-items:center; background:color-mix(in srgb, var(--stage) 45%, transparent); font-weight:600; z-index:5; }
 .busy.on{ display:grid; }
 .busy span{ background:var(--glass); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--line); box-shadow:var(--shadow); padding:12px 18px; border-radius:12px; }
@@ -431,7 +436,8 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <button class="btn" id="pbCancel">Cancel</button>
         <button class="btn primary" id="pbApply" disabled>Apply</button>
       </div>
-      <div class="hint" id="hint" role="status"></div>
+      <div class="hint" id="hintBox"><button class="hinttog" id="hintTog" aria-expanded="true" title="Hide the tips">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/></svg></button><span id="hint" role="status"></span></div>
       <div class="legend" id="legend"><span>0%</span><span class="bar"></span><span>4%+ stretch</span></div>
       <div class="busy" id="busy"><span>Working…</span></div>
       <div class="drop">Drop a .glb, .obj, .stl, project .json or .svg artwork</div>
@@ -2712,6 +2718,10 @@ $('#modeKnife').addEventListener('click', () => setMode('knife'));
 $('#knifeApply').addEventListener('click', applyKnife);
 $('#knifeClear').addEventListener('click', clearKnife);
 $('#simpBtn').addEventListener('click', simplifyCurve);
+// the tips panel folds down to a small button; the choice is remembered
+function setHintOpen(open) { $('#hintBox').classList.toggle('collapsed', !open); const t = $('#hintTog'); t.setAttribute('aria-expanded', open); t.title = open ? 'Hide the tips' : 'Show the tips'; try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
+$('#hintTog').addEventListener('click', () => setHintOpen($('#hintBox').classList.contains('collapsed')));
+try { if (localStorage.getItem('decal-studio-hint') === '0') setHintOpen(false); } catch (e) {}
 $('#knifeThrough').addEventListener('click', () => setKnifeThrough(!S.knifeThrough));
 S.drawShape = 'free';
 document.querySelectorAll('#drawShape [data-shape]').forEach(b => b.addEventListener('click', () => { S.drawShape = b.dataset.shape; updateUI(); }));
@@ -3459,7 +3469,8 @@ function applyKnife() {
   const before = snapshot();
   setBusy('Cutting…');
   setTimeout(() => {
-    const r = knifeCutAll(withMirror(knifeLines()), before);
+    let r = knifeCutAll(withMirror(knifeLines()), before);
+    if (!r && S.knifeThrough) { r = knifeCutAll(withMirror([knifeSamples()]), before); if (r) console.warn('[knife] cut through found no crossings; used the visible side'); } // never worse than the visible-side knife
     if (!r) { setBusy(false); flash(S.knifeThrough ? 'The knife line has to cross a decal outline twice. Draw it past the edges.' : 'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
     resymmetrize();
     setBusy(false);
@@ -4590,6 +4601,7 @@ const DE = {
   'Floating. Click to pin it to the nearest edge': 'Frei. Klicken, um es am nächsten Rand anzuheften', 'Pin the Views panel so it stays open': 'Ansichten anheften, damit sie offen bleiben', 'Pinned open. Click to let it float': 'Offen angeheftet. Klicken, um es frei schweben zu lassen',
   'Reset panels': 'Panels zurücksetzen', 'Put all panels back in their default places': 'Alle Panels an ihren Standardplatz zurücksetzen', 'Panels are back in their default places.': 'Die Panels sind wieder an ihrem Standardplatz.',
   'How far exported curves may stray from the unwrapped outline. Higher gives fewer, smoother nodes': 'Wie weit exportierte Kurven von der abgewickelten Kontur abweichen dürfen. Höher ergibt weniger, glattere Knoten',
+  'Hide the tips': 'Tipps ausblenden', 'Show the tips': 'Tipps einblenden',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
