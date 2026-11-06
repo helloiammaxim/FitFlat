@@ -128,7 +128,8 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .viewlist input:focus{ background:var(--fill); outline:none; }
 .viewlist .del{ border:0; background:transparent; font-size:18px; line-height:1; cursor:pointer; color:var(--muted); border-radius:7px; height:28px; }
 .viewlist .del:hover{ color:var(--bad); background:var(--fill); }
-.viewmenu .btn{ width:100%; justify-content:center; background:var(--fill); }
+.viewmenu .btn{ width:100%; justify-content:center; background:var(--fill); box-sizing:border-box; display:flex; }
+.viewmenu .btn + .btn{ margin-top:6px; }
 /* floating panels: drag by the grip, drop at an edge to pin there */
 #floatLayer{ position:absolute; inset:0; pointer-events:none; z-index:7; }
 #floatLayer > .fpanel{ position:absolute; pointer-events:auto; margin:0; right:auto; bottom:auto; max-width:calc(100% - 24px); box-shadow:0 10px 32px rgba(0,0,0,.16); }
@@ -1429,9 +1430,11 @@ function guessUnits(raw, fmt) {
   let mn = [1e30,1e30,1e30], mx = [-1e30,-1e30,-1e30];
   for (let i = 0; i < raw.pos.length; i += 3) for (let d = 0; d < 3; d++) { mn[d] = Math.min(mn[d], raw.pos[i+d]); mx[d] = Math.max(mx[d], raw.pos[i+d]); }
   const diag = Math.hypot(mx[0]-mn[0], mx[1]-mn[1], mx[2]-mn[2]);
-  if (fmt === 'glb' || fmt === 'gltf') return diag > 30 ? 'mm' : 'm';
-  if (diag < 5) return 'm';
-  if (diag < 300 && fmt !== 'demo') return 'cm';
+  if (fmt === 'glb' || fmt === 'gltf') return diag > 30 ? 'mm' : 'm'; // glTF is in metres, though some exporters write millimetres
+  if (fmt === 'demo') return 'mm';
+  // bikes and cars are roughly 0.3 to 6 m across: pick the unit that gives such a size
+  if (diag <= 20) return 'm';
+  if (diag <= 700) return 'cm';
   return 'mm';
 }
 
@@ -1470,7 +1473,7 @@ function buildModel() {
   const c = new THREE.Vector3((mn[0]+mx[0])/2, (mn[1]+mx[1])/2, (mn[2]+mx[2])/2);
   S.fit = { c, r: diag / 2 };
   fitView();
-  camera.far = diag * 50; camera.updateProjectionMatrix(); controls.minDistance = 8;
+  camera.far = diag * 50; camera.updateProjectionMatrix(); controls.minDistance = Math.min(8, Math.max(0.2, diag * 0.004)); // close-ups work at any model size
 }
 
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -1879,6 +1882,7 @@ function openFile(file) {
   if (ext === 'json') { file.text().then(t => loadProject(t, file.name)).catch(e => alert('This project file could not be read: ' + e.message)); return; }
   if (!['glb','gltf','obj','stl'].includes(ext)) { alert('Use a .glb, .obj or .stl model, or a saved .json project.'); return; }
   if (S.decals.length && S.dirty && !confirm('Opening a new model clears the current decals. Save the project first if you want to keep them. Continue?')) return;
+  $('#units').value = 'auto'; // a new model detects its own units
   const rd = new FileReader();
   rd.onload = () => {
     const buf = rd.result;
@@ -2425,13 +2429,35 @@ canvas.addEventListener('dblclick', e => {
 });
 canvas.addEventListener('contextmenu', e => e.preventDefault());
 // zoom towards the point under the cursor
+// scroll zooms around the point under the cursor: that point stays where it is on screen
+controls.enableZoom = false;
+// a trackpad pinch arrives as Ctrl + scroll without the Ctrl key being held: that is always zoom
+var ctrlHeld = false;
+addEventListener('keydown', e => { if (e.key === 'Control') ctrlHeld = true; }, true);
+addEventListener('keyup', e => { if (e.key === 'Control') ctrlHeld = false; }, true);
+addEventListener('blur', () => { ctrlHeld = false; });
+const realMod = e => e.altKey || e.metaKey || (e.ctrlKey && ctrlHeld);
 canvas.addEventListener('wheel', e => {
-  if (!S.model || e.deltaY >= 0) return;
-  if ((e.altKey || e.ctrlKey || e.metaKey) && (S.placing || xformTarget())) return; // those scrolls size and turn, they do not zoom
-  const { x, y } = rel(e), hit = pickAt(x, y); if (!hit) return;
-  const shift = new THREE.Vector3(...hit.p).sub(controls.target).multiplyScalar(0.16);
-  controls.target.add(shift); camera.position.add(shift);
-}, { capture: true, passive: true });
+  if (!S.model) return;
+  if (realMod(e) && (S.placing || xformTarget())) return; // those scrolls size and turn
+  e.preventDefault();
+  const { x, y } = rel(e), hit = pickAt(x, y), w = canvas.clientWidth, h = canvas.clientHeight;
+  let P;
+  if (hit) P = new THREE.Vector3(...hit.p);
+  else { // nothing under the cursor: zoom towards the point on the cursor's line of sight at the depth of the orbit centre
+    raycaster.setFromCamera({ x: x / w * 2 - 1, y: -(y / h) * 2 + 1 }, camera);
+    const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(camFwd(), controls.target); P = new THREE.Vector3();
+    if (!raycaster.ray.intersectPlane(pl, P)) P.copy(controls.target);
+  }
+  const steps = Math.max(-5, Math.min(5, -e.deltaY / (e.deltaMode === 1 ? 3 : 100)));
+  let f = Math.pow(0.88, steps);
+  const dist = camera.position.distanceTo(controls.target);
+  if (f < 1 && dist * f < controls.minDistance) f = Math.max(controls.minDistance / Math.max(dist, 1e-6), f);
+  if (f > 1 && dist * f > S.model.diag * 20) return;
+  camera.position.sub(P).multiplyScalar(f).add(P);
+  controls.target.sub(P).multiplyScalar(f).add(P);
+  tween = null; controls.update();
+}, { capture: true, passive: false });
 
 window.addEventListener('keydown', e => {
   if (e.target.matches('input:not([type=range]), select, textarea') || $('#geoDlg').open) return;
@@ -4619,7 +4645,7 @@ function ensureXform(d, idx) {
   HIST.undo.push(xform.before); HIST.redo = []; S.dirty = true; return xform;
 }
 canvas.addEventListener('wheel', e => {
-  const d = xformTarget(); if (!d || !(e.altKey || e.ctrlKey || e.metaKey)) return;
+  const d = xformTarget(); if (!d || !realMod(e)) return;
   e.preventDefault(); e.stopImmediatePropagation();
   const idx = selIdx(), turning = !e.altKey, sym = !idx && d.mirror && d.ctrl.some(c => c.plane);
   if (turning && sym) { flash('A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.'); return; }
@@ -4633,7 +4659,7 @@ canvas.addEventListener('wheel', e => {
   clearTimeout(xformT); xformT = setTimeout(() => { xformT = null; if (xform && S.decals.includes(xform.d)) solve(xform.d); }, 350);
 }, { capture: true, passive: false });
 canvas.addEventListener('wheel', e => {
-  if (!S.placing || !(e.altKey || e.ctrlKey || e.metaKey)) return;
+  if (!S.placing || !realMod(e)) return;
   e.preventDefault(); e.stopImmediatePropagation();
   const dir = e.deltaY < 0 ? 1 : -1, mult = e.shiftKey ? 10 : 1;
   if (e.altKey) setWidth((parseFloat($('#pbW').value) || svgImport.w) + dir * (snapOn() ? sizeStep() : 1) * mult);
@@ -4709,19 +4735,40 @@ function pinNearest(id) { const n = snapEdges(id, 0).nearest; pinAt(id, n === 'l
 function togglePin(id) {
   const st = layout[id], el = document.getElementById(id);
   if (id === 'viewMenu') { // the Views panel: pinned means it stays open
-    if (!st) { el.hidden = false; renderViews(); floatAt(id); pinNearest(id); }
+    if (!st) { el.hidden = false; renderViews(); floatAt(id); pinNearest(id); resolveOverlap(id); }
     else if (st.mode === 'pin') floatAt(id);
     else { delete layout[id]; placePanel(id); saveLayout(); closeViewMenu(); }
     return;
   }
   if (!st || st.mode === 'pin') floatAt(id); else pinNearest(id);
+  resolveOverlap(id);
 }
 // the tool panel can lie along a row or stand as a column, wherever it is
 function toggleOrient(id) {
   const el = document.getElementById(id), st = layout[id];
   const now = isH(id, st) ? 'h' : 'v';
   if (!st) floatAt(id);
-  layout[id].orient = now === 'h' ? 'v' : 'h'; placePanel(id); saveLayout();
+  layout[id].orient = now === 'h' ? 'v' : 'h'; placePanel(id); resolveOverlap(id);
+}
+// panels never cover each other: a dropped or pinned panel moves the shortest way to a free spot
+function panelRects(except) {
+  const sr = stage.getBoundingClientRect();
+  return PANEL_IDS.filter(id => id !== except).map(id => document.getElementById(id)).filter(el => el && !el.hidden && el.offsetParent)
+    .map(el => { const r = el.getBoundingClientRect(); return { l: r.left - sr.left, t: r.top - sr.top, r: r.right - sr.left, b: r.bottom - sr.top }; }).filter(r => r.r > r.l && r.b > r.t);
+}
+function resolveOverlap(id) {
+  const st = layout[id], el = document.getElementById(id); if (!st || !el || el.hidden) return;
+  for (let it = 0; it < 12; it++) {
+    const x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight, g = 8, W = stage.clientWidth, H = stage.clientHeight;
+    const hit = panelRects(id).find(r => x < r.r + g && x + w > r.l - g && y < r.b + g && y + h > r.t - g); if (!hit) break;
+    const opts = [['y', hit.b + g], ['y', hit.t - g - h], ['x', hit.r + g], ['x', hit.l - g - w]]
+      .filter(([k, v]) => k === 'y' ? v >= 0 && v + h <= H : v >= 0 && v + w <= W)
+      .filter(([k]) => !(st.mode === 'pin' && ((k === 'x' && st.ex) || (k === 'y' && st.ey)))) // a pinned edge keeps its side
+      .sort((a, b) => Math.abs(a[1] - (a[0] === 'y' ? y : x)) - Math.abs(b[1] - (b[0] === 'y' ? y : x)));
+    if (!opts.length) break;
+    const [k, v] = opts[0]; st[k] = v; placePanel(id);
+  }
+  saveLayout();
 }
 function showDock(id) {
   const { ex, ey } = snapEdges(id, 40); if (!ex && !ey) { dockHint.hidden = true; return; }
@@ -4738,7 +4785,7 @@ function startPanelDrag(e, id) {
   const o = layout[id].orient;
   const mv = ev => { layout[id] = { mode: 'float', x: ev.clientX - sr.left - dx, y: ev.clientY - sr.top - dy }; if (o) layout[id].orient = o; placePanel(id); showDock(id); };
   const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); el.classList.remove('dragging'); dockHint.hidden = true;
-    const { ex, ey } = snapEdges(id, 40); if (ex || ey) pinAt(id, ex, ey); else saveLayout(); };
+    const { ex, ey } = snapEdges(id, 40); if (ex || ey) pinAt(id, ex, ey); resolveOverlap(id); };
   addEventListener('pointermove', mv); addEventListener('pointerup', up);
 }
 for (const id of PANEL_IDS) {
