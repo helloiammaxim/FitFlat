@@ -2475,10 +2475,12 @@ function insertPoint(d, s) {
   const n = d.ctrl.length, a = d.ctrl[s.seg], b = d.ctrl[(s.seg + 1) % n];
   const np = { p: s.point, face: s.face, type: 'auto' };
   if (ptype(a) === 'bezier' || ptype(b) === 'bezier') {
-    const sp = Core.splitAt(d.ctrl, d.closed, s.seg, s.t);
-    const ha = handlesOf(d, s.seg), hb = handlesOf(d, (s.seg + 1) % n);
-    if (ptype(a) !== 'corner') { a.type = 'bezier'; a.hin = ha[0]; a.hout = sp.prevOut; }
-    if (ptype(b) !== 'corner') { b.type = 'bezier'; b.hin = sp.nextIn; b.hout = hb[1]; }
+    const j = (s.seg + 1) % n, ha = handlesOf(d, s.seg), hb = handlesOf(d, j);
+    const tmp = d.ctrl.slice(); tmp[s.seg] = { ...a, type: 'bezier', hin: ha[0], hout: ha[1] }; tmp[j] = { ...b, type: 'bezier', hin: hb[0], hout: hb[1] };
+    const sp = Core.splitAt(tmp, d.closed, s.seg, s.t);
+    const keepAuto = c => c.plane && d.mirror && ptype(c) === 'auto';
+    if (ptype(a) !== 'corner' && !keepAuto(a)) { a.type = 'bezier'; a.hin = ha[0]; a.hout = sp.prevOut; }
+    if (ptype(b) !== 'corner' && !keepAuto(b)) { b.type = 'bezier'; b.hin = sp.nextIn; b.hout = hb[1]; }
     Object.assign(np, { type: 'bezier', hin: sp.hin, hout: sp.hout });
   }
   d.ctrl.splice(s.seg + 1, 0, np);
@@ -2933,11 +2935,15 @@ for (const [id, k] of [['#slab','labels'],['#sbor','border'],['#smir','mirror'],
 // insert an anchor at (seg, t) without changing the curve's shape
 function insertExact(d, seg, t, point, face) {
   const n = d.ctrl.length, j = (seg + 1) % n, a = d.ctrl[seg], b = d.ctrl[j];
-  const sp = Core.splitAt(d.ctrl, d.closed, seg, t);
-  if (!point) { const h = Core.closestPoint(S.model.mesh, S.model.grid, sp.point, 80, f => S.model.topo.piece[f] === S.model.topo.piece[a.face]) || Core.closestPoint(S.model.mesh, S.model.grid, sp.point, 80); point = h.point; face = h.face; }
   const ha = handlesOf(d, seg), hb = handlesOf(d, j);
-  if (ptype(a) !== 'corner') { a.type = 'bezier'; a.hin = ha[0]; a.hout = sp.prevOut; a.broken = a.broken || false; }
-  if (ptype(b) !== 'corner') { b.type = 'bezier'; b.hin = sp.nextIn; b.hout = hb[1]; b.broken = b.broken || false; }
+  // split with the handles the curve really has (on a symmetric decal they come from both halves)
+  const tmp = d.ctrl.slice(); tmp[seg] = { ...a, type: 'bezier', hin: ha[0], hout: ha[1] }; tmp[j] = { ...b, type: 'bezier', hin: hb[0], hout: hb[1] };
+  const sp = Core.splitAt(tmp, d.closed, seg, t);
+  if (!point) { const h = Core.closestPoint(S.model.mesh, S.model.grid, sp.point, 80, f => S.model.topo.piece[f] === S.model.topo.piece[a.face]) || Core.closestPoint(S.model.mesh, S.model.grid, sp.point, 80); point = h.point; face = h.face; }
+  // neighbours keep the curve by getting fixed handles, except an automatic point on the centre plane, which stays automatic
+  const keepAuto = c => c.plane && d.mirror && ptype(c) === 'auto';
+  if (ptype(a) !== 'corner' && !keepAuto(a)) { a.type = 'bezier'; a.hin = ha[0]; a.hout = sp.prevOut; a.broken = a.broken || false; }
+  if (ptype(b) !== 'corner' && !keepAuto(b)) { b.type = 'bezier'; b.hin = sp.nextIn; b.hout = hb[1]; b.broken = b.broken || false; }
   d.ctrl.splice(seg + 1, 0, { p: point, face, type: 'bezier', hin: sp.hin, hout: sp.hout, broken: false });
   return seg + 1;
 }
