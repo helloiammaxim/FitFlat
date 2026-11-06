@@ -135,6 +135,9 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .ppin:hover{ opacity:1; background:var(--fill); }
 .ppin[aria-pressed="true"]{ color:var(--accent); opacity:1; }
 .rail > .phead{ justify-content:center; margin-bottom:4px; }
+.rail.pin-top, .rail.pin-bottom{ display:flex; align-items:center; gap:4px; }
+.rail.pin-top > .phead, .rail.pin-bottom > .phead{ flex-direction:column; margin:0 2px 0 0; }
+.rail.pin-top .railgrp, .rail.pin-bottom .railgrp{ flex-direction:row; }
 .viewmenu > .phead{ position:absolute; top:8px; right:8px; }
 #dockHint{ position:absolute; background:color-mix(in srgb, var(--accent) 22%, transparent); border:1.5px dashed var(--accent); border-radius:10px; pointer-events:none; z-index:6; }
 .stolw{ display:inline-flex; align-items:center; gap:4px; } .stolw input{ width:58px; border:0; background:var(--fill); border-radius:7px; padding:4px 6px; color:var(--ink); font:inherit; font-variant-numeric:tabular-nums; }
@@ -4331,13 +4334,14 @@ function placePanel(id) {
   const st = layout[id], pin = el.querySelector(':scope > .phead .ppin');
   if (!st) { // its place in the default layout
     if (el.parentNode === floatLayer) { const h = panelHome[id]; h.parent.insertBefore(el, h.next && h.next.parentNode === h.parent ? h.next : null); }
-    el.classList.remove('floating', 'pinned'); el.style.left = el.style.top = '';
+    el.classList.remove('floating', 'pinned', 'pin-left', 'pin-right', 'pin-top', 'pin-bottom'); el.style.left = el.style.top = '';
     const on = id !== 'viewMenu'; pin.setAttribute('aria-pressed', on);
     pin.title = id === 'viewMenu' ? 'Pin the Views panel so it stays open' : 'Pinned. Click to let it float';
     return;
   }
   if (el.parentNode !== floatLayer) floatLayer.appendChild(el);
   el.classList.add('floating'); el.classList.toggle('pinned', st.mode === 'pin');
+  for (const e of ['left', 'right', 'top', 'bottom']) el.classList.toggle('pin-' + e, st.mode === 'pin' && st.edge === e); // the tool panel lies along a top or bottom edge
   const W = stage.clientWidth, H = stage.clientHeight, w = el.offsetWidth, h = el.offsetHeight, m = 12, cl = (v, lo, hi) => Math.max(lo, Math.min(Math.max(lo, hi), v));
   let x, y;
   if (st.mode === 'float') { x = cl(st.x, 0, W - w); y = cl(st.y, 0, H - h); }
