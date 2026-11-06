@@ -23,7 +23,7 @@ Z is the vertical axis. Named views: Front, Back, Left, Right, Top, Bottom (keys
 
 ## Moving, turning and sizing decals
 
-In Edit mode the selected decal shows a gizmo: drag the centre handle to move it, the knob or ring to turn it, a corner square to size it (Shift for 15° / 5% steps). Ctrl + scroll turns and Alt + scroll sizes too. Decals follow the surface, so they keep their true size on a tube. Lock a decal in the list to draw over it without picking it.
+In Edit mode the selected decal shows a gizmo: drag the centre handle to move it, the knob or ring to turn it, a corner square to size it (Shift for 15° / 5% steps). Ctrl + scroll turns and Alt + scroll sizes too. Decals follow the surface, so they keep their true size on a tube. While dragging, a label shows the distance moved, the angle, the size and the segment lengths. **Duplicate** (or Ctrl+D) puts a copy right next to a decal. Lock a decal in the list to draw over it without picking it.
 
 ## Panels
 

@@ -142,6 +142,8 @@ Du kannst auch innerhalb des ausgewählten Decals ziehen, um es zu verschieben, 
 
 Mit **zwei oder mehr ausgewählten Punkten** wirken Gizmo und Scroll-Kürzel nur auf diese Punkte.
 
+**Maße.** Beim Ziehen zeigt ein Etikett neben dem Zeiger die Werte: für ein Decal, wie weit es entlang der Fläche verschoben wurde, den Winkel, die Größe in % und seine flache Größe in mm; für einen Punkt, wie weit er verschoben wurde (mit den X-/Y-/Z-Anteilen) und den Abstand zu den Nachbarpunkten; für einen Anfasser seine Länge. Beim Zeichnen mit dem Stift zeigt das Etikett die Länge des nächsten Segments und der ganzen Linie.
+
 ### Verschieben entlang
 *Frei | X | Y | Z* in der Punktleiste. Frei verschiebt über die Fläche; X, Y oder Z sperrt die Bewegung auf diese Achse (eine gestrichelte Hilfslinie zeigt sie). Beim Ziehen eines Decals oder von Punkten kannst du **X**, **Y** oder **Z** drücken, um zu sperren, und dieselbe Taste nochmal, um freizugeben.
 
@@ -216,7 +218,9 @@ Jede Zeile zeigt den Namen des Decals (anklicken zum Umbenennen), seine flache G
 
 **Dehnung** in der Ansichtsleiste färbt jedes Decal auf dem Modell danach, wie stark sich die Folie dehnen muss.
 
-Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Seite tauschen** (die Fläche auf der anderen Seite der Kontur nutzen), **Lösen** (ein Loch zu einem eigenen Teil machen), **🔒 Sperren**, **Löschen**.
+Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Seite tauschen** (die Fläche auf der anderen Seite der Kontur nutzen), **Lösen** (ein Loch zu einem eigenen Teil machen), **Duplizieren**, **🔒 Sperren**, **Löschen**.
+
+**Duplizieren** (oder **Strg+D**) kopiert das Decal mit seinen Löchern und der Spiegel-Einstellung und legt die Kopie direkt daneben auf die Fläche, auf derselben Seite der Spiegelebene. Die Kopie ist ausgewählt, du kannst sie also gleich mit dem Gizmo an ihren Platz ziehen. Weiteres Duplizieren reiht weitere Kopien auf.
 
 **Entlastungsschnitte** erscheint, wenn ein Decal zu stark gedehnt wird (rot). Es schneidet kleine V-Kerben vom Rand in die am stärksten gedehnten Bereiche, damit die Folie flach liegen kann. Schalte **Dehnung** in der Ansichtsleiste ein, um die vorgeschlagenen Schnitte vorher als rote gestrichelte Linien zu sehen. Bei stark gewölbten Flächen hilft oft mehr, das Decal mit dem Messer zu teilen.
 
@@ -244,6 +248,7 @@ Ist ein Teil größer als der Bogen, vergrößere den Bogen oder teile das Decal
 ## 14. Panels und Sprache
 
 - Jedes Panel hat einen **Griff** (⋮⋮) und eine **Nadel**. Zieh ein Panel an eine beliebige Stelle; leg es nahe einem Rand oder in einer Ecke ab, um es dort anzuheften. Die Nadel löst ein angeheftetes Panel oder heftet ein freies am nächsten Rand an.
+- Panels überlappen sich nie: ein Panel im Weg weicht aus. Leg ein Panel neben ein anderes, und es rastet daran ein, so kannst du Panels stapeln.
 - Das **Werkzeug**-Panel hat eine Dreh-Taste, um zwischen Zeile und Spalte zu wechseln.
 - Menüs in einer Leiste öffnen sich zur Bildschirmmitte hin, egal wo die Leiste sitzt.
 - **Panels zurücksetzen** (im Ansichten-Panel) stellt alles wieder her. Dein Layout wird gespeichert.
@@ -260,6 +265,7 @@ Ist ein Teil größer als der Bogen, vergrößere den Bogen oder teile das Decal
 | Esc | Zeichnen beenden · Messer löschen · Abbrechen |
 | Rücktaste / Entf | Ausgewählte Punkte löschen · letzten Messer- oder Konturpunkt entfernen |
 | Strg+A | Alle Punkte des Decals auswählen |
+| Strg+D | Ausgewähltes Decal duplizieren |
 | M | Ausgewählte Punkte zusammenführen |
 | F | Auf Auswahl zoomen |
 | Pfeiltasten (Umschalt) | Ausgewählte Punkte schieben |

@@ -142,6 +142,8 @@ You can also drag inside the selected decal to move it, use **Ctrl + scroll** to
 
 With **two or more points selected**, the gizmo and the scroll shortcuts act on just those points.
 
+**Measurements.** While you drag, a label next to the pointer shows the numbers: for a decal, how far it moved along the surface, the angle, the size in % and its flat size in mm; for a point, how far it moved (with the X / Y / Z parts) and the distance to its neighbouring points; for a handle, its length. While drawing with the Pen, the label shows the length of the next segment and of the whole line.
+
 ### Move along
 *Free | X | Y | Z* in the point bar. Free moves over the surface; X, Y or Z locks the move to that axis (a dashed guide line shows it). While dragging a decal or points you can press **X**, **Y** or **Z** to lock, and the same key again to free it.
 
@@ -216,7 +218,9 @@ Each row shows the decal's name (click to rename), its flat size in mm and its *
 
 **Stretch** in the view bar colours each decal on the model by how much the film has to stretch.
 
-Row buttons: **Mirror**, **Apply** (mirror), **Swap side** (use the area on the other side of the outline), **Detach** (make a hole a separate piece), **🔒 Lock**, **Delete**.
+Row buttons: **Mirror**, **Apply** (mirror), **Swap side** (use the area on the other side of the outline), **Detach** (make a hole a separate piece), **Duplicate**, **🔒 Lock**, **Delete**.
+
+**Duplicate** (or **Ctrl+D**) copies the decal with its holes and mirror setting and puts the copy right next to it on the surface, on the same side of the mirror. The copy is selected, so you can drag it into place with the gizmo straight away. Duplicating again lines up further copies.
 
 **Relief cuts** appears when a decal stretches too much (red). It cuts small V-notches from the edge into the most stretched areas so the film can lie flat. Turn on **Stretch** in the view bar to see the suggested cuts as red dashed lines first. For strongly curved areas, splitting the decal with the Knife often helps more.
 
@@ -244,6 +248,7 @@ If a piece is larger than the sheet, increase the sheet or split the decal.
 ## 14. Panels and language
 
 - Every panel has a **grip** (⋮⋮) and a **pin**. Drag a panel anywhere; drop it near an edge or a corner to pin it there. The pin button frees a pinned panel or pins a floating one to the nearest edge.
+- Panels never overlap: a panel that is in the way moves aside. Drop a panel next to another one and it snaps to it, so you can stack panels.
 - The **Tools** panel has a turn button to switch between a row and a column.
 - Menus in a bar open towards the middle of the screen, wherever the bar sits.
 - **Reset panels** (in the Views panel) puts everything back. Your layout is remembered.
@@ -260,6 +265,7 @@ If a piece is larger than the sheet, increase the sheet or split the decal.
 | Esc | Stop drawing · clear knife · cancel |
 | Backspace / Delete | Delete selected points · remove last knife or outline point |
 | Ctrl+A | Select all points of the decal |
+| Ctrl+D | Duplicate the selected decal |
 | M | Merge selected points |
 | F | Zoom to selection |
 | Arrow keys (Shift) | Nudge selected points |
