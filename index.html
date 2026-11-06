@@ -136,6 +136,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 /* floating panels: drag by the grip, drop at an edge to pin there */
 #floatLayer{ position:absolute; inset:0; pointer-events:none; z-index:7; }
 #floatLayer > .fpanel{ position:absolute; pointer-events:auto; margin:0; right:auto; bottom:auto; max-width:calc(100% - 24px); box-shadow:0 10px 32px rgba(0,0,0,.16); }
+#floatLayer > .fpanel:hover, #floatLayer > .fpanel:focus-within{ z-index:2; } /* a panel you reach for comes to the front if space ran out */
 #floatLayer > .viewmenu{ max-height:calc(100% - 24px); overflow:auto; }
 .phead{ display:flex; align-items:center; gap:1px; color:var(--muted); flex:none; }
 .pgrip{ cursor:grab; padding:4px 1px; display:inline-flex; opacity:.5; touch-action:none; } .pgrip:hover{ opacity:1; }
@@ -2268,7 +2269,7 @@ function onDown(e) {
     addKnifePoint(x, y); renderKnife(); updateUI();
     return;
   }
-  if (S.mode === 'draw' && S.vline) { press = { type: 'vline', x0: x, y0: y, moved: false }; return; } // drawing an outline in the view: a click adds a point, a drag turns the view
+  if (S.mode === 'draw' && S.vline && !(S.drawShape && S.drawShape !== 'free')) { stopAll(e); canvas.setPointerCapture(e.pointerId); press = { type: 'vline', x0: x, y0: y, moved: false, lx: x, ly: y }; return; } // drawing an outline in the view: a click adds a corner point, a drag draws freehand
   if (S.mode === 'cut') { const h = hitLineAny(x, y); if (h) { stopAll(e); cutClick(h, e.shiftKey); } else { S.cut = null; renderCutMark(); } return; }
   const hh = hitHandle(x, y);
   const addKey = e.ctrlKey || e.metaKey;
@@ -2303,7 +2304,7 @@ const lineHit = hitLine(x, y);
   if (S.mode === 'draw') {
     const hit = pickAt(x, y);
     if (hit) { stopAll(e); press = { type: 'stroke', x0: x, y0: y, pts: [{ x, y, hit }], moved: false }; canvas.setPointerCapture(e.pointerId); return; }
-    if (!S.drawShape || S.drawShape === 'free') { press = { type: 'vline', x0: x, y0: y, moved: false }; return; } // a click off the model starts an outline drawn in the view
+    if (!S.drawShape || S.drawShape === 'free') { stopAll(e); canvas.setPointerCapture(e.pointerId); press = { type: 'vline', x0: x, y0: y, moved: false, lx: x, ly: y }; return; } // a click off the model starts an outline drawn in the view, like the shapes
   }
   if (S.mode === 'edit' && S.active && !S.active.locked && S.active.closed && !addKey) { // dragging inside the selected decal moves all of it
     const hit = pickAt(x, y), d = S.active;
@@ -2444,6 +2445,11 @@ canvas.addEventListener('pointermove', e => {
   if (Math.hypot(x - press.x0, y - press.y0) > 4) press.moved = true;
   if (press.type === 'shape') { press.x = x; press.y = y; press.shift = e.shiftKey; press.alt = e.altKey; drawShapeGhost(press); return; }
   if (press.type === 'move') { if (press.moved) moveDecalTo(press, x, y); return; }
+  if (press.type === 'vline') { // freehand in the view: smooth points along the drag
+    if (!press.moved) return;
+    if (!press.started) { press.started = true; addViewPoint(press.x0, press.y0, true); }
+    if (Math.hypot(x - press.lx, y - press.ly) >= 18) { press.lx = x; press.ly = y; addViewPoint(x, y, true); }
+    return; }
   if (press.type === 'stroke') {
     const last = press.pts[press.pts.length - 1];
     if (Math.hypot(x - last.x, y - last.y) >= 5) { const hit = pickAt(x, y); if (hit) { press.pts.push({ x, y, hit }); drawStrokePreview(); } }
@@ -2467,7 +2473,7 @@ function endPress(e) {
     else if (S.drawShape === 'pill') placePill(p.x0, p.y0);
     else flash('Drag to size the shape.');
     return; }
-  if (p.type === 'vline') { if (!p.moved) addViewPoint(p.x0, p.y0); return; }
+  if (p.type === 'vline') { if (!p.moved) addViewPoint(p.x0, p.y0); else if (S.vline && S.lastMouse && Math.hypot(p.lx - S.lastMouse.x, p.ly - S.lastMouse.y) > 4) addViewPoint(S.lastMouse.x, S.lastMouse.y, true); return; }
   if (p.type === 'move') { if (p.moved && xform && xform.d === p.d) { solve(p.d); flash(`${p.d.name} moved.`); } return; }
   if (p.type === 'place') { if (!p.moved) { const hit = pickAt(p.x0, p.y0); if (hit) placeSVG(hit); } return; }
   if (p.type === 'stroke') {
@@ -3006,7 +3012,7 @@ function hintText() {
   if (S.active && S.second) return `Two decals selected. Union joins them, Subtract cuts ${S.second.name} out of ${S.active.name}, Intersect keeps only the overlap. Shift-click the blue one again to drop it.`;
   if (S.boolOp) return `${BOOL_NAMES[S.boolOp.op]}: click the second decal (on the model or in the list)${S.boolOp.op === 'difference' ? ' to cut away from ' + S.boolOp.a.name : ''}. Esc cancels.`;
   if (S.placing) return S.placeHit ? 'Check the orange preview. Alt + scroll resizes, Ctrl + scroll rotates (Shift for bigger steps). Apply (Enter) adds it; click elsewhere to move it.' : 'Move over the model to see the artwork, click to place a preview. Alt + scroll resizes, Ctrl + scroll rotates. Esc cancels.';
-  if (S.mode === 'draw' && S.vline) return S.vline.pts.length < 3 ? 'Outline in the view: click on or off the model to add points. Where the line runs off the model, the decal follows the edge of the surface. Backspace removes the last point, Esc cancels.' : 'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.';
+  if (S.mode === 'draw' && S.vline) return S.vline.pts.length < 3 ? 'Outline in the view: click on or off the model to add points, or drag to draw freehand. Where the line runs off the model, the decal follows the edge of the surface. Space + drag turns the view. Backspace removes the last point, Esc cancels.' : 'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.';
   if (S.mode === 'knife' && S.knifeClosed) return S.knifeThrough ? 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal under it, front and back, leaving a hole if it sits inside. Esc clears it.' : 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal it overlaps on the visible side, leaving a hole if it sits inside. Esc clears it.';
   if (S.mode === 'knife') return S.knife.length < 2 ? (S.knifeThrough ? 'Click to draw a knife line in the view, on or off the model; it cuts through every surface under it, front and back (T: visible side only). A line across a decal splits it; click the first point again to close a loop that cuts its area out.' : 'Click to draw a knife line in the view, on or off the model; it is projected onto the visible surface only (T: cut through). A line across a decal splits it; click the first point again to close a loop that cuts its area out.') : 'Keep clicking to bend the knife line. Apply cut (Enter) splits every decal it crosses; Backspace removes the last knife point, Esc clears it.';
   if (S.mode === 'cut') return S.cut ? 'Split: click a second spot on the same outline. The shape is divided along a straight line between the two spots. Esc cancels.' : 'Split: click two spots on an outline to divide it into two pieces along a straight line. Shift-click opens an outline at that spot; clicking an open line snips it. To cut one shape with another, use Subtract instead.';
@@ -3611,7 +3617,7 @@ function drawKnifeOverlay() {
 // ---------- pen outline drawn in the view: points may sit off the model, the closed outline is projected onto the visible surface ----------
 S.vline = null;
 function vlinePush(a) { const V = S.vline; if (V.pts.length) V.runs.push(projectKnifeSeg(V.pts[V.pts.length - 1], a)); V.pts.push(a); }
-function addViewPoint(x, y) {
+function addViewPoint(x, y, smooth) {
   if (!S.vline) {
     pushHistory(); S.vline = { pts: [], runs: [] };
     const d = S.drawing; // an outline already started on the model carries over
@@ -3621,7 +3627,7 @@ function addViewPoint(x, y) {
   if (V.pts.length >= 3) { const f = screenOf(V.pts[0].w); if (Math.hypot(f.x - x, f.y - y) < 12) { closeViewLine(); return; } }
   const hit = pickAt(x, y), h2 = hit ? snapHit(hit) : null;
   const w = h2 ? h2.p : knifeViewPoint(x, y); if (!w) return;
-  vlinePush({ w, face: h2 ? h2.face : null }); updateUI();
+  vlinePush(smooth ? { w, face: h2 ? h2.face : null, soft: true, smooth: true } : { w, face: h2 ? h2.face : null }); updateUI();
 }
 let vlineKey = '';
 function drawViewLineOverlay() {
@@ -5054,15 +5060,32 @@ function relayout() {
     const order = PANEL_IDS.filter(id => layout[id] && vis(id)).sort((a, b) => (layout[a].mode === 'pin' ? 0 : 1) - (layout[b].mode === 'pin' ? 0 : 1) || (layout[a].t || 0) - (layout[b].t || 0));
     for (const id of order) {
       const el = vis(id), st = layout[id]; placePanel(id);
-      let x = el.offsetLeft, y = el.offsetTop; const w = el.offsetWidth, h = el.offsetHeight;
-      for (let it = 0; it < 16; it++) {
-        const hit = obstacles.find(r => x < r.r + g && x + w > r.l - g && y < r.b + g && y + h > r.t - g); if (!hit) break;
-        const opts = [['y', hit.b + g], ['y', hit.t - g - h], ['x', hit.r + g], ['x', hit.l - g - w]]
-          .filter(([k, v]) => k === 'y' ? v >= 0 && v + h <= H : v >= 0 && v + w <= W)
-          .filter(([k]) => !(st.mode === 'pin' && ((k === 'x' && st.ex) || (k === 'y' && st.ey)))) // a pinned edge keeps its side
-          .sort((a, b) => Math.abs(a[1] - (a[0] === 'y' ? y : x)) - Math.abs(b[1] - (b[0] === 'y' ? y : x)));
-        if (!opts.length) break;
-        if (opts[0][0] === 'y') y = opts[0][1]; else x = opts[0][1];
+      el.style.maxWidth = ''; // a bar squeezed into a gap earlier gets its full width back first
+      let x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight; const x0 = x, y0 = y;
+      const over = (px, py) => obstacles.reduce((a, r) => a + Math.max(0, Math.min(px + w, r.r + g) - Math.max(px, r.l - g)) * Math.max(0, Math.min(py + h, r.b + g) - Math.max(py, r.t - g)), 0);
+      if (over(x, y) > 0) {
+        // the nearest free spot, lining up against the other panels' edges and the view's edges.
+        // A panel pinned to one edge stays on it; one pinned in a corner may slide along either of its edges.
+        const pinX = st.mode === 'pin' && !!st.ex, pinY = st.mode === 'pin' && !!st.ey, m = 8;
+        const search = (strict = true) => {
+          const xs = [x0, m, W - w - m, ...obstacles.flatMap(r => [r.r + g, r.l - g - w, r.l, r.r - w])], ys = [y0, m, H - h - m, ...obstacles.flatMap(r => [r.b + g, r.t - g - h, r.t, r.b - h])];
+          for (let py = 0; py + h <= H; py += 24) ys.push(py); for (let px = 0; px + w <= W; px += 24) xs.push(px);
+          let best = null, bs = Infinity;
+          for (const px of xs) { if (px < 0 || px + w > W + 0.5) continue; for (const py of ys) { if (py < 0 || py + h > H + 0.5) continue;
+            if (strict && (pinX && pinY ? px !== x0 && py !== y0 : (pinX && px !== x0) || (pinY && py !== y0))) continue;
+            const sc = over(px, py) * 1e6 + Math.hypot(px - x0, py - y0); if (sc < bs) { bs = sc; best = [px, py, sc < 1e6]; } } }
+          return best;
+        };
+        // no free spot at full width: let a wrapping bar (tools, point tools) get narrower and taller to fit a gap;
+        // still none on its pinned edge: stack it inwards next to the panels already there
+        const full = w, fullH = h, narrow = strict => { for (const k of [0.85, 0.7, 0.55, 0.45]) {
+            el.style.maxWidth = Math.round(full * k) + 'px'; w = el.offsetWidth; h = el.offsetHeight;
+            if (w > full * k + 2) break; // it does not wrap any further
+            const b2 = search(strict); if (b2 && b2[2]) return b2; }
+          el.style.maxWidth = ''; w = full; h = fullH; return null; };
+        let best = search(true);
+        if (!best?.[2]) best = narrow(true) || ((pinX || pinY) && search(false)?.[2] ? search(false) : null) || ((pinX || pinY) ? narrow(false) : null) || best || search(false);
+        if (best) [x, y] = best;
       }
       el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
       obstacles.push({ l: x, t: y, r: x + w, b: y + h });
@@ -5273,7 +5296,7 @@ const DE = {
   'This shape wraps all the way around a tube. Leave a small gap so the decal can lie flat.': 'Diese Form umschließt ein Rohr ganz. Lass eine kleine Lücke, damit das Decal flach liegen kann.', 'This area could not be flattened. Try a simpler outline.': 'Diese Fläche ließ sich nicht abwickeln. Versuche eine einfachere Kontur.',
   'A decal needs at least three points.': 'Ein Decal braucht mindestens drei Punkte.', 'The outline is too small.': 'Die Kontur ist zu klein.',
   // shape names
-  'Outline in the view: click on or off the model to add points. Where the line runs off the model, the decal follows the edge of the surface. Backspace removes the last point, Esc cancels.': 'Kontur in der Ansicht: klicke auf oder neben das Modell, um Punkte zu setzen. Wo die Linie neben dem Modell verläuft, folgt das Decal dem Rand der Fläche. Rücktaste entfernt den letzten Punkt, Esc bricht ab.',
+  'Outline in the view: click on or off the model to add points, or drag to draw freehand. Where the line runs off the model, the decal follows the edge of the surface. Space + drag turns the view. Backspace removes the last point, Esc cancels.': 'Kontur in der Ansicht: klicke auf oder neben das Modell, um Punkte zu setzen, oder ziehe zum Freihandzeichnen. Wo die Linie neben dem Modell verläuft, folgt das Decal dem Rand der Fläche. Leertaste + Ziehen dreht die Ansicht. Rücktaste entfernt den letzten Punkt, Esc bricht ab.',
   'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.': 'Klicke weiter auf oder neben das Modell. Klicke den ersten Punkt, Enter oder Form schließen zum Abschließen; die Kontur wird auf die sichtbare Fläche projiziert. Rücktaste entfernt den letzten Punkt, Esc bricht ab.',
   'Outline cancelled.': 'Kontur verworfen.', 'The shape could not be placed from this view.': 'Die Form ließ sich aus dieser Ansicht nicht platzieren.', 'Click at least three points for an outline.': 'Klicke mindestens drei Punkte für eine Kontur.', 'The outline has to cross the model. Draw it over a tube.': 'Die Kontur muss über das Modell gehen. Zeichne sie über ein Rohr.',
   'Too little of the outline lies on the model. Draw it further over the tube.': 'Zu wenig der Kontur liegt auf dem Modell. Zeichne sie weiter über das Rohr.', 'Outline projected onto the surface. Switch to Edit to adjust its points.': 'Kontur auf die Fläche projiziert. Wechsle zu Bearbeiten, um die Punkte anzupassen.',

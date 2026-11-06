@@ -86,7 +86,7 @@ Wähle **Zeichnen**. Die Formen sind **Stift**, **Rechteck**, **Kreis**, **Polyg
 - **Klicke** auf das Modell, um Punkte zu setzen. Standardmäßig werden Punkte mit geraden Linien verbunden (*Gerade*); wähle *Kurvig* für weiche Kurven. Später kannst du einen Punkt doppelklicken, um zwischen Kurve und Ecke zu wechseln.
 - **Drücken und ziehen**, um eine Kontur frei zu skizzieren.
 - **Form schließen**: auf den gelben ersten Punkt klicken, Enter drücken oder *Form schließen*. Esc beendet das Zeichnen und lässt die Linie offen; klicke sie später an, um weiterzumachen.
-- **Neben dem Modell beginnen:** klicke neben das Modell und setze weiter Punkte rund um das Rohr, auf oder neben dem Modell. Die Linie wird in der Ansicht gezeichnet und beim Schließen auf die sichtbare Fläche projiziert. Wo die Linie neben dem Modell verläuft, folgt das Decal dem Rand des Rohrs. Rücktaste entfernt den letzten Punkt, Esc bricht ab.
+- **Neben dem Modell beginnen:** klicke neben das Modell und setze weiter Punkte rund um das Rohr, auf oder neben dem Modell. Die Linie wird in der Ansicht gezeichnet und beim Schließen auf die sichtbare Fläche projiziert. Wo die Linie neben dem Modell verläuft, folgt das Decal dem Rand des Rohrs. Ziehen neben dem Modell zeichnet frei und dreht die Ansicht nicht; mit Leertaste + Ziehen drehst du sie beim Zeichnen. Rücktaste entfernt den letzten Punkt, Esc bricht ab.
 
 ### Rechteck, Kreis, Polygon
 - **Ziehen** zum Zeichnen. Beim Ziehen wird die Größe in mm angezeigt.

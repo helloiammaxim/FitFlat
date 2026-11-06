@@ -86,7 +86,7 @@ Choose **Draw**. The shape buttons are **Pen**, **Rect**, **Circle**, **Polygon*
 - **Click** on the model to place points. By default points join with straight lines (*Straight*); choose *Curved* for smooth curves. You can double-click a point later to switch it between curve and corner.
 - **Press and drag** to sketch a freehand outline.
 - **Close the shape** by clicking the yellow first point, pressing Enter, or *Close shape*. Esc stops drawing and leaves the line open; click it later to continue.
-- **Start off the model:** click next to the model and keep clicking around the tube, on or off it. The line is drawn in the view and, when you close it, projected onto the visible surface. Where the line runs off the model the decal follows the tube's edge. Backspace removes the last point, Esc cancels.
+- **Start off the model:** click next to the model and keep clicking around the tube, on or off it. The line is drawn in the view and, when you close it, projected onto the visible surface. Where the line runs off the model the decal follows the tube's edge. Dragging off the model draws freehand and does not turn the view; use Space + drag to turn it while drawing. Backspace removes the last point, Esc cancels.
 
 ### Rect, Circle, Polygon
 - **Drag** to draw. The size in mm is shown while you drag.
