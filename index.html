@@ -429,6 +429,9 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <label class="inline radius" title="How far the simplified outline may move away from the original">± <input type="number" id="simpTol" value="0.5" min="0.05" step="0.1"> mm</label>
           <button class="btn" id="simpBtn" title="Remove points the shape does not need (decimate). Works on the selected points, or the whole decal">Simplify</button>
           <button class="btn" id="zoomSel" title="Zoom in on the selection (F)">Zoom to</button>
+          <span class="sep"></span>
+          <span class="count">Turn around</span>
+          <div class="seg" id="turnAxis" role="group" aria-label="Turn around"><button data-ax="view" aria-pressed="true" title="Turn the decal as you see it, around the line of sight, and lay it back on the surface">View</button><button data-ax="surface" aria-pressed="false" title="Turn the decal on the surface, around the surface normal at its centre">Surface</button></div>
         </div>
         </div>
       </div>
@@ -2757,6 +2760,8 @@ $('#modeKnife').addEventListener('click', () => setMode('knife'));
 $('#knifeApply').addEventListener('click', applyKnife);
 $('#knifeClear').addEventListener('click', clearKnife);
 $('#simpBtn').addEventListener('click', simplifyCurve);
+S.turnAxis = 'view';
+document.querySelectorAll('#turnAxis [data-ax]').forEach(b => b.addEventListener('click', () => { S.turnAxis = b.dataset.ax; document.querySelectorAll('#turnAxis [data-ax]').forEach(x => x.setAttribute('aria-pressed', x.dataset.ax === S.turnAxis)); flash(S.turnAxis === 'view' ? 'Turning around the view: the decal turns as you see it.' : 'Turning around the surface normal at the decal\'s centre.'); }));
 $('#shapeMid').addEventListener('click', () => { S.shapeMid = !S.shapeMid; updateUI(); flash(S.shapeMid ? 'Shapes snap their centre onto the mirror plane.' : 'Shapes sit where you draw them.'); });
 // the tips panel folds down to a small button; the choice is remembered
 function setHintOpen(open) { $('#hintBox').classList.toggle('collapsed', !open); const t = $('#hintTog'); t.setAttribute('aria-expanded', open); t.title = open ? 'Hide the tips' : 'Show the tips'; try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
@@ -4455,21 +4460,30 @@ function startXform(d) {
   const items = [];
   for (const c of d.ctrl) { const uv = uvAt(res, c.p, c.face); if (!uv) return null; items.push({ w: [uv[0] - uvC[0], uv[1] - uvC[1]], o: cloneC(c) }); }
   const n0 = fnorm(fc), sgn = Math.sign(v3.dot(v3cross(J([1, 0]), J([0, 1])), n0)) || 1; // which way the layout turns relative to the surface
-  return { d, piece, sym, C, fc, E1: J([1, 0]), E2: J([0, 1]), sgn, items, du: 0, dv: 0, ang: 0, sc: 1, before: snapshot(), t: performance.now() };
+  const vf = camFwd();
+  return { d, piece, sym, C, fc, E1: J([1, 0]), E2: J([0, 1]), sgn, items, du: 0, dv: 0, ang: 0, sc: 1, axis: S.turnAxis || 'view', viewAxis: [vf.x, vf.y, vf.z], before: snapshot(), t: performance.now() };
 }
+const rodr = (v, ax, th) => { const cr = v3cross(ax, v), dt = v3.dot(ax, v); return v3.add(v3.add(v3.mul(v, Math.cos(th)), v3.mul(cr, Math.sin(th))), v3.mul(ax, dt * (1 - Math.cos(th)))); };
 function applyXform() {
-  const X = xform, d = X.d, th = X.sgn * X.ang * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
+  // turning around the view axis happens after moving and sizing; turning around the surface is part of the layout transform
+  const X = xform, d = X.d, viewTurn = X.axis === 'view', th = viewTurn ? 0 : X.sgn * X.ang * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
+  const vth = viewTurn ? X.ang * Math.PI / 180 : 0;
   const mv = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [E1, E2] = mv.carry;
   const nC = fnorm(mv.face);
   d.ctrl.forEach((c, i) => {
     const it = X.items[i], w = [X.sc * (it.w[0]*cs - it.w[1]*sn), X.sc * (it.w[0]*sn + it.w[1]*cs)];
     const r = surfWalk(mv.p, mv.face, v3.add(v3.mul(E1, w[0]), v3.mul(E2, w[1])), X.piece);
     let q = r.p, face = r.face;
+    if (vth) { // turn about the line of sight through the centre, then lay the point back onto the surface as seen from the view
+      const q0 = v3.add(mv.p, rodr(v3.sub(q, mv.p), X.viewAxis, vth)), sc0 = screenOf(q0), h = pickAt(sc0.x, sc0.y);
+      if (h && S.model.topo.piece[h.face] === X.piece && dist3(h.p, q0) < Math.max(6, dist3(q, mv.p) * 0.6)) { q = h.p; face = h.face; }
+      else { const h2 = Core.closestPoint(S.model.mesh, S.model.grid, q0, 120, f => S.model.topo.piece[f] === X.piece); if (h2) { q = h2.point; face = h2.face; } }
+    }
     if (c.plane) { const s2 = snapToPlane(q, face); if (s2) { q = s2.p; face = s2.face; } }
     c.p = q; c.face = face;
     // handles turn and grow with the decal, lying in the surface at the new spot
-    const n = fnorm(face), o = it.o, hv = hh => { if (!hh) return hh; let v = v3.mul(v3.sub(hh, o.p), X.sc); const ax = fnorm(o.face);
-      const cr = v3cross(ax, v), dt2 = v3.dot(ax, v); v = v3.add(v3.add(v3.mul(v, Math.cos(th)), v3.mul(cr, Math.sin(th))), v3.mul(ax, dt2 * (1 - Math.cos(th))));
+    const n = fnorm(face), o = it.o, hv = hh => { if (!hh) return hh; let v = v3.mul(v3.sub(hh, o.p), X.sc);
+      v = vth ? rodr(v, X.viewAxis, vth) : rodr(v, fnorm(o.face), th);
       const l = v3.len(v), t = v3.sub(v, v3.mul(n, v3.dot(v, n))), tl = v3.len(t); return v3.add(q, tl > 1e-9 ? v3.mul(t, l / tl) : v); };
     if (o.hin) c.hin = hv(o.hin); if (o.hout) c.hout = hv(o.hout);
   });
@@ -4524,8 +4538,9 @@ $('#gizmo').addEventListener('pointermove', e => {
   if (G.g === 'move') { if (!G.p.last) { const h = pickAt(x, y); if (h) G.p.last = h.p; return; } G.cx += 0; moveDecalTo(G.p, x, y); G.cx = null; G.cy = null; G.label = ''; gizmoKey = ''; return; }
   if (G.g === 'rot') {
     let dA = (Math.atan2(y - G.cy, x - G.cx) - G.a0) * 180 / Math.PI; dA = ((dA + 540) % 360) - 180;
-    let ang = G.ang0 + G.scr * dA * X.sgn; const st = e.shiftKey ? 15 : 1; ang = Math.round(ang / st) * st;
-    if (ang === X.ang) return; X.ang = ang; G.label = `${Math.round(G.scr * X.sgn * ang)}°`;
+    const view = X.axis === 'view', st = e.shiftKey ? 15 : 1;
+    let ang = view ? G.ang0 + dA : G.ang0 + G.scr * dA * X.sgn; ang = Math.round(ang / st) * st; // on screen, clockwise stays clockwise either way
+    if (ang === X.ang) return; X.ang = ang; G.label = `${Math.round(view ? ang : G.scr * X.sgn * ang)}°`;
   } else {
     let sc = G.sc0 * Math.hypot(x - G.cx, y - G.cy) / G.r0; const st = e.shiftKey ? 0.05 : 0.01; sc = Math.max(0.05, Math.round(sc / st) * st);
     if (sc === X.sc) return; X.sc = sc; G.label = `${Math.round(sc * 100)}%`;
@@ -4535,7 +4550,7 @@ $('#gizmo').addEventListener('pointermove', e => {
 const endGizmo = () => { if (!gzDrag) return; const d = gzDrag.d; gzDrag = null; gizmoKey = ''; if (xform && xform.d === d) { clearTimeout(xformT); xformT = null; solve(d); } };
 $('#gizmo').addEventListener('pointerup', endGizmo); $('#gizmo').addEventListener('pointercancel', endGizmo);
 function ensureXform(d) {
-  if (xform && xform.d === d && xform.sig === ctrlSig(d)) return xform; // the same gesture goes on while nothing else changed the decal
+  if (xform && xform.d === d && xform.sig === ctrlSig(d) && xform.axis === (S.turnAxis || 'view')) return xform; // the same gesture goes on while nothing else changed the decal
   if (xformT) { clearTimeout(xformT); xformT = null; if (S.decals.includes(d)) solveNow(d); } // start from a fresh layout
   xform = startXform(d); if (!xform) return null; xform.sig = ctrlSig(d);
   HIST.undo.push(xform.before); HIST.redo = []; S.dirty = true; return xform;
@@ -4851,6 +4866,9 @@ const DE = {
   'A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.': 'Ein symmetrisches Decal bleibt auf der Mittellinie und kann nicht gedreht werden. Wende zuerst die Spiegelung an, um es frei zu drehen.',
   'Unwrap this decal first (it has no valid layout yet).': 'Wickle dieses Decal zuerst ab (es hat noch kein gültiges Layout).',
   'Drag to turn': 'Ziehen zum Drehen', 'Drag to turn (Shift: 15° steps)': 'Ziehen zum Drehen (Umschalt: 15°-Schritte)', 'Drag to size (Shift: 5% steps)': 'Ziehen zum Skalieren (Umschalt: 5-%-Schritte)', 'Drag to move': 'Ziehen zum Verschieben',
+  'Turn around': 'Drehen um', 'Turn the decal as you see it, around the line of sight, and lay it back on the surface': 'Das Decal so drehen, wie du es siehst, um die Blickachse, und wieder auf die Fläche legen',
+  'Surface': 'Fläche', 'Turn the decal on the surface, around the surface normal at its centre': 'Das Decal auf der Fläche drehen, um die Flächennormale in seiner Mitte',
+  'Turning around the view: the decal turns as you see it.': 'Drehen um die Ansicht: Das Decal dreht sich so, wie du es siehst.', "Turning around the surface normal at the decal's centre.": 'Drehen um die Flächennormale in der Mitte des Decals.',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
