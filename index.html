@@ -165,6 +165,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 #gizmo .icon{ fill:none; stroke:var(--accent); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
 #gizmo .sq.nwse{ cursor:nwse-resize; } #gizmo .sq.nesw{ cursor:nesw-resize; }
 #gizmo .label{ font:600 11px -apple-system, "Segoe UI", sans-serif; fill:var(--accent); paint-order:stroke; stroke:var(--surface); stroke-width:3px; pointer-events:none; }
+#turnAxis .axx[aria-pressed="true"]{ color:#FF3B30; } #turnAxis .axy[aria-pressed="true"]{ color:#34C759; } #turnAxis .axz[aria-pressed="true"]{ color:#007AFF; }
 .viewmenu .keys{ font-size:11.5px; color:var(--muted); margin:8px 0 0; }
 
 /* side panel */
@@ -431,7 +432,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <button class="btn" id="zoomSel" title="Zoom in on the selection (F)">Zoom to</button>
           <span class="sep"></span>
           <span class="count">Turn around</span>
-          <div class="seg" id="turnAxis" role="group" aria-label="Turn around"><button data-ax="view" aria-pressed="true" title="Turn the decal as you see it, around the line of sight, and lay it back on the surface">View</button><button data-ax="surface" aria-pressed="false" title="Turn the decal on the surface, around the surface normal at its centre">Surface</button></div>
+          <div class="seg" id="turnAxis" role="group" aria-label="Turn around"><button data-ax="view" aria-pressed="true" title="Turn the decal as you see it, around the line of sight, and lay it back on the surface">View</button><button data-ax="surface" aria-pressed="false" title="Turn the decal on the surface, around the surface normal at its centre">Surface</button><button data-ax="x" class="axx" aria-pressed="false" title="Turn around the X axis (front to back), through the middle of the tube">X</button><button data-ax="y" class="axy" aria-pressed="false" title="Turn around the Y axis (side to side), through the middle of the tube">Y</button><button data-ax="z" class="axz" aria-pressed="false" title="Turn around the Z axis (vertical), through the middle of the tube">Z</button></div>
         </div>
         </div>
       </div>
@@ -2761,7 +2762,7 @@ $('#knifeApply').addEventListener('click', applyKnife);
 $('#knifeClear').addEventListener('click', clearKnife);
 $('#simpBtn').addEventListener('click', simplifyCurve);
 S.turnAxis = 'view';
-document.querySelectorAll('#turnAxis [data-ax]').forEach(b => b.addEventListener('click', () => { S.turnAxis = b.dataset.ax; document.querySelectorAll('#turnAxis [data-ax]').forEach(x => x.setAttribute('aria-pressed', x.dataset.ax === S.turnAxis)); flash(S.turnAxis === 'view' ? 'Turning around the view: the decal turns as you see it.' : 'Turning around the surface normal at the decal\'s centre.'); }));
+document.querySelectorAll('#turnAxis [data-ax]').forEach(b => b.addEventListener('click', () => { S.turnAxis = b.dataset.ax; document.querySelectorAll('#turnAxis [data-ax]').forEach(x => x.setAttribute('aria-pressed', x.dataset.ax === S.turnAxis)); flash(S.turnAxis === 'view' ? 'Turning around the view: the decal turns as you see it.' : S.turnAxis === 'surface' ? 'Turning around the surface normal at the decal\'s centre.' : `Turning around the ${S.turnAxis.toUpperCase()} axis through the middle of the tube.`); }));
 $('#shapeMid').addEventListener('click', () => { S.shapeMid = !S.shapeMid; updateUI(); flash(S.shapeMid ? 'Shapes snap their centre onto the mirror plane.' : 'Shapes sit where you draw them.'); });
 // the tips panel folds down to a small button; the choice is remembered
 function setHintOpen(open) { $('#hintBox').classList.toggle('collapsed', !open); const t = $('#hintTog'); t.setAttribute('aria-expanded', open); t.title = open ? 'Hide the tips' : 'Show the tips'; try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
@@ -4460,30 +4461,42 @@ function startXform(d) {
   const items = [];
   for (const c of d.ctrl) { const uv = uvAt(res, c.p, c.face); if (!uv) return null; items.push({ w: [uv[0] - uvC[0], uv[1] - uvC[1]], o: cloneC(c) }); }
   const n0 = fnorm(fc), sgn = Math.sign(v3.dot(v3cross(J([1, 0]), J([0, 1])), n0)) || 1; // which way the layout turns relative to the surface
-  const vf = camFwd();
-  return { d, piece, sym, C, fc, E1: J([1, 0]), E2: J([0, 1]), sgn, items, du: 0, dv: 0, ang: 0, sc: 1, axis: S.turnAxis || 'view', viewAxis: [vf.x, vf.y, vf.z], before: snapshot(), t: performance.now() };
+  const vf = camFwd(), axis = S.turnAxis || 'view';
+  // world axes as shown (Z up): X = x, Y = -z, Z = y inside the tool
+  const worldAxis = { x: [1, 0, 0], y: [0, 0, -1], z: [0, 1, 0] }[axis] || null;
+  // the middle of the tube under the decal: halfway to the surface on the far side, straight in from the centre
+  let pivot = C;
+  if (worldAxis && modelMesh) { const n = fnorm(fc), rc = new THREE.Raycaster(new THREE.Vector3(...v3.sub(C, v3.mul(n, 0.05))), new THREE.Vector3(-n[0], -n[1], -n[2]));
+    const side = modelMesh.material.side; modelMesh.material.side = THREE.DoubleSide; // the far wall is seen from inside
+    const hit = rc.intersectObject(modelMesh, false).find(h => h.distance > 0.2); modelMesh.material.side = side; if (hit && hit.distance < S.model.diag * 0.25) pivot = v3.sub(C, v3.mul(n, (hit.distance + 0.05) / 2)); }
+  return { d, piece, sym, C, fc, E1: J([1, 0]), E2: J([0, 1]), sgn, items, du: 0, dv: 0, ang: 0, sc: 1, axis, worldAxis, pivot, viewAxis: [vf.x, vf.y, vf.z], before: snapshot(), t: performance.now() };
 }
 const rodr = (v, ax, th) => { const cr = v3cross(ax, v), dt = v3.dot(ax, v); return v3.add(v3.add(v3.mul(v, Math.cos(th)), v3.mul(cr, Math.sin(th))), v3.mul(ax, dt * (1 - Math.cos(th)))); };
 function applyXform() {
   // turning around the view axis happens after moving and sizing; turning around the surface is part of the layout transform
-  const X = xform, d = X.d, viewTurn = X.axis === 'view', th = viewTurn ? 0 : X.sgn * X.ang * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
-  const vth = viewTurn ? X.ang * Math.PI / 180 : 0;
+  const X = xform, d = X.d, viewTurn = X.axis === 'view', worldTurn = /^[xyz]$/.test(X.axis);
+  const th = viewTurn || worldTurn ? 0 : X.sgn * X.ang * Math.PI / 180, cs = Math.cos(th), sn = Math.sin(th);
+  const vth = viewTurn || worldTurn ? X.ang * Math.PI / 180 : 0;
+  const axisV = worldTurn ? X.worldAxis : X.viewAxis;
   const mv = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [E1, E2] = mv.carry;
   const nC = fnorm(mv.face);
   d.ctrl.forEach((c, i) => {
     const it = X.items[i], w = [X.sc * (it.w[0]*cs - it.w[1]*sn), X.sc * (it.w[0]*sn + it.w[1]*cs)];
     const r = surfWalk(mv.p, mv.face, v3.add(v3.mul(E1, w[0]), v3.mul(E2, w[1])), X.piece);
     let q = r.p, face = r.face;
-    if (vth) { // turn about the line of sight through the centre, then lay the point back onto the surface as seen from the view
-      const q0 = v3.add(mv.p, rodr(v3.sub(q, mv.p), X.viewAxis, vth)), sc0 = screenOf(q0), h = pickAt(sc0.x, sc0.y);
+    if (vth && viewTurn) { // turn about the line of sight through the centre, then lay the point back onto the surface as seen from the view
+      const q0 = v3.add(mv.p, rodr(v3.sub(q, mv.p), axisV, vth)), sc0 = screenOf(q0), h = pickAt(sc0.x, sc0.y);
       if (h && S.model.topo.piece[h.face] === X.piece && dist3(h.p, q0) < Math.max(6, dist3(q, mv.p) * 0.6)) { q = h.p; face = h.face; }
       else { const h2 = Core.closestPoint(S.model.mesh, S.model.grid, q0, 120, f => S.model.topo.piece[f] === X.piece); if (h2) { q = h2.point; face = h2.face; } }
+    } else if (vth) { // turn about a world axis through the middle of the tube under the decal, then back onto the surface
+      const piv = v3.add(mv.p, v3.sub(X.pivot, X.C)), q0 = v3.add(piv, rodr(v3.sub(q, piv), axisV, vth));
+      const h2 = Core.closestPoint(S.model.mesh, S.model.grid, q0, 200, f => S.model.topo.piece[f] === X.piece); if (h2) { q = h2.point; face = h2.face; }
     }
     if (c.plane) { const s2 = snapToPlane(q, face); if (s2) { q = s2.p; face = s2.face; } }
     c.p = q; c.face = face;
     // handles turn and grow with the decal, lying in the surface at the new spot
     const n = fnorm(face), o = it.o, hv = hh => { if (!hh) return hh; let v = v3.mul(v3.sub(hh, o.p), X.sc);
-      v = vth ? rodr(v, X.viewAxis, vth) : rodr(v, fnorm(o.face), th);
+      v = vth ? rodr(v, axisV, vth) : rodr(v, fnorm(o.face), th);
       const l = v3.len(v), t = v3.sub(v, v3.mul(n, v3.dot(v, n))), tl = v3.len(t); return v3.add(q, tl > 1e-9 ? v3.mul(t, l / tl) : v); };
     if (o.hin) c.hin = hv(o.hin); if (o.hout) c.hout = hv(o.hout);
   });
@@ -4538,9 +4551,10 @@ $('#gizmo').addEventListener('pointermove', e => {
   if (G.g === 'move') { if (!G.p.last) { const h = pickAt(x, y); if (h) G.p.last = h.p; return; } G.cx += 0; moveDecalTo(G.p, x, y); G.cx = null; G.cy = null; G.label = ''; gizmoKey = ''; return; }
   if (G.g === 'rot') {
     let dA = (Math.atan2(y - G.cy, x - G.cx) - G.a0) * 180 / Math.PI; dA = ((dA + 540) % 360) - 180;
-    const view = X.axis === 'view', st = e.shiftKey ? 15 : 1;
-    let ang = view ? G.ang0 + dA : G.ang0 + G.scr * dA * X.sgn; ang = Math.round(ang / st) * st; // on screen, clockwise stays clockwise either way
-    if (ang === X.ang) return; X.ang = ang; G.label = `${Math.round(view ? ang : G.scr * X.sgn * ang)}°`;
+    const view = X.axis === 'view', world = !!X.worldAxis, st = e.shiftKey ? 15 : 1;
+    const ws = world ? (Math.sign(v3.dot(X.worldAxis, X.viewAxis)) || 1) : 1; // a world axis pointing at you turns the other way on screen
+    let ang = view ? G.ang0 + dA : world ? G.ang0 + ws * dA : G.ang0 + G.scr * dA * X.sgn; ang = Math.round(ang / st) * st; // clockwise on screen stays clockwise
+    if (ang === X.ang) return; X.ang = ang; G.label = `${Math.round(view ? ang : world ? ws * ang : G.scr * X.sgn * ang)}°`;
   } else {
     let sc = G.sc0 * Math.hypot(x - G.cx, y - G.cy) / G.r0; const st = e.shiftKey ? 0.05 : 0.01; sc = Math.max(0.05, Math.round(sc / st) * st);
     if (sc === X.sc) return; X.sc = sc; G.label = `${Math.round(sc * 100)}%`;
@@ -4869,6 +4883,8 @@ const DE = {
   'Turn around': 'Drehen um', 'Turn the decal as you see it, around the line of sight, and lay it back on the surface': 'Das Decal so drehen, wie du es siehst, um die Blickachse, und wieder auf die Fläche legen',
   'Surface': 'Fläche', 'Turn the decal on the surface, around the surface normal at its centre': 'Das Decal auf der Fläche drehen, um die Flächennormale in seiner Mitte',
   'Turning around the view: the decal turns as you see it.': 'Drehen um die Ansicht: Das Decal dreht sich so, wie du es siehst.', "Turning around the surface normal at the decal's centre.": 'Drehen um die Flächennormale in der Mitte des Decals.',
+  'Turn around the X axis (front to back), through the middle of the tube': 'Um die X-Achse drehen (vorne–hinten), durch die Rohrmitte', 'Turn around the Y axis (side to side), through the middle of the tube': 'Um die Y-Achse drehen (seitlich), durch die Rohrmitte',
+  'Turn around the Z axis (vertical), through the middle of the tube': 'Um die Z-Achse drehen (senkrecht), durch die Rohrmitte',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
@@ -4903,6 +4919,7 @@ const DE_PAT = [ // {0}, {1}… stand for the parts that change
   ['No points can go without moving the outline more than {0} mm.', 'Kein Punkt kann weg, ohne die Kontur um mehr als {0} mm zu verschieben.'], ['Removed {0} of {1} points.', '{0} von {1} Punkten entfernt.'],
   ['{0} is locked. You can draw over it now.', '{0} ist gesperrt. Du kannst jetzt darüber zeichnen.'], ['{0} is unlocked.', '{0} ist entsperrt.'], ['{0} moved.', '{0} verschoben.'],
   ['Turned {0}°', 'Gedreht {0}°'], ['Size {0}%', 'Größe {0} %'],
+  ['Turning around the {0} axis through the middle of the tube.', 'Drehen um die {0}-Achse durch die Rohrmitte.'],
   ['{0}: {1} mm', '{0*}: {1} mm'], ['{0}-gon', '{0}-Eck'], ['Rectangle {0}', 'Rechteck {0}'], ['Circle {0}', 'Kreis {0}'], ['Fork leg {0}', 'Gabelbein {0}'], ['{0} (edited)', '{0} (bearbeitet)'],
 ];
 const DE_RE = DE_PAT.map(([en, de]) => [new RegExp('^' + en.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d)\}/g, '(.*?)') + '$'), en, de]);
