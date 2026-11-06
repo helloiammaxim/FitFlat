@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Decal Studio. Copyright 2026 Max Soldatkin. Licensed under PolyForm Noncommercial 1.0.0: free for personal use, commercial use needs written permission. See LICENSE.md. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -254,6 +255,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <div class="brand"><span class="knife" aria-hidden="true"></span>Decal Studio</div>
     <span class="modelinfo" id="modelinfo"></span>
     <span class="spacer"></span>
+    <div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div>
     <div class="grp" aria-label="Frame">
       <button class="btn" id="geoBtn" title="Build a frame from geometry numbers or change its size">Frame from geometry</button>
       <select class="btn" id="units" aria-label="Model units" title="Model units">
@@ -300,13 +302,14 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <div class="seg" id="knifeBar" hidden>
               <button id="knifeApply" title="Split every decal the knife line crosses (Enter)">Apply cut</button>
               <button id="knifeClear" title="Remove the knife line (Esc)">Clear</button>
+              <button id="knifeThrough" aria-pressed="true" title="On: cut every surface under the line, front and back. Off: cut only the visible side (T)">Cut through</button>
             </div>
             <button class="btn accent" id="finish" title="Close the open line into a decal (Enter)">Close shape</button>
           </div>
           <div class="grp" aria-label="Symmetry">
             <button class="btn tog" id="mirror" aria-pressed="false" title="Mirror the selected decal to the other side of the frame">Mirror</button>
             <select class="btn" id="mirrorAxis" aria-label="Mirror plane" hidden>
-              <option value="auto">Plane: auto</option><option value="x">Plane: X</option><option value="y">Plane: Y</option><option value="z">Plane: Z</option>
+              <option value="auto">Plane: auto</option><option value="z">Plane: left | right</option><option value="x">Plane: front | back</option><option value="y">Plane: top | bottom</option>
             </select>
             <label class="clip" id="clipWrap" title="How close a point must be to the centre plane to snap onto it. 0 snaps only when you drag across the plane.">Snap <input type="number" id="clipDist" value="2" min="0" step="0.5"> mm</label>
           </div>
@@ -318,12 +321,12 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <div class="viewmenu" id="viewMenu" hidden>
             <h3>Look from</h3>
             <div class="axes">
-              <button class="ax-x" data-axis="0" data-sign="1" title="Shortcut 3">+X</button>
-              <button class="ax-y" data-axis="1" data-sign="1" title="Shortcut 7">+Y</button>
-              <button class="ax-z" data-axis="2" data-sign="1" title="Shortcut 1">+Z</button>
-              <button class="ax-x" data-axis="0" data-sign="-1" title="Shortcut Ctrl+3">−X</button>
-              <button class="ax-y" data-axis="1" data-sign="-1" title="Shortcut Ctrl+7">−Y</button>
-              <button class="ax-z" data-axis="2" data-sign="-1" title="Shortcut Ctrl+1">−Z</button>
+              <button class="ax-x" data-axis="0" data-sign="1" title="From the front, looking along −X (3)">Front</button>
+              <button class="ax-z" data-axis="1" data-sign="1" title="From above, looking down −Z (7)">Top</button>
+              <button class="ax-y" data-axis="2" data-sign="1" title="From the right side (1)">Right</button>
+              <button class="ax-x" data-axis="0" data-sign="-1" title="From behind, looking along +X (Ctrl+3)">Back</button>
+              <button class="ax-z" data-axis="1" data-sign="-1" title="From below, looking up +Z (Ctrl+7)">Bottom</button>
+              <button class="ax-y" data-axis="2" data-sign="-1" title="From the left side (Ctrl+1)">Left</button>
             </div>
             <h3>Turn the view</h3>
             <div class="axes orbit">
@@ -335,7 +338,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <h3>Saved views</h3>
             <ul class="viewlist" id="viewList"></ul>
             <button class="btn" id="saveView">Save current view</button>
-            <p class="keys">Keys: 1, 3, 7 look along Z, X, Y (Ctrl for the opposite side). 4 and 6 turn, 8 and 2 tilt by 45°. 5 switches ortho. 0 fits the frame.</p>
+            <p class="keys">Keys: 1, 3, 7 look from the right, front and top (Ctrl for the opposite side). 4 and 6 turn, 8 and 2 tilt by 45°. 5 switches ortho. 0 fits the frame.</p>
           </div>
         </div>
             <div class="viewwrap">
@@ -345,7 +348,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
                 <label class="sw"><input type="checkbox" id="gSnap"> Snap points to grid</label>
                 <div class="gm2">
                   <label class="field">Step (mm)<input type="number" id="gStep" value="5" min="0.1" step="0.5"></label>
-                  <label class="field">Plane<select id="gPlane"><option value="auto">Facing the view</option><option value="z">XY (normal Z)</option><option value="y">XZ (normal Y)</option><option value="x">YZ (normal X)</option></select></label>
+                  <label class="field">Plane<select id="gPlane"><option value="auto">Facing the view</option><option value="y">Ground (XY)</option><option value="z">Side (XZ)</option><option value="x">Front (YZ)</option></select></label>
                 </div>
                 <p class="keys">Snapping rounds a point's position on the grid plane to the step, then drops it straight onto the surface, so depth comes from the frame (2.5D). Use it with an axis view and Ortho for exact layouts.</p>
               </div>
@@ -1319,7 +1322,7 @@ function buildModel() {
   }));
   pickScene.add(pickMesh);
   S.model = { mesh, topo, grid, L, diag, mn, mx, lineR: Math.max(diag * 0.0011, L * 0.12) };
-  $('#modelinfo').textContent = `${src.name}: ${size.map(v => Math.round(v)).join(' × ')} mm`;
+  $('#modelinfo').textContent = `${src.name}: ${[size[0], size[2], size[1]].map(v => Math.round(v)).join(' × ')} mm`; // shown Z-up: length × width × height
   // fit view
   const c = new THREE.Vector3((mn[0]+mx[0])/2, (mn[1]+mx[1])/2, (mn[2]+mx[2])/2);
   S.fit = { c, r: diag / 2 };
@@ -1725,6 +1728,8 @@ $('#gDelPreset').addEventListener('click', () => {
 });
 
 $('#file').addEventListener('change', e => { const f = e.target.files[0]; if (f) openFile(f); e.target.value = ''; });
+// the tool works Y-up inside; Z-up files (STL from Blender, CAD, 3D printing) are turned so Z stays vertical
+function zUpToYUp(raw) { const p = raw.pos; for (let i = 0; i < p.length; i += 3) { const y = p[i+1], z = p[i+2]; p[i+1] = z; p[i+2] = -y; } return raw; }
 function openFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (ext === 'svg') { openSVG(file); return; }
@@ -1737,7 +1742,7 @@ function openFile(file) {
     try {
       if (ext === 'glb' || ext === 'gltf') new THREE.GLTFLoader().parse(buf, '', gl => loadSource(collect(gl.scene), ext, file.name), err => alert('This glTF could not be read. Export it as a single .glb file. ' + (err?.message || '')));
       else if (ext === 'obj') loadSource(collect(new THREE.OBJLoader().parse(new TextDecoder().decode(buf))), ext, file.name);
-      else loadSource(collect(new THREE.Mesh(new THREE.STLLoader().parse(buf))), ext, file.name);
+      else loadSource(zUpToYUp(collect(new THREE.Mesh(new THREE.STLLoader().parse(buf)))), ext, file.name); // STL files are Z-up
     } catch (e) { alert('This file could not be read: ' + e.message); }
   };
   rd.readAsArrayBuffer(file);
@@ -1841,17 +1846,19 @@ function pickAt(x, y) {
   renderer.setRenderTarget(null); camera.clearViewOffset();
   const id = pbuf[0]*65536 + pbuf[1]*256 + pbuf[2] - 1;
   if (id < 0) return null;
-  const { mesh } = S.model, T = mesh.tri, P = mesh.pos;
   raycaster.setFromCamera({ x: x / w * 2 - 1, y: -(y / h) * 2 + 1 }, camera);
-  const o = raycaster.ray.origin, d = raycaster.ray.direction;
+  return { face: id, p: rayTriPoint(id, raycaster.ray.origin, raycaster.ray.direction) };
+}
+// where a view ray meets one triangle (clamped onto it)
+function rayTriPoint(id, o, d) {
+  const { mesh } = S.model, T = mesh.tri, P = mesh.pos;
   const a = T[3*id]*3, b = T[3*id+1]*3, c = T[3*id+2]*3, N = mesh._topo.normal;
   const n = [N[3*id], N[3*id+1], N[3*id+2]], den = d.x*n[0] + d.y*n[1] + d.z*n[2];
   let p;
   if (Math.abs(den) > 1e-9) { const t = ((P[a]-o.x)*n[0] + (P[a+1]-o.y)*n[1] + (P[a+2]-o.z)*n[2]) / den; p = [o.x + d.x*t, o.y + d.y*t, o.z + d.z*t]; }
   else p = [(P[a]+P[b]+P[c])/3, (P[a+1]+P[b+1]+P[c+1])/3, (P[a+2]+P[b+2]+P[c+2])/3];
   const bc = Core.closestOnTri(p[0],p[1],p[2], P[a],P[a+1],P[a+2], P[b],P[b+1],P[b+2], P[c],P[c+1],P[c+2]);
-  const pt = [0,1,2].map(k => bc[0]*P[a+k] + bc[1]*P[b+k] + bc[2]*P[c+k]);
-  return { face: id, p: pt };
+  return [0,1,2].map(k => bc[0]*P[a+k] + bc[1]*P[b+k] + bc[2]*P[c+k]);
 }
 const fnorm = f => { const N = S.model.mesh._topo.normal; return [N[3*f], N[3*f+1], N[3*f+2]]; };
 const offsetPt = (p, f, k) => { const n = fnorm(f); return [p[0]+n[0]*k, p[1]+n[1]*k, p[2]+n[2]*k]; };
@@ -2237,6 +2244,7 @@ window.addEventListener('keydown', e => {
     if (e.key === 'Enter') { applyKnife(); e.preventDefault(); return; }
     if (e.key === 'Backspace' || e.key === 'Delete') { if (S.knifeClosed) { S.knifeClosed = false; S.knifeRuns.pop(); } else { S.knife.pop(); S.knifeRuns.pop(); } renderKnife(); updateUI(); e.preventDefault(); return; }
     if (e.key === 'Escape') { clearKnife(); return; }
+    if (!mod && e.key.toLowerCase() === 't') { setKnifeThrough(!S.knifeThrough); e.preventDefault(); return; }
   }
   if (e.key === 'Enter' && openTarget()) { finishShape(); e.preventDefault(); }
   if (S.boolOp && e.key === 'Escape') { S.boolOp = null; updateUI(); return; }
@@ -2571,6 +2579,7 @@ $('#modeCut').addEventListener('click', () => setMode('cut'));
 $('#modeKnife').addEventListener('click', () => setMode('knife'));
 $('#knifeApply').addEventListener('click', applyKnife);
 $('#knifeClear').addEventListener('click', clearKnife);
+$('#knifeThrough').addEventListener('click', () => setKnifeThrough(!S.knifeThrough));
 S.drawShape = 'free';
 document.querySelectorAll('#drawShape [data-shape]').forEach(b => b.addEventListener('click', () => { S.drawShape = b.dataset.shape; updateUI(); }));
 $('#polySides').addEventListener('change', e => { const v = Math.round(+e.target.value); e.target.value = Math.min(64, Math.max(3, v || 6)); });
@@ -2638,8 +2647,8 @@ function hintText() {
   if (S.active && S.second) return `Two decals selected. Union joins them, Subtract cuts ${S.second.name} out of ${S.active.name}, Intersect keeps only the overlap. Shift-click the blue one again to drop it.`;
   if (S.boolOp) return `${BOOL_NAMES[S.boolOp.op]}: click the second decal (on the model or in the list)${S.boolOp.op === 'difference' ? ' to cut away from ' + S.boolOp.a.name : ''}. Esc cancels.`;
   if (S.placing) return S.placeHit ? 'Check the orange preview. Alt + scroll resizes, Ctrl + scroll rotates (Shift for bigger steps). Apply (Enter) adds it; click elsewhere to move it.' : 'Move over the model to see the artwork, click to place a preview. Alt + scroll resizes, Ctrl + scroll rotates. Esc cancels.';
-  if (S.mode === 'knife' && S.knifeClosed) return 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal it overlaps, leaving a hole if it sits inside. Esc clears it.';
-  if (S.mode === 'knife') return S.knife.length < 2 ? 'Click to draw a knife line in the view, on or off the model; it is projected onto the visible surface. A line across a decal splits it; click the first point again to close a loop that cuts its area out.' : 'Keep clicking to bend the knife line. Apply cut (Enter) splits every decal it crosses; Backspace removes the last knife point, Esc clears it.';
+  if (S.mode === 'knife' && S.knifeClosed) return S.knifeThrough ? 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal under it, front and back, leaving a hole if it sits inside. Esc clears it.' : 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal it overlaps on the visible side, leaving a hole if it sits inside. Esc clears it.';
+  if (S.mode === 'knife') return S.knife.length < 2 ? (S.knifeThrough ? 'Click to draw a knife line in the view, on or off the model; it cuts through every surface under it, front and back (T: visible side only). A line across a decal splits it; click the first point again to close a loop that cuts its area out.' : 'Click to draw a knife line in the view, on or off the model; it is projected onto the visible surface only (T: cut through). A line across a decal splits it; click the first point again to close a loop that cuts its area out.') : 'Keep clicking to bend the knife line. Apply cut (Enter) splits every decal it crosses; Backspace removes the last knife point, Esc clears it.';
   if (S.mode === 'cut') return S.cut ? 'Split: click a second spot on the same outline. The shape is divided along a straight line between the two spots. Esc cancels.' : 'Split: click two spots on an outline to divide it into two pieces along a straight line. Shift-click opens an outline at that spot; clicking an open line snips it. To cut one shape with another, use Subtract instead.';
   if (S.drawing) {
     const n = S.drawing.ctrl.length;
@@ -2668,7 +2677,7 @@ function updateUI() {
   document.querySelectorAll('#drawShape [data-shape]').forEach(b => b.setAttribute('aria-pressed', b.dataset.shape === S.drawShape));
   $('#polySidesWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'poly';
   $('#shapeRoundWrap').hidden = S.mode !== 'draw' || !['rect', 'poly'].includes(S.drawShape);
-  $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
+  $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', S.knifeThrough); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
   $('#lsStraight').setAttribute('aria-pressed', S.lineStyle !== 'curved'); $('#lsCurved').setAttribute('aria-pressed', S.lineStyle === 'curved');
   for (const id of ['#modeDraw','#modeEdit','#stretch','#fit','#mirror','#mirrorAxis','#views']) $(id).disabled = !has;
   $('#stretch').setAttribute('aria-pressed', S.showStretch);
@@ -2956,10 +2965,100 @@ function addKnifePoint(x, y) {
   const hit = pickAt(x, y), h2 = hit ? snapHit(hit) : null;
   const w = h2 ? h2.p : knifeViewPoint(x, y); if (!w) return;
   const a = { w, face: h2 ? h2.face : null };
-  if (S.knife.length) S.knifeRuns.push(projectKnifeSeg(S.knife[S.knife.length - 1], a));
+  if (S.knife.length) S.knifeRuns.push(knifeRun(S.knife[S.knife.length - 1], a));
   S.knife.push(a);
 }
-function closeKnifeLoop() { S.knifeRuns.push(projectKnifeSeg(S.knife[S.knife.length - 1], S.knife[0])); S.knifeClosed = true; }
+function closeKnifeLoop() { S.knifeRuns.push(knifeRun(S.knife[S.knife.length - 1], S.knife[0])); S.knifeClosed = true; }
+function knifeRun(a, b) { const r = projectKnifeSeg(a, b); r.layers = layerSamples(a, b); r.screen = [a.w, b.w]; return r; }
+
+// ---------- cut through: every surface layer under the knife line, not just the visible one ----------
+S.knifeThrough = true;
+let layerCache = null;
+function layerBins() { // triangles binned by where they land on screen, for the current view
+  camera.updateMatrixWorld();
+  const w = canvas.clientWidth, h = canvas.clientHeight, M = S.model.mesh;
+  const key = camera.matrixWorld.elements.join(',') + '|' + camera.projectionMatrix.elements.join(',') + '|' + w + 'x' + h;
+  if (layerCache && layerCache.key === key && layerCache.mesh === M) return layerCache;
+  const P = M.pos, T = M.tri, nv = P.length / 3, sx = new Float32Array(nv), sy = new Float32Array(nv), ok = new Uint8Array(nv);
+  const m = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse).elements;
+  for (let i = 0; i < nv; i++) {
+    const x = P[3*i], y = P[3*i+1], z = P[3*i+2], cw = m[3]*x + m[7]*y + m[11]*z + m[15];
+    if (cw <= 1e-9) continue;
+    sx[i] = ((m[0]*x + m[4]*y + m[8]*z + m[12]) / cw + 1) / 2 * w; sy[i] = (1 - (m[1]*x + m[5]*y + m[9]*z + m[13]) / cw) / 2 * h; ok[i] = 1;
+  }
+  const C = 8, gw = Math.ceil(w / C) + 1, gh = Math.ceil(h / C) + 1, cells = new Map();
+  for (let f = 0; f < T.length / 3; f++) {
+    const a = T[3*f], b = T[3*f+1], c = T[3*f+2]; if (!ok[a] || !ok[b] || !ok[c]) continue;
+    const x0 = Math.max(0, Math.floor(Math.min(sx[a], sx[b], sx[c]) / C)), x1 = Math.min(gw - 1, Math.floor(Math.max(sx[a], sx[b], sx[c]) / C));
+    const y0 = Math.max(0, Math.floor(Math.min(sy[a], sy[b], sy[c]) / C)), y1 = Math.min(gh - 1, Math.floor(Math.max(sy[a], sy[b], sy[c]) / C));
+    for (let yy = y0; yy <= y1; yy++) for (let xx = x0; xx <= x1; xx++) { const k = xx + yy * gw; let l = cells.get(k); if (!l) cells.set(k, l = []); l.push(f); }
+  }
+  return layerCache = { key, mesh: M, sx, sy, cells, gw, C };
+}
+const dist3 = (p, q) => Math.hypot(p[0]-q[0], p[1]-q[1], p[2]-q[2]);
+function layerHits(x, y) { // every surface under one screen point, nearest first
+  const B = layerBins(), list = B.cells.get(Math.floor(x / B.C) + Math.floor(y / B.C) * B.gw); if (!list) return [];
+  const { sx, sy } = B, T = S.model.mesh.tri, w = canvas.clientWidth, h = canvas.clientHeight, out = [];
+  raycaster.setFromCamera({ x: x / w * 2 - 1, y: -(y / h) * 2 + 1 }, camera);
+  const o = raycaster.ray.origin, d = raycaster.ray.direction;
+  for (const f of list) {
+    const a = T[3*f], b = T[3*f+1], c = T[3*f+2], x0 = sx[a], y0 = sy[a], x1 = sx[b], y1 = sy[b], x2 = sx[c], y2 = sy[c];
+    const den = (y1 - y2) * (x0 - x2) + (x2 - x1) * (y0 - y2); if (Math.abs(den) < 1e-12) continue;
+    const l0 = ((y1 - y2) * (x - x2) + (x2 - x1) * (y - y2)) / den, l1 = ((y2 - y0) * (x - x2) + (x0 - x2) * (y - y2)) / den;
+    if (l0 < -1e-6 || l1 < -1e-6 || 1 - l0 - l1 < -1e-6) continue;
+    const p = rayTriPoint(f, o, d);
+    out.push({ point: p, face: f, depth: (p[0]-o.x)*d.x + (p[1]-o.y)*d.y + (p[2]-o.z)*d.z });
+  }
+  out.sort((p, q) => p.depth - q.depth);
+  return out.filter((p, i) => i === 0 || dist3(p.point, out[i-1].point) > 0.05);
+}
+// samples along one knife segment, each holding all the layers under it; refined near edges and on steep surfaces
+function layerSamples(a, b) {
+  if (!S.model) return [];
+  const A = screenOf(a.w), B = screenOf(b.w), L = Math.hypot(B.x - A.x, B.y - A.y), n = Math.max(1, Math.ceil(L / 2.5));
+  const at = t => ({ t, hits: layerHits(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t) }), piece = f => S.model.topo.piece[f];
+  const smooth = (p, q) => p.hits.length === q.hits.length && p.hits.every((u, i) => piece(u.face) === piece(q.hits[i].face) && dist3(u.point, q.hits[i].point) <= 1);
+  const out = [];
+  const rec = (p, q, depth) => { if (depth > 14 || (q.t - p.t) * L < 0.02 || smooth(p, q)) return; const m = at((p.t + q.t) / 2); rec(p, m, depth + 1); out.push(m); rec(m, q, depth + 1); };
+  let prev = at(0); out.push(prev);
+  for (let i = 1; i <= n; i++) { const cur = at(i / n); rec(prev, cur, 0); out.push(cur); prev = cur; }
+  return out.map(s => s.hits.map(u => ({ point: u.point, face: u.face })));
+}
+// join the layers into continuous lines on the surface: layers that run out at a tube's edge meet the layer behind them
+function throughPaths() {
+  const seq = []; for (const run of S.knifeRuns) if (run.layers) seq.push(...run.layers);
+  const piece = f => S.model.topo.piece[f], thr = Math.max(3, S.model.L * 2), silThr = Math.max(6, S.model.L * 4), nodes = [], base = [], adj = [], sil = new Set();
+  seq.forEach(hs => { base.push(nodes.length); for (const u of hs) { nodes.push(u); adj.push([]); } });
+  const link = (u, v, s) => { if (u !== v && adj[u].length < 2 && adj[v].length < 2 && !adj[u].includes(v)) { adj[u].push(v); adj[v].push(u); if (s) sil.add(Math.min(u, v) + ':' + Math.max(u, v)); } };
+  const ends = (H, used, bi) => { const free = H.map((_, k) => k).filter(k => !used.has(k));
+    for (let k = 0; k + 1 < free.length; k++) { const x = free[k], y = free[k + 1]; if (piece(H[x].face) === piece(H[y].face) && dist3(H[x].point, H[y].point) < silThr) { link(bi + x, bi + y, true); used.add(x); used.add(y); k++; } } };
+  const cyc = S.knifeClosed && seq.length > 2; // a closed loop: the last sample meets the first
+  for (let i = 0; i + 1 < seq.length + (cyc ? 1 : 0); i++) {
+    const i1 = (i + 1) % seq.length, P = seq[i], Q = seq[i1], pairs = [];
+    P.forEach((u, a) => Q.forEach((v, b) => { if (piece(u.face) !== piece(v.face)) return; const dd = dist3(u.point, v.point); if (dd < thr) pairs.push([dd, a, b]); }));
+    pairs.sort((x, y) => x[0] - y[0]); const ua = new Set(), ub = new Set();
+    for (const [, a, b] of pairs) if (!ua.has(a) && !ub.has(b)) { ua.add(a); ub.add(b); link(base[i] + a, base[i1] + b); }
+    // at a tube's edge two layers merge into one: the layer that runs out joins the merged hit
+    const join = (H, used, bi, G, bg) => H.forEach((u, a) => { if (used.has(a)) return; let best = -1, bd = silThr; G.forEach((v, b) => { const dd = dist3(u.point, v.point); if (piece(u.face) === piece(v.face) && dd < bd && adj[bg + b].length < 2) { bd = dd; best = b; } }); if (best >= 0) { used.add(a); link(bi + a, bg + best, true); } });
+    const ua0 = new Set(ua), ub0 = new Set(ub);
+    ends(P, ua0, base[i]); ends(Q, ub0, base[i1]);
+    join(P, ua0, base[i], Q, base[i1]); join(Q, ub0, base[i1], P, base[i]);
+  }
+  const seen = new Uint8Array(nodes.length), open = [], loops = [];
+  const walk = s => { const out = [s]; seen[s] = 1; let prev = -1, cur = s; for (;;) { const nx = adj[cur].find(v => v !== prev && !seen[v]); if (nx == null) break; seen[nx] = 1; out.push(nx); prev = cur; cur = nx; } return out; };
+  const toK = ids => { const K = []; for (const id of ids) { const u = nodes[id]; if (K.length && dist3(K[K.length - 1].point, u.point) < 1e-6) continue; K.push({ point: u.point, face: u.face, brk: !K.length }); } return K; };
+  for (let u = 0; u < nodes.length; u++) if (!seen[u] && adj[u].length < 2) { const p = walk(u); if (p.length >= 2) open.push(toK(p)); }
+  for (let u = 0; u < nodes.length; u++) if (!seen[u]) { const p = walk(u); if (p.length < 3) continue;
+    const wraps = p.some((id, i) => { const v = p[(i + 1) % p.length]; return sil.has(Math.min(id, v) + ':' + Math.max(id, v)); });
+    const K = toK(p); K.wraps = wraps; loops.push(K); }
+  return { open: open.filter(K => K.length >= 2), loops };
+}
+// all knife lines to cut with: just the visible side, or every layer
+function knifeLines() {
+  if (!S.knifeThrough) return [knifeSamples()];
+  const { open, loops } = throughPaths();
+  return [...open, ...loops.map(K => { const D = [...K, ...K.slice(1), K[0]].map((q, i) => ({ ...q, brk: i === 0 })); D.loop = K; return D; })];
+}
 // the whole knife line as drawn in the view, including the parts off the model
 let knifeSvgKey = '';
 function drawKnifeOverlay() {
@@ -2972,6 +3071,7 @@ function drawKnifeOverlay() {
   const last = pts[pts.length - 1];
   el.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}"><polyline points="${pts.map(p => p.x + ',' + p.y).join(' ')}" fill="none" stroke="#FFB000" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.9"/>${m ? `<line x1="${last.x}" y1="${last.y}" x2="${m.x}" y2="${m.y}" stroke="#FFB000" stroke-width="1" stroke-dasharray="3 4" opacity="0.6"/>` : ''}${pts.slice(0, S.knifeClosed ? -1 : undefined).map((p, i) => `<circle cx="${p.x}" cy="${p.y}" r="${i === 0 && S.knife.length >= 3 && !S.knifeClosed ? 6 : 4}" fill="${i === 0 ? '#FFB000' : '#fff'}" stroke="#FFB000" stroke-width="1.5"/>`).join('')}</svg>`;
 }
+function setKnifeThrough(on) { S.knifeThrough = on; renderKnife(); updateUI(); flash(on ? 'Cut through: the knife cuts every surface under the line, front and back.' : 'Visible side only: the knife cuts just the surface you can see.'); }
 function clearKnife() { S.knife = []; S.knifeRuns = []; S.knifeClosed = false; renderKnife(); updateUI(); }
 // all projected samples in order; a sample after a gap (line went off the model) starts a new piece
 function knifeSamples() {
@@ -2987,11 +3087,11 @@ function knifeSamples() {
 function renderKnife() {
   if (knifeObj) { scene.remove(knifeObj); knifeObj.children.forEach(disposeObj); knifeObj = null; }
   if (!S.model || !S.knife.length) return;
-  const grp = new THREE.Group(), k = hOff() * 1.5, smp = knifeSamples();
+  const grp = new THREE.Group(), k = hOff() * 1.5;
   let run = [];
   const flush = () => { if (run.length >= 2) { const l = fatLine(run, false, lineMat('#FFB000', 2.5, 1, false)); l.material.dashed = true; l.material.dashSize = 3; l.material.gapSize = 2; l.material.needsUpdate = true; l.computeLineDistances(); grp.add(l); } run = []; };
-  for (const s of smp) { if (s.brk) flush(); run.push(offsetPt(s.point, s.face, k)); }
-  flush();
+  const lines = S.knifeThrough ? (({ open, loops }) => [...open, ...loops.map(K => [...K, { ...K[0], brk: false }])])(throughPaths()) : [knifeSamples()];
+  for (const smp of lines) { for (const s of smp) { if (s.brk) flush(); run.push(offsetPt(s.point, s.face, k)); } flush(); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(S.knife.flatMap(c => c.face != null ? offsetPt(c.w, c.face, k) : c.w), 3));
   grp.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 10, sizeAttenuation: false, map: diamond, color: 0xFFB000, alphaTest: 0.4, transparent: true, depthTest: false })));
   grp.children.forEach(o => o.renderOrder = 12); scene.add(grp); knifeObj = grp;
@@ -3111,39 +3211,51 @@ function resymmetrize() {
 function applyKnife() {
   if (S.knifeClosed) { applyKnifeLoop(); return; }
   if (S.knife.length < 2) { flash('Click at least two points to draw the knife line across a decal.'); return; }
-  const K = knifeSamples();
   const before = snapshot();
   setBusy('Cutting…');
   setTimeout(() => {
-    const Ks = [K];
-    if (S.mirrorDefault) {
-      const K2 = mirroredKnife(K), pl = mirrorPlane(), near = q => Math.abs(q.point[pl.k] - pl.c) < 6;
-      const revK = A => [...A].reverse().map((q, i) => ({ ...q, brk: i === 0 || !!A[A.length - i].brk })); // gaps move to the other end of each piece
-      if (K2.length >= 2 && !sameKnife(K, K2)) {
-        // a cut that starts or ends at the centre line continues across it as one symmetric cut
-        if (near(K[0])) { Ks[0] = [...revK(K2), ...K.map((q, i) => i === 0 ? { ...q, brk: false } : q)]; }
-        else if (near(K[K.length - 1])) { Ks[0] = [...K, ...revK(K2).map((q, i) => i === 0 ? { ...q, brk: false } : q)]; }
-        else Ks.push(K2);
-      }
-    }
+    const r = knifeCutAll(withMirror(knifeLines()), before);
+    if (!r) { setBusy(false); flash(S.knifeThrough ? 'The knife line has to cross a decal outline twice. Draw it past the edges.' : 'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
+    resymmetrize();
+    setBusy(false);
+    HIST.undo.push(before); HIST.redo = []; S.dirty = true; clearKnife(); S.active = null; renderHandles(); updateUI();
+    flash(`Made ${r.cuts} cut${r.cuts === 1 ? '' : 's'}${r.mirrored ? ', mirrored to the other side' : ''}.`);
+  }, 20);
+}
+// the knife lines plus their mirror images; a cut that starts or ends at the centre line continues across it as one symmetric cut
+function withMirror(Ks) {
+  if (!S.mirrorDefault) return Ks;
+  const pl = mirrorPlane(), near = q => Math.abs(q.point[pl.k] - pl.c) < 6, out = [...Ks];
+  const revK = A => [...A].reverse().map((q, i) => ({ ...q, brk: i === 0 || !!A[A.length - i].brk })); // gaps move to the other end of each piece
+  const all = Ks.flat();
+  const covered = K2 => { let c = 0, n = 0; for (let i = 0; i < K2.length; i += 3) { n++; if (all.some(s => dist3(s.point, K2[i].point) < 4)) c++; } return c > n * 0.5; }; // the mirror image is already being cut
+  Ks.forEach((K, i) => {
+    const K2 = mirroredKnife(K); if (K2.length < 2 || sameKnife(K, K2) || covered(K2)) return;
+    if (near(K[0]) && !K.loop) out[i] = [...revK(K2), ...K.map((q, j) => j === 0 ? { ...q, brk: false } : q)];
+    else if (near(K[K.length - 1]) && !K.loop) out[i] = [...K, ...revK(K2).map((q, j) => j === 0 ? { ...q, brk: false } : q)];
+    else out.push(K2);
+  });
+  out.mirrored = out.length > Ks.length || out.some((K, i) => K !== Ks[i]);
+  return out;
+}
+// cut every decal with every knife line; returns null (and restores) when nothing was cut
+function knifeCutAll(Ks, before) {
+  {
     let expanded = 0;
     if (S.mirrorDefault) for (const d of S.decals.filter(d => d.closed && d.mergedMap && !d.holeOf)) if (Ks.some(k => knifeCrossings(d, k).length >= 2)) { expandSymmetric(d); expanded++; }
     let cuts = 0, guard = 0;
     for (const KK of Ks) {
       const queue = S.decals.filter(d => d.closed && !d.holeOf);
-      while (queue.length && guard++ < 120) {
+      while (queue.length && guard++ < 400) {
         const d = queue.shift(); if (!S.decals.includes(d)) continue;
         const made = knifeCutOnce(d, KK);
         if (made) { cuts++; for (const m of made) if (d._symSide != null) m._symSide = d._symSide; queue.push(...made); }
       }
     }
     for (const d of S.decals) { delete d.cutSegs; delete d.cutPts; }
-    if (!cuts) { if (expanded) applySnapshot(before); setBusy(false); flash('The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
-    resymmetrize();
-    setBusy(false);
-    HIST.undo.push(before); HIST.redo = []; S.dirty = true; clearKnife(); S.active = null; renderHandles(); updateUI();
-    flash(`Made ${cuts} cut${cuts === 1 ? '' : 's'}${Ks.length > 1 ? ', mirrored to the other side' : ''}.`);
-  }, 20);
+    if (!cuts) { if (expanded) applySnapshot(before); return null; }
+    return { cuts, mirrored: !!Ks.mirrored };
+  }
 }
 
 // ---------- holes and booleans ----------
@@ -3490,7 +3602,7 @@ function updateGridUI() {
 $('#gridBtn').addEventListener('click', e => { e.stopPropagation(); const m = $('#gridMenu'); m.hidden = !m.hidden; $('#gridBtn').setAttribute('aria-expanded', String(!m.hidden)); });
 document.addEventListener('pointerdown', e => { if (!$('#gridMenu').hidden && !e.target.closest('#gridMenu, #gridBtn')) $('#gridMenu').hidden = true; });
 $('#gShow').addEventListener('change', e => { S.grid.show = e.target.checked; gridKey = ''; renderGrid(); updateGridUI(); });
-$('#gSnap').addEventListener('change', e => { S.grid.snap = e.target.checked; if (S.grid.snap && !S.grid.show) { S.grid.show = true; renderGrid(); } updateGridUI(); flash(S.grid.snap ? `Points snap to a ${S.grid.step} mm grid on the ${'XYZ'[gridAxis()]} plane, then onto the surface.` : 'Grid snapping off.'); });
+$('#gSnap').addEventListener('change', e => { S.grid.snap = e.target.checked; if (S.grid.snap && !S.grid.show) { S.grid.show = true; renderGrid(); } updateGridUI(); flash(S.grid.snap ? `Points snap to a ${S.grid.step} mm grid on the ${['front (YZ)', 'ground (XY)', 'side (XZ)'][gridAxis()]} plane, then onto the surface.` : 'Grid snapping off.'); });
 $('#gStep').addEventListener('change', e => { const v = parseFloat(e.target.value); if (v > 0) S.grid.step = v; gridKey = ''; renderGrid(); updateGridUI(); });
 $('#gPlane').addEventListener('change', e => { S.grid.plane = e.target.value; gridKey = ''; renderGrid(); updateGridUI(); });
 
@@ -3517,7 +3629,52 @@ function splitAtPoints() {
   setTimeout(() => { solveNow(da); solveNow(db); S.active = da; setBusy(false); renderHandles(); updateUI(); flash('Split into two pieces.'); }, 20);
 }
 // a closed knife loop cuts its area out of every decal it overlaps
+// a closed loop that cuts through: everything inside the drawn area, on every layer, is cut away
+function applyKnifeLoopThrough() {
+  const poly = S.knife.map(k => { const p = screenOf(k.w); return [p.x, p.y]; });
+  const inPoly = (x, y) => { let c = false; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [xi, yi] = poly[i], [xj, yj] = poly[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const edgeDist = (x, y) => { let m = 1e9; for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) { const [ax, ay] = poly[j], [bx, by] = poly[i], dx = bx - ax, dy = by - ay, t = Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / (dx * dx + dy * dy || 1))); m = Math.min(m, Math.hypot(ax + dx * t - x, ay + dy * t - y)); } return m; };
+  const within = pts => { let strict = false; for (const p of pts) { const q = screenOf(p), e = edgeDist(q.x, q.y); if (e < 3) continue; if (!inPoly(q.x, q.y)) return false; strict = true; } return strict; };
+  const before = snapshot();
+  setBusy('Cutting…');
+  setTimeout(() => {
+    const { open, loops } = throughPaths();
+    const lines = withMirror([...open, ...loops.map(K => { const D = [...K, ...K.slice(1), K[0]].map((q, i) => ({ ...q, brk: i === 0 })); D.loop = K; return D; })]);
+    const r = knifeCutAll(lines, before);
+    let removed = 0, holes = 0;
+    // pieces that now sit inside the drawn area go
+    for (const d of [...S.decals]) {
+      if (!d.closed || d.holeOf || !S.decals.includes(d)) continue;
+      const pts = (d.res?.samples?.length ? d.res.samples.map(q => q.point) : d.ctrl.map(c => c.p)).filter((_, i, a) => a.length < 200 || i % Math.ceil(a.length / 200) === 0);
+      if (within(pts) || (S.mirrorDefault && within(pts.map(reflect)))) { for (const h of [...holesOf(d), d]) removeDecal(h, true); removed++; }
+    }
+    // a loop that sits entirely inside a decal leaves a hole
+    const cand = loops.filter(K => !K.wraps);
+    if (S.mirrorDefault) { const all = loops.flat(); for (const K of cand.slice()) { const K2 = mirroredKnife(K); if (K2.length >= 3 && !K2.slice(1).some(q => q.brk) && K2.filter((_, i) => i % 3 === 0).filter(q => all.some(s => dist3(s.point, q.point) < 4)).length <= K2.length / 6) cand.push(K2); } }
+    for (const K of cand) {
+      let m = 0; K.forEach((q, i) => { if (dist3(q.point, K[0].point) > dist3(K[m].point, K[0].point)) m = i; }); // thin each half of the loop separately
+      const ctrl = [...knifePath(K, -1, m), ...knifePath(K, m - 1, K.length - 1).slice(1)].map(q => ({ p: q.point.slice(), face: q.face, type: 'corner' }));
+      if (ctrl.length < 3) continue;
+      const res = Core.solveDecal(S.model, ctrl, false); if (res.error) continue;
+      res.insideSet = new Set(res.insideFaces);
+      const cutter = { ctrl, closed: true, res, mirror: false, name: 'knife' };
+      for (const A of S.decals.filter(d => d.closed && !d.holeOf && d.res && !d.res.error && knifeCrossings(d, K).length < 2 && K.filter(q => d.res.insideSet?.has(q.face)).length > K.length * 0.85)) {
+        const b = booleanCore('difference', A, cutter);
+        if (b.error && !b.empty) continue;
+        for (const h of [...holesOf(A), A]) removeDecal(h, true);
+        for (const d of b.made || []) { S.decals.push(d); solveNow(d); }
+        holes++;
+      }
+    }
+    if (!r && !removed && !holes) { applySnapshot(before); setBusy(false); flash('The knife loop does not overlap any decal.'); return; }
+    resymmetrize();
+    setBusy(false);
+    HIST.undo.push(before); HIST.redo = []; S.dirty = true; clearKnife(); S.active = null; renderHandles(); updateUI();
+    flash(`Cut the loop through the model${removed ? `: removed ${removed} piece${removed === 1 ? '' : 's'}` : ''}${holes ? `${removed ? ',' : ':'} ${holes} hole${holes === 1 ? '' : 's'}` : ''}.`);
+  }, 20);
+}
 function applyKnifeLoop() {
+  if (S.knifeThrough) { applyKnifeLoopThrough(); return; }
   const K = knifeSamples(); if (K.some((s, i) => i > 0 && s.brk)) { flash('The knife loop has to stay on the model all the way round.'); return; }
   const ctrl = knifePath(K, -1, K.length - 1).map(s => ({ p: s.point.slice(), face: s.face, type: 'corner' }));
   if (ctrl.length < 3) { flash('The knife loop is too small.'); return; }
@@ -3591,7 +3748,7 @@ function makeShape(p) {
   const piece = S.model.topo.piece[ctrl[0].face];
   if (ctrl.some(c => S.model.topo.piece[c.face] !== piece)) { flash('The shape spans two separate parts of the model. Keep it on one surface.'); return; }
   pushHistory();
-  const id = S.nextId++, name = { rect: 'Rectangle', circle: 'Circle', poly: `${o.pts.length}-gon` }[S.drawShape];
+  const id = S.nextId++, name = tr({ rect: 'Rectangle', circle: 'Circle', poly: `${o.pts.length}-gon` }[S.drawShape]);
   const d = { id, name: `${name} ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: S.mirrorDefault, side: 0, res: null, twin: null, obj: [] };
   if (d.mirror) { const pl = mirrorPlane(); d.side = Math.sign(ctrl.reduce((s, c) => s + c.p[pl.k] - pl.c, 0)) || 1; }
   S.decals.push(d); S.active = d; S.sel = null;
@@ -3926,7 +4083,270 @@ $('#export').addEventListener('click', async () => {
 });
 
 updateUI();
+// ---------- language: English / Deutsch ----------
+// The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
+const DE = {
+  // top bar and toolbar
+  'Frame': 'Rahmen', 'Build a frame from geometry numbers or change its size': 'Rahmen aus Geometriedaten bauen oder Größe ändern', 'Frame from geometry': 'Rahmen aus Geometrie',
+  'Model units': 'Modelleinheit', 'Auto': 'Auto', 'inch': 'Zoll', 'File': 'Datei', 'Start over with the start frame': 'Mit dem Startrahmen neu beginnen', 'New': 'Neu',
+  'Open a frame model (.glb, .obj, .stl), a saved project (.json) or SVG artwork': 'Rahmenmodell (.glb, .obj, .stl), gespeichertes Projekt (.json) oder SVG-Grafik öffnen', 'Open': 'Öffnen',
+  'Place SVG artwork on the frame as editable decals': 'SVG-Grafik als bearbeitbare Decals auf den Rahmen setzen', 'Import SVG': 'SVG importieren',
+  'Save the frame and all decals as a project file': 'Rahmen und alle Decals als Projektdatei speichern', 'Save': 'Speichern', '3D view': '3D-Ansicht',
+  'Tools': 'Werkzeuge', 'Tool': 'Werkzeug', 'Draw new outlines': 'Neue Konturen zeichnen', 'Draw': 'Zeichnen', 'Move, add and delete points': 'Punkte verschieben, hinzufügen und löschen', 'Edit': 'Bearbeiten',
+  'Draw a cut line across decals, then apply it': 'Schnittlinie über Decals ziehen und dann anwenden', 'Knife': 'Messer', 'History': 'Verlauf',
+  'Undo (Ctrl+Z)': 'Rückgängig (Strg+Z)', 'Undo': 'Rückgängig', 'Redo (Ctrl+Shift+Z)': 'Wiederholen (Strg+Umschalt+Z)', 'Redo': 'Wiederholen',
+  'Tool options': 'Werkzeugoptionen', 'Shape': 'Form', 'Click points or sketch freehand': 'Punkte klicken oder frei skizzieren', 'Pen': 'Stift',
+  'Drag from corner to corner (Shift: square, Alt: from centre)': 'Von Ecke zu Ecke ziehen (Umschalt: Quadrat, Alt: von der Mitte)', 'Rect': 'Rechteck',
+  'Drag from the centre (Shift: from edge to edge)': 'Von der Mitte aus ziehen (Umschalt: von Rand zu Rand)', 'Circle': 'Kreis',
+  'Drag from the centre; the drag direction sets the rotation': 'Von der Mitte aus ziehen; die Zugrichtung bestimmt die Drehung', 'Polygon': 'Polygon',
+  'Number of sides': 'Anzahl der Ecken', 'Sides': 'Ecken', 'Corner radius for rectangles and polygons': 'Eckenradius für Rechtecke und Polygone',
+  'New points': 'Neue Punkte', 'Clicked points join with straight lines': 'Geklickte Punkte werden mit geraden Linien verbunden', 'Straight': 'Gerade',
+  'Clicked points join with smooth curves': 'Geklickte Punkte werden mit weichen Kurven verbunden', 'Curved': 'Kurvig',
+  'Split every decal the knife line crosses (Enter)': 'Jedes Decal teilen, das die Messerlinie kreuzt (Enter)', 'Apply cut': 'Schnitt anwenden',
+  'Remove the knife line (Esc)': 'Messerlinie entfernen (Esc)', 'Clear': 'Löschen',
+  'On: cut every surface under the line, front and back. Off: cut only the visible side (T)': 'An: jede Fläche unter der Linie schneiden, vorne und hinten. Aus: nur die sichtbare Seite schneiden (T)', 'Cut through': 'Durchschneiden',
+  'Close the open line into a decal (Enter)': 'Offene Linie zu einem Decal schließen (Enter)', 'Close shape': 'Form schließen',
+  'Symmetry': 'Symmetrie', 'Mirror the selected decal to the other side of the frame': 'Ausgewähltes Decal auf die andere Rahmenseite spiegeln', 'Mirror': 'Spiegeln', 'Mirror plane': 'Spiegelebene',
+  'Plane: auto': 'Ebene: auto', 'Plane: left | right': 'Ebene: links | rechts', 'Plane: front | back': 'Ebene: vorne | hinten', 'Plane: top | bottom': 'Ebene: oben | unten',
+  'How close a point must be to the centre plane to snap onto it. 0 snaps only when you drag across the plane.': 'Wie nah ein Punkt an der Mittelebene sein muss, um daran einzurasten. Bei 0 rastet er nur ein, wenn du ihn über die Ebene ziehst.',
+  'Snap': 'Fangen', 'View': 'Ansicht', 'Views': 'Ansichten', 'Look from': 'Blick von',
+  'From the front, looking along −X (3)': 'Von vorne, Blick entlang −X (3)', 'Front': 'Vorne', 'From above, looking down −Z (7)': 'Von oben, Blick entlang −Z (7)', 'Top': 'Oben',
+  'From the right side (1)': 'Von rechts (1)', 'Right': 'Rechts', 'From behind, looking along +X (Ctrl+3)': 'Von hinten, Blick entlang +X (Strg+3)', 'Back': 'Hinten',
+  'From below, looking up +Z (Ctrl+7)': 'Von unten, Blick entlang +Z (Strg+7)', 'Bottom': 'Unten', 'From the left side (Ctrl+1)': 'Von links (Strg+1)', 'Left': 'Links',
+  'Turn the view': 'Ansicht drehen', 'Turn left 45° (4)': '45° nach links drehen (4)', 'Tilt up 45° (8)': '45° nach oben kippen (8)', 'Turn right 45° (6)': '45° nach rechts drehen (6)', 'Tilt down 45° (2)': '45° nach unten kippen (2)',
+  'Saved views': 'Gespeicherte Ansichten', 'Save current view': 'Aktuelle Ansicht speichern',
+  'Keys: 1, 3, 7 look from the right, front and top (Ctrl for the opposite side). 4 and 6 turn, 8 and 2 tilt by 45°. 5 switches ortho. 0 fits the frame.': 'Tasten: 1, 3, 7 zeigen von rechts, vorne und oben (Strg für die Gegenseite). 4 und 6 drehen, 8 und 2 kippen um 45°. 5 schaltet Ortho um. 0 zeigt den ganzen Rahmen.',
+  'Grid and grid snapping (G shows or hides the grid)': 'Raster und Rasterfang (G blendet das Raster ein oder aus)', 'Grid': 'Raster', 'Show grid': 'Raster zeigen', 'Snap points to grid': 'Punkte am Raster fangen',
+  'Step (mm)': 'Schritt (mm)', 'Plane': 'Ebene', 'Facing the view': 'Zur Ansicht gedreht', 'Ground (XY)': 'Boden (XY)', 'Side (XZ)': 'Seite (XZ)', 'Front (YZ)': 'Vorne (YZ)',
+  'Snapping rounds a point\'s position on the grid plane to the step, then drops it straight onto the surface, so depth comes from the frame (2.5D). Use it with an axis view and Ortho for exact layouts.': 'Der Fang rundet die Position eines Punkts auf der Rasterebene auf den Schritt und legt ihn dann direkt auf die Fläche, die Tiefe kommt also vom Rahmen (2,5D). Für genaue Layouts mit einer Achsenansicht und Ortho verwenden.',
+  'Switch between perspective and orthographic view (5)': 'Zwischen perspektivischer und orthografischer Ansicht wechseln (5)', 'Ortho': 'Ortho',
+  'Colour each decal by how much the film has to stretch': 'Decals danach einfärben, wie stark sich die Folie dehnen muss', 'Stretch': 'Dehnung',
+  'Frame opacity: make it see-through so decals on the far side show (Alt+Z toggles)': 'Rahmendeckkraft: durchsichtig machen, damit Decals auf der Rückseite sichtbar sind (Alt+Z schaltet um)', 'Frame opacity': 'Rahmendeckkraft',
+  'Fit the whole frame in view (0)': 'Ganzen Rahmen einpassen (0)', 'Fit': 'Einpassen', 'with': 'mit',
+  'Join both shapes into one': 'Beide Formen zu einer verbinden', 'Union': 'Vereinigen', 'Cut the blue shape out of the first one': 'Die blaue Form aus der ersten ausschneiden', 'Subtract': 'Abziehen',
+  'Keep only where they overlap': 'Nur die Überlappung behalten', 'Intersect': 'Schnittmenge', 'Swap which shape is cut out of which': 'Tauschen, welche Form aus welcher geschnitten wird', 'Swap': 'Tauschen',
+  'Point type': 'Punkttyp', 'Handles follow the neighbouring points': 'Anfasser folgen den Nachbarpunkten', 'Editable handles that stay in line': 'Bearbeitbare Anfasser, die in einer Linie bleiben', 'Smooth': 'Glatt',
+  'Handles move independently, for a kink in the curve': 'Anfasser bewegen sich unabhängig, für einen Knick in der Kurve', 'Broken': 'Geknickt', 'Sharp corner without handles': 'Scharfe Ecke ohne Anfasser', 'Corner': 'Ecke',
+  'Merge the selected points into one (M)': 'Ausgewählte Punkte zu einem zusammenführen (M)', 'Merge': 'Zusammenführen', 'Delete the selected points (Delete)': 'Ausgewählte Punkte löschen (Entf)', 'Delete': 'Löschen',
+  'Two points selected: split the outline between them. One point: open the outline there.': 'Zwei Punkte ausgewählt: Kontur zwischen ihnen teilen. Ein Punkt: Kontur dort öffnen.', 'Split': 'Teilen',
+  'Select every point of this decal (Ctrl+A)': 'Alle Punkte dieses Decals auswählen (Strg+A)', 'Select all': 'Alle auswählen',
+  'Even out the selected points and give them automatic handles': 'Ausgewählte Punkte glätten und ihnen automatische Anfasser geben', 'Smooth curve': 'Kurve glätten', 'Corner radius': 'Eckenradius',
+  'Round the selected corners with this radius': 'Ausgewählte Ecken mit diesem Radius abrunden', 'Round corners': 'Ecken abrunden', 'Zoom in on the selection (F)': 'Auf die Auswahl zoomen (F)', 'Zoom to': 'Zoomen',
+  'Place artwork': 'Grafik platzieren', 'Width': 'Breite', 'Rotation': 'Drehung', 'Rotation in degrees': 'Drehung in Grad', 'Round size and rotation to the steps': 'Größe und Drehung auf die Schritte runden',
+  'Rotation step': 'Drehschritt', 'Size step': 'Größenschritt', 'Wrap onto surface': 'Auf Fläche wickeln', 'Project from view': 'Aus der Ansicht projizieren',
+  'Remove the preview and pick a new spot': 'Vorschau entfernen und neue Stelle wählen', 'Move': 'Verschieben', 'Cancel': 'Abbrechen', 'Apply': 'Anwenden', '4%+ stretch': '4 %+ Dehnung',
+  'Working…': 'Arbeite…', 'Drop a .glb, .obj, .stl, project .json or .svg artwork': '.glb, .obj, .stl, Projekt-.json oder .svg-Grafik hier ablegen',
+  'Cut sheet preview': 'Vorschau Schneidebogen', 'Decals': 'Decals', 'Combine with another decal': 'Mit einem anderen Decal kombinieren', 'Join the selected decal with another': 'Ausgewähltes Decal mit einem anderen verbinden',
+  'Cut another decal away from the selected one': 'Ein anderes Decal vom ausgewählten abziehen', 'Keep only where the selected decal and another overlap': 'Nur die Überlappung des ausgewählten mit einem anderen Decal behalten',
+  'Sheet': 'Bogen', 'Width (mm)': 'Breite (mm)', 'Height (mm)': 'Höhe (mm)', 'Gap (mm)': 'Abstand (mm)', 'Name labels': 'Namen beschriften', 'Sheet outline': 'Bogenumriss', 'Mirror pieces': 'Teile spiegeln',
+  'Export clean Bézier curves with few nodes instead of dense straight segments': 'Saubere Bézierkurven mit wenigen Knoten statt dichter gerader Segmente exportieren', 'Clean curves': 'Saubere Kurven', 'Download SVG': 'SVG herunterladen',
+  'Cut lines are black paths in millimetres on a "cut" layer. Labels and the sheet outline sit on their own layers so you can hide them in the cutter software.': 'Schnittlinien sind schwarze Pfade in Millimetern auf der Ebene „cut“. Beschriftungen und Bogenumriss liegen auf eigenen Ebenen, damit du sie in der Plotter-Software ausblenden kannst.',
+  'Place SVG artwork': 'SVG-Grafik platzieren', 'Each closed shape becomes an editable decal. Set the real size, then move over the model to see it and click to preview the placement before applying it.': 'Jede geschlossene Form wird ein bearbeitbares Decal. Lege die echte Größe fest, fahre dann über das Modell, um sie zu sehen, und klicke für eine Vorschau der Platzierung, bevor du sie anwendest.',
+  'Rotation (°)': 'Drehung (°)', 'Keep proportions': 'Proportionen beibehalten', 'Wrap onto the surface': 'Auf die Fläche wickeln', 'Keeps true sizes, like film laid on the tube. Best for decals.': 'Behält echte Maße, wie auf das Rohr gelegte Folie. Am besten für Decals.',
+  'Project from the view': 'Aus der Ansicht projizieren', 'Shines the artwork straight onto the model, so it looks right from this angle but stretches on curves.': 'Wirft die Grafik gerade auf das Modell, sie sieht aus diesem Winkel richtig aus, wird auf Rundungen aber gedehnt.',
+  'Also mirror to the other side of the frame': 'Auch auf die andere Rahmenseite spiegeln', 'Place on model': 'Auf Modell platzieren',
+  'Pick a preset and size, or type the numbers from a geometry chart. Tubes are built from your diameters and tube shape (round, carbon oval or aero), so use this for layout and sizing. Production patterns still need the real frame model.': 'Wähle eine Vorlage und Größe oder gib die Werte aus einer Geometrietabelle ein. Die Rohre entstehen aus deinen Durchmessern und der Rohrform (rund, Carbon-oval oder Aero), nutze das also für Layout und Größen. Für Produktionsschnitte brauchst du weiterhin das echte Rahmenmodell.',
+  'Preset': 'Vorlage', 'Size': 'Größe', 'Save preset': 'Vorlage speichern', 'Tube shape and diameters': 'Rohrform und Durchmesser', 'Paste a geometry chart': 'Geometrietabelle einfügen',
+  'Copy the geometry table from a brand website and paste it here. Rows like stack, reach, head and seat angles, head tube, seat tube, top tube slope, chainstay, BB drop and wheelbase are recognised, with one column per size.': 'Kopiere die Geometrietabelle von der Website des Herstellers und füge sie hier ein. Zeilen wie Stack, Reach, Lenk- und Sitzwinkel, Steuerrohr, Sitzrohr, Oberrohrneigung, Kettenstrebe, Tretlagerabsenkung und Radstand werden erkannt, mit einer Spalte pro Größe.',
+  'Preset name': 'Name der Vorlage', 'e.g. Brand Model 2025': 'z. B. Marke Modell 2025', 'Read chart and save preset': 'Tabelle lesen und Vorlage speichern', 'Move my decals onto the new frame': 'Meine Decals auf den neuen Rahmen übertragen', 'Build frame': 'Rahmen bauen',
+  'Language': 'Sprache',
+  // frame builder fields and presets
+  'Head tube angle': 'Lenkwinkel', 'Head tube length': 'Steuerrohrlänge', 'Seat tube angle': 'Sitzwinkel', 'Seat tube length (C-T)': 'Sitzrohrlänge (Mitte–Oberkante)', 'Top tube slope': 'Oberrohrneigung', 'BB drop': 'Tretlagerabsenkung',
+  'Fork offset / rake': 'Gabelvorlauf', 'Fork length, axle to crown': 'Gabellänge, Achse bis Krone', 'Head tube top Ø': 'Steuerrohr oben Ø', 'Head tube bottom Ø': 'Steuerrohr unten Ø', 'Down tube Ø': 'Unterrohr Ø', 'Top tube Ø': 'Oberrohr Ø', 'Seat tube Ø': 'Sitzrohr Ø',
+  'Chainstay Ø at axle': 'Kettenstrebe Ø an der Achse', 'Seatstay Ø at top': 'Sitzstrebe Ø oben', 'Seatstay Ø at axle': 'Sitzstrebe Ø an der Achse', 'Fork leg Ø at crown': 'Gabelbein Ø an der Krone', 'Fork leg Ø at axle': 'Gabelbein Ø an der Achse',
+  'BB shell Ø': 'Tretlagergehäuse Ø', 'BB shell width': 'Tretlagergehäuse Breite', 'Rear axle width': 'Hinterachse Breite', 'Fork axle width': 'Gabelachse Breite', 'Fork leg spacing at crown': 'Gabelbein-Abstand an der Krone',
+  'Stack': 'Stack', 'Reach': 'Reach', 'Chainstay length': 'Kettenstrebenlänge', 'Chainstay': 'Kettenstrebe', 'Wheelbase': 'Radstand', 'Front-centre': 'Front-Center', 'optional': 'optional', 'Chainstay (horizontal)': 'Kettenstrebe (horizontal)', 'Front-centre (horizontal)': 'Front-Center (horizontal)',
+  'Road race': 'Rennrad Race', 'Endurance road': 'Rennrad Endurance', 'Steel touring': 'Stahl-Tourer', 'Carbon aero road': 'Carbon-Aero-Rennrad', 'Carbon climbing road': 'Carbon-Bergrennrad', 'Carbon gravel': 'Carbon-Gravel', 'Gravel all-road': 'Gravel All-Road',
+  'XC hardtail 29': 'XC-Hardtail 29', 'Carbon XC hardtail 29': 'Carbon-XC-Hardtail 29', 'Trail hardtail 29': 'Trail-Hardtail 29', 'Start frame (road, M)': 'Startrahmen (Rennrad, M)', 'My presets': 'Meine Vorlagen',
+  'Road': 'Rennrad', 'Gravel': 'Gravel', 'MTB': 'MTB', 'Carbon': 'Carbon', 'Other': 'Andere', 'Custom numbers': 'Eigene Werte', 'Tube shape': 'Rohrform', 'Round (alloy, steel)': 'Rund (Alu, Stahl)', 'Carbon (oval, flattened top tube)': 'Carbon (oval, flaches Oberrohr)',
+  'Aero (narrow, deep tubes)': 'Aero (schmale, tiefe Rohre)', 'Section: circle to square': 'Querschnitt: Kreis bis Quadrat', 'Round': 'Rund', 'Square': 'Quadrat', 'One size': 'Eine Größe', 'Custom frame': 'Eigener Rahmen', 'My frame': 'Mein Rahmen',
+  'Head tube': 'Steuerrohr', 'Down tube': 'Unterrohr', 'Top tube': 'Oberrohr', 'Seat tube': 'Sitzrohr', 'BB shell': 'Tretlagergehäuse',
+  'No row with size names (like S, M, L or 52, 54, 56) was found.': 'Keine Zeile mit Größenbezeichnungen (wie S, M, L oder 52, 54, 56) gefunden.',
+  'Enter the front-centre, or the fork length and offset.': 'Gib das Front-Center oder Gabellänge und Vorlauf ein.', 'The angles look wrong. Use degrees from horizontal, for example 71.5.': 'Die Winkel sehen falsch aus. Nutze Grad zur Horizontalen, zum Beispiel 71,5.',
+  'Building a new frame clears the current decals. Continue?': 'Ein neuer Rahmen löscht die aktuellen Decals. Fortfahren?', 'Name for this frame preset': 'Name für diese Rahmenvorlage', 'Built-in presets cannot be deleted.': 'Mitgelieferte Vorlagen können nicht gelöscht werden.',
+  // files and projects
+  'Preparing model…': 'Modell wird vorbereitet…', 'Use a .glb, .obj or .stl model, or a saved .json project.': 'Nutze ein .glb-, .obj- oder .stl-Modell oder ein gespeichertes .json-Projekt.',
+  'Opening a new model clears the current decals. Save the project first if you want to keep them. Continue?': 'Ein neues Modell löscht die aktuellen Decals. Speichere vorher das Projekt, wenn du sie behalten willst. Fortfahren?',
+  'Start a new file? Decals that are not saved will be lost.': 'Neue Datei beginnen? Nicht gespeicherte Decals gehen verloren.', 'Project saved with the frame and all decals.': 'Projekt mit Rahmen und allen Decals gespeichert.',
+  'Restoring decals…': 'Decals werden wiederhergestellt…', 'This is not a valid project file.': 'Das ist keine gültige Projektdatei.', 'This JSON file is not a Decal Studio project.': 'Diese JSON-Datei ist kein Decal-Studio-Projekt.',
+  'Opening a project replaces the current frame and decals. Continue?': 'Ein Projekt zu öffnen ersetzt den aktuellen Rahmen und die Decals. Fortfahren?', 'This project has no frame model. Open the frame first, then the project.': 'Dieses Projekt enthält kein Rahmenmodell. Öffne zuerst den Rahmen, dann das Projekt.',
+  'Changing units clears the decals you have drawn. Continue?': 'Eine andere Einheit löscht die gezeichneten Decals. Fortfahren?',
+  // drawing and editing
+  'Loop closed. Apply cut removes its area from the decals it overlaps.': 'Schleife geschlossen. Schnitt anwenden entfernt ihre Fläche aus den überlappten Decals.', 'Drag to size the shape.': 'Ziehen, um die Form aufzuziehen.', 'Points merged.': 'Punkte zusammengeführt.',
+  'Placement cancelled.': 'Platzierung abgebrochen.', 'Stopped drawing. The line stays open; click it to keep editing.': 'Zeichnen beendet. Die Linie bleibt offen; klicke sie an, um weiterzuarbeiten.',
+  'A closed decal needs at least three points. Delete the whole decal from the list instead, or open it with the Split tool.': 'Ein geschlossenes Decal braucht mindestens drei Punkte. Lösche stattdessen das ganze Decal in der Liste oder öffne es mit Teilen.',
+  'Select two or more points to merge (Shift-click or Shift-drag a box).': 'Wähle zwei oder mehr Punkte zum Zusammenführen (Umschalt-Klick oder Umschalt-Rahmen ziehen).', 'Merging these would leave fewer than three points.': 'Dann blieben weniger als drei Punkte übrig.',
+  'Unwrapping both sides…': 'Beide Seiten werden abgewickelt…', 'Unwrapping…': 'Wird abgewickelt…', 'Unwrapping both pieces…': 'Beide Teile werden abgewickelt…', 'Unwrapping artwork…': 'Grafik wird abgewickelt…', 'Cutting…': 'Wird geschnitten…', 'Updating…': 'Wird aktualisiert…', 'Fitting artwork…': 'Grafik wird angepasst…',
+  'Turn the model to an angle you like, then save it here.': 'Dreh das Modell in einen passenden Winkel und speichere ihn hier.', 'Go to this view': 'Zu dieser Ansicht', 'View name': 'Name der Ansicht', 'Delete this view': 'Diese Ansicht löschen',
+  'Points only snap to the centre plane when dragged across it.': 'Punkte rasten nur an der Mittelebene ein, wenn du sie darüber ziehst.', 'Open a model or start a new file.': 'Öffne ein Modell oder beginne eine neue Datei.',
+  'Check the orange preview. Alt + scroll resizes, Ctrl + scroll rotates (Shift for bigger steps). Apply (Enter) adds it; click elsewhere to move it.': 'Prüfe die orange Vorschau. Alt + Scrollen ändert die Größe, Strg + Scrollen dreht (Umschalt für größere Schritte). Anwenden (Enter) fügt sie hinzu; klicke woanders hin, um sie zu verschieben.',
+  'Move over the model to see the artwork, click to place a preview. Alt + scroll resizes, Ctrl + scroll rotates. Esc cancels.': 'Fahre über das Modell, um die Grafik zu sehen, und klicke für eine Vorschau. Alt + Scrollen ändert die Größe, Strg + Scrollen dreht. Esc bricht ab.',
+  'Closed knife loop: Apply cut (Enter) cuts this area out of every decal under it, front and back, leaving a hole if it sits inside. Esc clears it.': 'Geschlossene Messerschleife: Schnitt anwenden (Enter) schneidet diese Fläche aus jedem Decal darunter, vorne und hinten, und lässt ein Loch, wenn sie innen liegt. Esc löscht sie.',
+  'Closed knife loop: Apply cut (Enter) cuts this area out of every decal it overlaps on the visible side, leaving a hole if it sits inside. Esc clears it.': 'Geschlossene Messerschleife: Schnitt anwenden (Enter) schneidet diese Fläche aus jedem Decal, das sie auf der sichtbaren Seite überlappt, und lässt ein Loch, wenn sie innen liegt. Esc löscht sie.',
+  'Click to draw a knife line in the view, on or off the model; it cuts through every surface under it, front and back (T: visible side only). A line across a decal splits it; click the first point again to close a loop that cuts its area out.': 'Klicke, um eine Messerlinie in der Ansicht zu zeichnen, auf oder neben dem Modell; sie schneidet durch jede Fläche darunter, vorne und hinten (T: nur sichtbare Seite). Eine Linie über ein Decal teilt es; klicke erneut auf den ersten Punkt, um eine Schleife zu schließen, die ihre Fläche ausschneidet.',
+  'Click to draw a knife line in the view, on or off the model; it is projected onto the visible surface only (T: cut through). A line across a decal splits it; click the first point again to close a loop that cuts its area out.': 'Klicke, um eine Messerlinie in der Ansicht zu zeichnen, auf oder neben dem Modell; sie wird nur auf die sichtbare Fläche projiziert (T: durchschneiden). Eine Linie über ein Decal teilt es; klicke erneut auf den ersten Punkt, um eine Schleife zu schließen, die ihre Fläche ausschneidet.',
+  'Keep clicking to bend the knife line. Apply cut (Enter) splits every decal it crosses; Backspace removes the last knife point, Esc clears it.': 'Klicke weiter, um die Messerlinie zu knicken. Schnitt anwenden (Enter) teilt jedes Decal, das sie kreuzt; Rücktaste entfernt den letzten Messerpunkt, Esc löscht die Linie.',
+  'Split: click a second spot on the same outline. The shape is divided along a straight line between the two spots. Esc cancels.': 'Teilen: klicke eine zweite Stelle auf derselben Kontur. Die Form wird entlang einer geraden Linie zwischen beiden Stellen geteilt. Esc bricht ab.',
+  'Split: click two spots on an outline to divide it into two pieces along a straight line. Shift-click opens an outline at that spot; clicking an open line snips it. To cut one shape with another, use Subtract instead.': 'Teilen: klicke zwei Stellen auf einer Kontur, um sie entlang einer geraden Linie in zwei Teile zu teilen. Umschalt-Klick öffnet eine Kontur an dieser Stelle; ein Klick auf eine offene Linie trennt sie. Um eine Form mit einer anderen zu schneiden, nutze Abziehen.',
+  'Keep placing points around the decal. Turn the model between clicks by dragging the background or right-dragging.': 'Setze weiter Punkte rund um das Decal. Dreh das Modell zwischen den Klicks, indem du den Hintergrund ziehst oder mit rechts ziehst.',
+  'Keep clicking to extend the line. Click the yellow first point or press Close shape to close it. Esc stops drawing and leaves the line open.': 'Klicke weiter, um die Linie zu verlängern. Klicke den gelben ersten Punkt oder Form schließen, um sie zu schließen. Esc beendet das Zeichnen und lässt die Linie offen.',
+  'Ctrl-click adds a point, Alt-click deletes one. Drag to move (hold Shift for fine moves, arrow keys nudge). Drag the pink handles to bend the curve; Alt-drag breaks them apart. Drop onto a neighbour to merge. F zooms in.': 'Strg-Klick fügt einen Punkt hinzu, Alt-Klick löscht einen. Ziehen verschiebt (Umschalt für feine Bewegungen, Pfeiltasten schieben). Zieh die pinken Anfasser, um die Kurve zu biegen; Alt-Ziehen trennt sie. Auf einen Nachbarn ziehen führt zusammen. F zoomt heran.',
+  'Open line selected. Click on the model to continue it from the end (select the first point to continue from the start).': 'Offene Linie ausgewählt. Klicke auf das Modell, um sie am Ende fortzusetzen (wähle den ersten Punkt, um am Anfang fortzusetzen).',
+  'Open line: drag points, Ctrl-click to add a point (past an end to extend it), Alt-click a point to delete it. Close shape turns it into a decal; switch to Draw to extend it.': 'Offene Linie: Punkte ziehen, Strg-Klick fügt einen Punkt hinzu (hinter einem Ende verlängert sie), Alt-Klick löscht einen Punkt. Form schließen macht ein Decal daraus; wechsle zu Zeichnen, um sie zu verlängern.',
+  'Shift-click another decal to combine the two (union, subtract, intersect).': 'Umschalt-Klick auf ein anderes Decal kombiniert beide (vereinigen, abziehen, Schnittmenge).',
+  'Click a point to select it, Shift-drag a box to select several.': 'Klicke einen Punkt, um ihn auszuwählen, zieh mit Umschalt einen Rahmen, um mehrere auszuwählen.',
+  'Ctrl-click the line or the model to add a point, Alt-click a point to delete it.': 'Strg-Klick auf die Linie oder das Modell fügt einen Punkt hinzu, Alt-Klick löscht einen Punkt.',
+  'Click elsewhere on the model to start a new decal.': 'Klicke woanders auf das Modell, um ein neues Decal zu beginnen.', 'Drag anywhere else to turn the view.': 'Zieh an einer anderen Stelle, um die Ansicht zu drehen.',
+  'Rectangle: drag from corner to corner. Shift makes a square, Alt draws from the centre.': 'Rechteck: von Ecke zu Ecke ziehen. Umschalt macht ein Quadrat, Alt zeichnet von der Mitte aus.',
+  'Circle: drag from the centre outwards. Shift drags from edge to edge.': 'Kreis: von der Mitte nach außen ziehen. Umschalt zieht von Rand zu Rand.',
+  'Polygon: drag from the centre; the drag direction sets the rotation. Set the number of sides in the toolbar.': 'Polygon: von der Mitte aus ziehen; die Zugrichtung bestimmt die Drehung. Die Anzahl der Ecken stellst du in der Werkzeugleiste ein.',
+  'The shape is projected from your view onto the surface; turn the view to line it up with a tube.': 'Die Form wird aus deiner Ansicht auf die Fläche projiziert; dreh die Ansicht, um sie an einem Rohr auszurichten.',
+  'Clicks make smooth curves.': 'Klicks erzeugen weiche Kurven.', 'Clicks make straight lines; double-click a point later to curve it.': 'Klicks erzeugen gerade Linien; doppelklicke später einen Punkt, um ihn zu runden.',
+  'Click on the model to place points, or press and drag to sketch a freehand outline.': 'Klicke auf das Modell, um Punkte zu setzen, oder drück und zieh, um eine Kontur frei zu skizzieren.',
+  'Drag the background, right-drag, or hold Alt to turn the view.': 'Zieh den Hintergrund, zieh mit rechts oder halte Alt, um die Ansicht zu drehen.',
+  'Points near the pink centre plane snap to it; start and end there for one symmetric decal.': 'Punkte nahe der pinken Mittelebene rasten dort ein; beginne und ende dort für ein symmetrisches Decal.',
+  'Click a decal to select it, then drag its points to reshape it.': 'Klicke ein Decal an, um es auszuwählen, und zieh dann seine Punkte, um es zu formen.',
+  'No points selected': 'Keine Punkte ausgewählt', 'Open here': 'Hier öffnen', 'Smooth all': 'Alle glätten', 'Round all': 'Alle abrunden',
+  'Lies flat without stretching': 'Liegt flach ohne Dehnung', 'Slight stretch. Usually fine for film': 'Leichte Dehnung. Für Folie meist kein Problem', 'Film may wrinkle here. Add a relief cut or split the decal': 'Die Folie kann hier Falten werfen. Setze einen Entlastungsschnitt oder teile das Decal',
+  'No decals yet. Click on the model to place the first point.': 'Noch keine Decals. Klicke auf das Modell, um den ersten Punkt zu setzen.', 'Load a model to begin.': 'Lade ein Modell, um zu beginnen.',
+  'Hole': 'Loch', 'Symmetric': 'Symmetrisch', 'one piece, mirrored across the centre': 'ein Teil, über die Mitte gespiegelt', 'Decal name': 'Decal-Name',
+  'Make this a separate piece instead of a hole': 'Als eigenes Teil statt als Loch verwenden', 'Detach': 'Lösen', 'Add a mirrored copy on the other side of the frame': 'Gespiegelte Kopie auf der anderen Rahmenseite hinzufügen',
+  'Turn the mirrored part into real outline you can edit': 'Gespiegelten Teil in eine echte, bearbeitbare Kontur umwandeln', 'Use the area on the other side of the outline': 'Die Fläche auf der anderen Seite der Kontur verwenden', 'Swap side': 'Seite tauschen', 'Delete this decal': 'Dieses Decal löschen',
+  'A piece is larger than the sheet. Increase the sheet size or split the decal.': 'Ein Teil ist größer als der Bogen. Vergrößere den Bogen oder teile das Decal.',
+  'Cut on your own half of a symmetric decal.': 'Schneide auf deiner eigenen Hälfte eines symmetrischen Decals.', 'Line cut in two.': 'Linie in zwei Teile getrennt.', 'Outline opened. It is now an open line you can edit or close again.': 'Kontur geöffnet. Sie ist jetzt eine offene Linie, die du bearbeiten oder wieder schließen kannst.',
+  'Now click a second spot on the same outline to cut it into two pieces.': 'Klicke jetzt eine zweite Stelle auf derselben Kontur, um sie in zwei Teile zu schneiden.', 'Pick two different spots.': 'Wähle zwei verschiedene Stellen.', 'Cut into two pieces.': 'In zwei Teile geschnitten.',
+  'Curve smoothed. Click again to smooth more.': 'Kurve geglättet. Nochmal klicken glättet weiter.', 'Enter a corner radius in millimetres.': 'Gib einen Eckenradius in Millimetern ein.', 'Select the corner points to round.': 'Wähle die Eckpunkte zum Abrunden.', 'Those points are already smooth.': 'Diese Punkte sind schon glatt.',
+  'Cut through: the knife cuts every surface under the line, front and back.': 'Durchschneiden: Das Messer schneidet jede Fläche unter der Linie, vorne und hinten.', 'Visible side only: the knife cuts just the surface you can see.': 'Nur sichtbare Seite: Das Messer schneidet nur die Fläche, die du siehst.',
+  'Click at least two points to draw the knife line across a decal.': 'Klicke mindestens zwei Punkte, um die Messerlinie über ein Decal zu ziehen.', 'The knife line has to cross a decal outline twice. Draw it past the edges.': 'Die Messerlinie muss eine Decal-Kontur zweimal kreuzen. Zieh sie über die Ränder hinaus.',
+  'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.': 'Die Messerlinie muss eine Decal-Kontur auf der sichtbaren Seite zweimal kreuzen. Zieh sie über die Ränder hinaus.',
+  'Select a closed decal first, then pick the operation.': 'Wähle zuerst ein geschlossenes Decal, dann die Operation.', 'These shapes do not overlap on one surface, or together they wrap all the way around the tube.': 'Diese Formen überlappen nicht auf einer Fläche, oder sie umschließen zusammen das ganze Rohr.',
+  'These shapes do not overlap.': 'Diese Formen überlappen nicht.', 'Nothing would be left.': 'Es würde nichts übrig bleiben.', 'Pick a different decal.': 'Wähle ein anderes Decal.',
+  'Grid snapping off.': 'Rasterfang aus.', 'Apply the mirror first (Apply in the decal list) to split a symmetric decal.': 'Wende zuerst die Spiegelung an (Anwenden in der Decal-Liste), um ein symmetrisches Decal zu teilen.', 'Outline opened at that point.': 'Kontur an diesem Punkt geöffnet.',
+  'Select two points on a closed outline to split between them, or one point to open it.': 'Wähle zwei Punkte auf einer geschlossenen Kontur, um dazwischen zu teilen, oder einen Punkt, um sie zu öffnen.', 'Pick two points that are not next to each other.': 'Wähle zwei Punkte, die nicht nebeneinander liegen.', 'Split into two pieces.': 'In zwei Teile geteilt.',
+  'The knife loop does not overlap any decal.': 'Die Messerschleife überlappt kein Decal.', 'The knife loop has to stay on the model all the way round.': 'Die Messerschleife muss rundum auf dem Modell bleiben.', 'The knife loop is too small.': 'Die Messerschleife ist zu klein.', 'Nothing was cut.': 'Nichts wurde geschnitten.',
+  'Part of the shape is off the model. Draw it fully over the surface.': 'Ein Teil der Form liegt neben dem Modell. Zeichne sie ganz auf der Fläche.', 'The shape spans two separate parts of the model. Keep it on one surface.': 'Die Form reicht über zwei getrennte Teile des Modells. Halte sie auf einer Fläche.',
+  'This SVG only has live text. Convert the text to outlines in your design app first.': 'Diese SVG enthält nur Live-Text. Wandle den Text zuerst in deinem Grafikprogramm in Pfade um.', 'No closed shapes were found in this SVG.': 'In dieser SVG wurden keine geschlossenen Formen gefunden.',
+  'Open a frame first, then import artwork onto it.': 'Öffne zuerst einen Rahmen und importiere dann die Grafik darauf.', 'Live text is ignored; convert it to outlines.': 'Live-Text wird ignoriert; wandle ihn in Pfade um.', 'Enter a width and height in millimetres.': 'Gib Breite und Höhe in Millimetern ein.',
+  'The artwork is too wide to wrap from this angle. Make it smaller, rotate the view, or use Project.': 'Die Grafik ist zu breit, um sie aus diesem Winkel zu wickeln. Verkleinere sie, dreh die Ansicht oder nutze Projizieren.', 'Nothing fits there. Click somewhere else.': 'Dort passt nichts hin. Klicke woanders hin.',
+  'Part of the artwork hangs over the edge of the surface. Shrink or rotate it, or click another spot.': 'Ein Teil der Grafik ragt über den Rand der Fläche. Verkleinere oder dreh sie oder klicke eine andere Stelle.',
+  'Preview placed. Apply adds it; click elsewhere to move it, or change size and rotation below.': 'Vorschau platziert. Anwenden fügt sie hinzu; klicke woanders hin, um sie zu verschieben, oder ändere unten Größe und Drehung.',
+  // unwrap errors
+  'The outline jumps onto a separate part of the model. Keep each decal on one connected surface.': 'Die Kontur springt auf ein getrenntes Teil des Modells. Halte jedes Decal auf einer zusammenhängenden Fläche.',
+  'This shape wraps all the way around a tube. Leave a small gap so the decal can lie flat.': 'Diese Form umschließt ein Rohr ganz. Lass eine kleine Lücke, damit das Decal flach liegen kann.', 'This area could not be flattened. Try a simpler outline.': 'Diese Fläche ließ sich nicht abwickeln. Versuche eine einfachere Kontur.',
+  'A decal needs at least three points.': 'Ein Decal braucht mindestens drei Punkte.', 'The outline is too small.': 'Die Kontur ist zu klein.',
+  // shape names
+  'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
+  'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
+};
+const DE_PAT = [ // {0}, {1}… stand for the parts that change
+  ['This model could not be prepared: {0}', 'Dieses Modell konnte nicht vorbereitet werden: {0}'], ['This project file could not be read: {0}', 'Diese Projektdatei konnte nicht gelesen werden: {0}'],
+  ['This glTF could not be read. Export it as a single .glb file. {0}', 'Diese glTF-Datei konnte nicht gelesen werden. Exportiere sie als einzelne .glb-Datei. {0}'], ['This file could not be read: {0}', 'Diese Datei konnte nicht gelesen werden: {0}'],
+  ['The file could not be saved here: {0}', 'Die Datei konnte hier nicht gespeichert werden: {0}'], ['Saved {0}', 'Gespeichert: {0}'], ['Unwrapping failed: {0}', 'Abwickeln fehlgeschlagen: {0}'], ['That combination failed: {0}', 'Diese Kombination ist fehlgeschlagen: {0}'],
+  ['The knife loop could not be used: {0}', 'Die Messerschleife konnte nicht verwendet werden: {0}'], ['This SVG could not be read: {0}', 'Diese SVG konnte nicht gelesen werden: {0}'],
+  ['The chart is missing {0}', 'In der Tabelle fehlt {0}'], ['{0} is missing.', '{0} fehlt.'], ['Read {0} sizes and {1} measurements. Saved as "{2}".', '{0} Größen und {1} Maße gelesen. Gespeichert als „{2}“.'], ['Delete the preset "{0}"?', 'Vorlage „{0}“ löschen?'],
+  ['wheelbase {0} mm · front-centre {1} mm · effective top tube {2} mm · {3}', 'Radstand {0} mm · Front-Center {1} mm · effektives Oberrohr {2} mm · {3*}'],
+  ['front axle {0} mm higher than the rear (0 means the numbers agree){1}', 'Vorderachse {0} mm höher als hinten (0 heißt, die Werte passen zusammen){1*}'], ['front axle {0} mm lower than the rear (0 means the numbers agree){1}', 'Vorderachse {0} mm tiefer als hinten (0 heißt, die Werte passen zusammen){1*}'],
+  ['implied fork offset {0} mm, fork length {1} mm{2}', 'daraus Gabelvorlauf {0} mm, Gabellänge {1} mm{2*}'], [' · trail about {0} mm', ' · Nachlauf etwa {0} mm'], ['{0} (mm)', '{0*} (mm)'], ['{0} (°)', '{0*} (°)'],
+  ['Points snap to a {0} mm grid on the {1} plane, then onto the surface.', 'Punkte rasten auf einem {0}-mm-Raster der Ebene {1*} ein, dann auf der Fläche.'],
+  ['Points within {0} mm of the centre plane snap to it.', 'Punkte bis {0} mm an der Mittelebene rasten dort ein.'],
+  ['Two decals selected. Union joins them, Subtract cuts {0} out of {1}, Intersect keeps only the overlap. Shift-click the blue one again to drop it.', 'Zwei Decals ausgewählt. Vereinigen verbindet sie, Abziehen schneidet {0} aus {1}, Schnittmenge behält nur die Überlappung. Umschalt-Klick auf das blaue hebt die Auswahl auf.'],
+  ['Union: click the second decal (on the model or in the list). Esc cancels.', 'Vereinigen: klicke das zweite Decal an (auf dem Modell oder in der Liste). Esc bricht ab.'],
+  ['Intersect: click the second decal (on the model or in the list). Esc cancels.', 'Schnittmenge: klicke das zweite Decal an (auf dem Modell oder in der Liste). Esc bricht ab.'],
+  ['Subtract: click the second decal (on the model or in the list) to cut away from {0}. Esc cancels.', 'Abziehen: klicke das zweite Decal an (auf dem Modell oder in der Liste), das von {0} abgezogen wird. Esc bricht ab.'],
+  ['{0} points selected. Drag one to move them together, M merges them, Delete removes them. Shift-click adds or removes points.', '{0} Punkte ausgewählt. Zieh einen, um alle zu verschieben, M führt sie zusammen, Entf löscht sie. Umschalt-Klick fügt Punkte hinzu oder entfernt sie.'],
+  ['{0}% stretch', '{0} % Dehnung'], ['cut out of {0}', 'ausgeschnitten aus {0}'], ['its piece', 'seinem Teil'],
+  ['Drawing, {0} point{1}. Close shape to cut it', 'Zeichnen, {0} Punkt(e). Form schließen, um es zu schneiden'], ['Drawing, {0} point{1}', 'Zeichnen, {0} Punkt(e)'],
+  ['Open line, {0} point{1}. Close shape to cut it', 'Offene Linie, {0} Punkt(e). Form schließen, um es zu schneiden'], ['Open line, {0} point{1}', 'Offene Linie, {0} Punkt(e)'],
+  ['Mirror: {0}', 'Spiegelung: {0}'], ['Delete {0}', '{0} löschen'],
+  ['Made {0} cut, mirrored to the other side.', '{0} Schnitt, auf die andere Seite gespiegelt.'], ['Made {0} cuts, mirrored to the other side.', '{0} Schnitte, auf die andere Seite gespiegelt.'], ['Made {0} cut.', '{0} Schnitt gemacht.'], ['Made {0} cuts.', '{0} Schnitte gemacht.'],
+  ['{0} has to be a closed decal that unwraps.', '{0} muss ein geschlossenes, abwickelbares Decal sein.'], ['{0} is now one full outline you can edit on both sides.', '{0} ist jetzt eine ganze Kontur, die du auf beiden Seiten bearbeiten kannst.'],
+  ['The mirrored copy is now its own decal, {0}.', 'Die gespiegelte Kopie ist jetzt ein eigenes Decal: {0}.'],
+  ['Cut the loop through the model.', 'Schleife durch das Modell geschnitten.'], ['Cut the loop through the model: removed {0} piece{1}, {2} hole{3}.', 'Schleife durch das Modell geschnitten: {0} Teil(e) entfernt, {2} Loch/Löcher.'],
+  ['Cut the loop through the model: removed {0} piece{1}.', 'Schleife durch das Modell geschnitten: {0} Teil(e) entfernt.'], ['Cut the loop through the model: {0} hole{1}.', 'Schleife durch das Modell geschnitten: {0} Loch/Löcher.'],
+  ['Cut the loop out of {0} decal{1}.', 'Schleife aus {0} Decal(s) ausgeschnitten.'], ['{0} added. Switch to Edit to adjust its points.', '{0} hinzugefügt. Wechsle zu Bearbeiten, um die Punkte anzupassen.'],
+  ['{0} open path was skipped.', '{0} offener Pfad wurde übersprungen.'], ['{0} open paths were skipped.', '{0} offene Pfade wurden übersprungen.'],
+  ['Added {0} shape{1} from {2}. Ctrl+Z removes them again.', '{0} Form(en) aus {2} hinzugefügt. Strg+Z entfernt sie wieder.'], ['({0} nodes, smooth curves)', '({0} Knoten, weiche Kurven)'], ['({0} nodes)', '({0} Knoten)'],
+  ['{0}: {1} mm', '{0*}: {1} mm'], ['{0}-gon', '{0}-Eck'], ['Rectangle {0}', 'Rechteck {0}'], ['Circle {0}', 'Kreis {0}'], ['Fork leg {0}', 'Gabelbein {0}'], ['{0} (edited)', '{0} (bearbeitet)'],
+];
+const DE_RE = DE_PAT.map(([en, de]) => [new RegExp('^' + en.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d)\}/g, '(.*?)') + '$'), en, de]);
+let LANG = 'en';
+try { LANG = localStorage.getItem('decal-studio-lang') || ((navigator.language || '').toLowerCase().startsWith('de') ? 'de' : 'en'); } catch (e) {}
+function trCore(s) {
+  if (DE[s] != null) return DE[s];
+  for (const [re, en, de] of DE_RE) {
+    const m = s.match(re); if (!m) continue;
+    const ids = [...en.matchAll(/\{(\d)\}/g)].map(x => +x[1]);
+    return de.replace(/\{(\d)(\*?)\}/g, (_, k, star) => { const v = m[ids.indexOf(+k) + 1] ?? ''; return star ? (trCore(v) ?? v) : v; }); // {n*}: that part is translated too
+  }
+  return null;
+}
+// translate one text; long messages are tried whole, then sentence by sentence
+function tr(s) {
+  if (LANG !== 'de' || typeof s !== 'string') return s;
+  const lead = s.match(/^\s*/)[0], tail = s.match(/\s*$/)[0], core = s.trim(); if (!core) return s;
+  let out = trCore(core);
+  if (out == null) {
+    const parts = core.split(/(?<=[.!?])\s+(?=[A-Z0-9(])/);
+    if (parts.length > 1) { // longest run of sentences that has a translation, from left to right
+      const res = []; let hit = false;
+      for (let i = 0; i < parts.length;) {
+        let j = parts.length, t = null;
+        for (; j > i; j--) { t = trCore(parts.slice(i, j).join(' ')); if (t != null) break; }
+        if (t != null) { res.push(t); hit = true; i = j; } else { res.push(parts[i]); i++; }
+      }
+      if (hit) out = res.join(' ');
+    }
+  }
+  return out == null ? s : lead + out + tail;
+}
+// the page itself: every text and tooltip outside drawings is swapped, and swapped back for English
+const I18N_ATTRS = ['title', 'aria-label', 'placeholder', 'label'];
+function i18nNode(n) {
+  if (n.nodeType === 3) {
+    const p = n.parentNode; if (!p || p.closest?.('svg, script, style, textarea')) return;
+    const cur = n.nodeValue, en = cur === n.__de ? n.__en : cur, want = LANG === 'de' ? tr(en) : en;
+    if (want !== en) { n.__en = en; n.__de = want; } else { n.__en = n.__de = undefined; }
+    if (cur !== want) n.nodeValue = want;
+    return;
+  }
+  if (n.nodeType !== 1 || n.closest('svg, script, style')) return;
+  const memo = n.__i18n || (n.__i18n = {});
+  for (const a of I18N_ATTRS) {
+    if (!n.hasAttribute(a)) continue;
+    const cur = n.getAttribute(a), m = memo[a], en = m && cur === m.de ? m.en : cur, want = LANG === 'de' ? tr(en) : en;
+    memo[a] = want !== en ? { en, de: want } : null;
+    if (cur !== want) n.setAttribute(a, want);
+  }
+}
+function i18nTree(root) {
+  if (root.nodeType === 3) { i18nNode(root); return; }
+  if (root.nodeType !== 1 || root.closest?.('svg')) return;
+  i18nNode(root);
+  const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT, { acceptNode: n => n.nodeName.toLowerCase() === 'svg' ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT });
+  while (w.nextNode()) i18nNode(w.currentNode);
+}
+new MutationObserver(recs => {
+  if (LANG !== 'de') return;
+  for (const r of recs) {
+    if (r.type === 'childList') r.addedNodes.forEach(i18nTree);
+    else if (r.type === 'characterData') i18nNode(r.target);
+    else i18nNode(r.target);
+  }
+}).observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: I18N_ATTRS });
+for (const k of ['alert', 'confirm', 'prompt']) { const f = window[k].bind(window); window[k] = (m, ...a) => f(tr(m), ...a.map(tr)); }
+const EN_TITLE = document.title;
+function setLang(l) {
+  LANG = l; try { localStorage.setItem('decal-studio-lang', l); } catch (e) {}
+  document.documentElement.lang = l; document.title = tr(EN_TITLE);
+  document.querySelectorAll('#lang [data-lang]').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === l));
+  i18nTree(document.body);
+  if (typeof updateUI === 'function') updateUI();
+  if (typeof renderSheet === 'function') renderSheet();
+}
+document.querySelectorAll('#lang [data-lang]').forEach(b => b.addEventListener('click', () => setLang(b.dataset.lang)));
+
 demoFrame();
+setLang(LANG);
 })();
 
 </script>
