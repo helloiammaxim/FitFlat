@@ -2393,7 +2393,11 @@ function snapshotBefore(p) {
 canvas.addEventListener('pointermove', e => {
   const { x, y } = rel(e);
   S.lastMouse = { x, y };
-  if (!press) { if (S.placing) ghostAt(x, y); else hoverCursor(x, y, e); return; }
+  if (!press) {
+    if (S.placing) ghostAt(x, y); else hoverCursor(x, y, e);
+    if (S.mode === 'draw' && S.drawShape === 'pill' && !S.vline && !S.placing) { const pp = pillAt(x, y); if (pp) drawShapeGhost(pp); else $('#placeGhost').hidden = true; } // see the pill before you click
+    return;
+  }
   if (Math.hypot(x - press.x0, y - press.y0) > 4) press.moved = true;
   if (press.type === 'shape') { press.x = x; press.y = y; press.shift = e.shiftKey; press.alt = e.altKey; drawShapeGhost(press); return; }
   if (press.type === 'move') { if (press.moved) moveDecalTo(press, x, y); return; }
@@ -3035,6 +3039,7 @@ function updateUI() {
   $('#polySidesWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'poly';
   $('#shapeRoundWrap').hidden = S.mode !== 'draw' || !['rect', 'poly'].includes(S.drawShape);
   $('#pillWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'pill';
+  if (!S.placing && !(S.mode === 'draw' && S.drawShape === 'pill') && !(press && press.type === 'shape')) $('#placeGhost').hidden = true;
   $('#shapeMid').hidden = S.mode !== 'draw' || !S.drawShape || S.drawShape === 'free' || !S.mirrorDefault; $('#shapeMid').setAttribute('aria-pressed', !!S.shapeMid);
   $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', S.knifeThrough); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
   $('#lsStraight').setAttribute('aria-pressed', S.lineStyle !== 'curved'); $('#lsCurved').setAttribute('aria-pressed', S.lineStyle === 'curved');
@@ -4238,7 +4243,8 @@ function shapeOutline(p) {
   const o = shapeOutlineRaw(p);
   if (!S.shapeMid || !S.mirrorDefault || !S.model) return o;
   const xs = o.pts.map(q => q[0]), ys = o.pts.map(q => q[1]);
-  const c = o.circle ? [o.circle.cx, o.circle.cy] : S.drawShape === 'rect' ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [p.x0, p.y0];
+  const c = o.circle ? [o.circle.cx, o.circle.cy] : o.pill ? [(o.pts[2][0] + o.pts[5][0]) / 2, (o.pts[2][1] + o.pts[5][1]) / 2] // the pill's own centre
+    : S.drawShape === 'rect' ? [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2] : [p.x0, p.y0];
   const pl = mirrorPlane(), h = pickAt(c[0], c[1]);
   let w = null;
   if (h) { const sn = snapToPlane(h.p, h.face); if (sn) w = sn.p; }
@@ -4246,6 +4252,7 @@ function shapeOutline(p) {
   const sc = screenOf(w), dx = sc.x - c[0], dy = sc.y - c[1];
   o.pts = o.pts.map(([x, y]) => [x + dx, y + dy]); if (o.circle) { o.circle.cx += dx; o.circle.cy += dy; }
   if (o.h) o.h = o.h.map(hh => hh.map(([x, y]) => [x + dx, y + dy])); if (o.dense) o.dense = o.dense.map(([x, y]) => [x + dx, y + dy]);
+  o.mid = { x: sc.x, y: sc.y, w }; // where the centre lands on the mirror plane, for the preview
   return o;
 }
 // a pill (stadium) in screen space: six anchors with exact Bézier handles, plus a dense outline for projecting off the model
@@ -4293,15 +4300,25 @@ function drawShapeGhost(p) {
   if (hit && o.pill) { const ppm = camera.isOrthographicCamera ? canvas.clientHeight / (camera.top - camera.bottom) : canvas.clientHeight / (2 * new THREE.Vector3(...hit.p).distanceTo(camera.position) * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
     const L = Math.hypot(o.pts[2][0] - o.pts[5][0], o.pts[2][1] - o.pts[5][1]), W = Math.hypot(o.pts[0][0] - o.pts[4][0], o.pts[0][1] - o.pts[4][1]); label = `${Math.round(L / ppm)} × ${Math.round(W / ppm)} mm`; }
   const path = o.circle ? `<circle cx="${o.circle.cx}" cy="${o.circle.cy}" r="${o.circle.r}"/>` : o.h ? `<path d="M${o.pts[0].join(' ')}${o.pts.map((q, i) => { const j = (i + 1) % o.pts.length; return ` C${o.h[i][1].join(' ')} ${o.h[j][0].join(' ')} ${o.pts[j].join(' ')}`; }).join('')}Z"/>` : `<polygon points="${o.pts.map(q => q.join(',')).join(' ')}"/>`;
+  let midMark = '';
+  if (o.mid) { // the mirror line through the centre, and the centre itself
+    const pl = mirrorPlane(), n = [0, 0, 0]; n[pl.k] = 1; const f = camFwd(), t = v3cross(n, [f.x, f.y, f.z]), tl = v3.len(t);
+    if (tl > 0.15) { const a = screenOf(v3.add(o.mid.w, v3.mul(t, 4000 / tl))), b = screenOf(v3.add(o.mid.w, v3.mul(t, -4000 / tl))); midMark += `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}" stroke="#E5007E" stroke-width="1" opacity=".55"/>`; }
+    midMark += `<path d="M${o.mid.x - 7} ${o.mid.y}h14M${o.mid.x} ${o.mid.y - 7}v14" stroke="#E5007E" stroke-width="2"/><circle cx="${o.mid.x}" cy="${o.mid.y}" r="3" fill="#fff" stroke="#E5007E" stroke-width="1.5"/>`;
+  }
   g.hidden = false;
-  g.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}"><g fill="rgba(229,0,126,.10)" stroke="#E5007E" stroke-width="1.5" stroke-dasharray="5 4">${path}</g>${label ? `<text x="${p.x + 12}" y="${p.y - 10}" font-size="12" font-family="-apple-system,Segoe UI,sans-serif" fill="#E5007E" stroke="#fff" stroke-width="3" paint-order="stroke">${label}</text>` : ''}</svg>`;
+  g.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}">${midMark}<g fill="rgba(229,0,126,.10)" stroke="#E5007E" stroke-width="1.5" stroke-dasharray="5 4">${path}</g>${label ? `<text x="${p.x + 12}" y="${p.y - 10}" font-size="12" font-family="-apple-system,Segoe UI,sans-serif" fill="#E5007E" stroke="#fff" stroke-width="3" paint-order="stroke">${label}</text>` : ''}</svg>`;
 }
 // a pill of the typed length and width, centred where you click, lying along the screen's horizontal
-function placePill(x, y) {
-  const hit = pickAt(x, y); if (!hit) { flash('Click on the model to place the pill.'); return; }
+function pillAt(x, y) { // the drag box for a pill of the typed size centred at (x, y)
+  const hit = pickAt(x, y); if (!hit) return null;
   const L = Math.max(1, +$('#pillL').value || 60), W = Math.max(1, Math.min(L, +$('#pillW').value || 20));
   const ppm = camera.isOrthographicCamera ? canvas.clientHeight / (camera.top - camera.bottom) : canvas.clientHeight / (2 * new THREE.Vector3(...hit.p).distanceTo(camera.position) * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
-  makeShape({ x0: x - L * ppm / 2, y0: y - W * ppm / 2, x: x + L * ppm / 2, y: y + W * ppm / 2 });
+  return { x0: x - L * ppm / 2, y0: y - W * ppm / 2, x: x + L * ppm / 2, y: y + W * ppm / 2 };
+}
+function placePill(x, y) {
+  const p = pillAt(x, y); if (!p) { flash('Click on the model to place the pill.'); return; }
+  makeShape(p);
 }
 function makeShape(p) {
   const o = shapeOutline(p);
@@ -4919,19 +4936,50 @@ function panelRects(except) {
   return PANEL_IDS.filter(id => id !== except).map(id => document.getElementById(id)).filter(el => el && !el.hidden && el.offsetParent)
     .map(el => { const r = el.getBoundingClientRect(); return { l: r.left - sr.left, t: r.top - sr.top, r: r.right - sr.left, b: r.bottom - sr.top }; }).filter(r => r.r > r.l && r.b > r.t);
 }
-function resolveOverlap(id) {
-  const st = layout[id], el = document.getElementById(id); if (!st || !el || el.hidden) return;
-  for (let it = 0; it < 12; it++) {
-    const x = el.offsetLeft, y = el.offsetTop, w = el.offsetWidth, h = el.offsetHeight, g = 8, W = stage.clientWidth, H = stage.clientHeight;
-    const hit = panelRects(id).find(r => x < r.r + g && x + w > r.l - g && y < r.b + g && y + h > r.t - g); if (!hit) break;
-    const opts = [['y', hit.b + g], ['y', hit.t - g - h], ['x', hit.r + g], ['x', hit.l - g - w]]
-      .filter(([k, v]) => k === 'y' ? v >= 0 && v + h <= H : v >= 0 && v + w <= W)
-      .filter(([k]) => !(st.mode === 'pin' && ((k === 'x' && st.ex) || (k === 'y' && st.ey)))) // a pinned edge keeps its side
-      .sort((a, b) => Math.abs(a[1] - (a[0] === 'y' ? y : x)) - Math.abs(b[1] - (b[0] === 'y' ? y : x)));
-    if (!opts.length) break;
-    const [k, v] = opts[0]; st[k] = v; placePanel(id);
+// every panel keeps the spot you gave it; where panels would cover each other (also when one grows),
+// the later ones step aside as little as needed, and move back when there is room again
+let relayoutQueued = false;
+function relayout() {
+  if (relayoutQueued) return; relayoutQueued = true;
+  requestAnimationFrame(() => {
+    relayoutQueued = false;
+    const sr = stage.getBoundingClientRect(), W = stage.clientWidth, H = stage.clientHeight, g = 8;
+    const rectOf = el => { const r = el.getBoundingClientRect(); return { l: r.left - sr.left, t: r.top - sr.top, r: r.right - sr.left, b: r.bottom - sr.top }; };
+    const vis = id => { const el = document.getElementById(id); return el && !el.hidden && el.offsetParent ? el : null; };
+    const obstacles = PANEL_IDS.filter(id => !layout[id] && vis(id)).map(id => rectOf(vis(id))).filter(r => r.r > r.l && r.b > r.t);
+    const order = PANEL_IDS.filter(id => layout[id] && vis(id)).sort((a, b) => (layout[a].mode === 'pin' ? 0 : 1) - (layout[b].mode === 'pin' ? 0 : 1) || (layout[a].t || 0) - (layout[b].t || 0));
+    for (const id of order) {
+      const el = vis(id), st = layout[id]; placePanel(id);
+      let x = el.offsetLeft, y = el.offsetTop; const w = el.offsetWidth, h = el.offsetHeight;
+      for (let it = 0; it < 16; it++) {
+        const hit = obstacles.find(r => x < r.r + g && x + w > r.l - g && y < r.b + g && y + h > r.t - g); if (!hit) break;
+        const opts = [['y', hit.b + g], ['y', hit.t - g - h], ['x', hit.r + g], ['x', hit.l - g - w]]
+          .filter(([k, v]) => k === 'y' ? v >= 0 && v + h <= H : v >= 0 && v + w <= W)
+          .filter(([k]) => !(st.mode === 'pin' && ((k === 'x' && st.ex) || (k === 'y' && st.ey)))) // a pinned edge keeps its side
+          .sort((a, b) => Math.abs(a[1] - (a[0] === 'y' ? y : x)) - Math.abs(b[1] - (b[0] === 'y' ? y : x)));
+        if (!opts.length) break;
+        if (opts[0][0] === 'y') y = opts[0][1]; else x = opts[0][1];
+      }
+      el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
+      obstacles.push({ l: x, t: y, r: x + w, b: y + h });
+    }
+  });
+}
+const resolveOverlap = id => { if (layout[id]) layout[id].t = layout[id].t || Date.now(); saveLayout(); relayout(); };
+// while dragging: line up with nearby panels — stacked right below or above, side by side, or edges aligned
+function snapToPanels(id, x, y) {
+  const el = document.getElementById(id), w = el.offsetWidth, h = el.offsetHeight, sr = stage.getBoundingClientRect(), S2 = 14, g = 8;
+  let bx = null, by = null, dxm = S2, dym = S2;
+  for (const oid of PANEL_IDS) {
+    if (oid === id) continue; const o = document.getElementById(oid); if (!o || o.hidden || !o.offsetParent) continue;
+    const q = o.getBoundingClientRect(), r = { l: q.left - sr.left, t: q.top - sr.top, r: q.right - sr.left, b: q.bottom - sr.top }; if (r.r <= r.l) continue;
+    const overlapX = x < r.r && x + w > r.l, overlapY = y < r.b && y + h > r.t;
+    const ys = overlapX || Math.abs(x - r.l) < S2 ? [r.b + g, r.t - g - h, r.t, r.b - h] : [r.t, r.b - h]; // stack, or align tops/bottoms
+    const xs = overlapY || Math.abs(y - r.t) < S2 ? [r.r + g, r.l - g - w, r.l, r.r - w] : [r.l, r.r - w]; // side by side, or align edges
+    for (const v of ys) if (Math.abs(v - y) < dym) { dym = Math.abs(v - y); by = v; }
+    for (const v of xs) if (Math.abs(v - x) < dxm) { dxm = Math.abs(v - x); bx = v; }
   }
-  saveLayout();
+  return [bx ?? x, by ?? y];
 }
 function showDock(id) {
   const { ex, ey } = snapEdges(id, 40); if (!ex && !ey) { dockHint.hidden = true; return; }
@@ -4946,9 +4994,10 @@ function startPanelDrag(e, id) {
   if (id === 'viewMenu') el.hidden = false;
   floatAt(id); el.classList.add('dragging');
   const o = layout[id].orient;
-  const mv = ev => { layout[id] = { mode: 'float', x: ev.clientX - sr.left - dx, y: ev.clientY - sr.top - dy }; if (o) layout[id].orient = o; placePanel(id); showDock(id); };
+  const mv = ev => { const [sx, sy] = snapToPanels(id, ev.clientX - sr.left - dx, ev.clientY - sr.top - dy);
+    layout[id] = { mode: 'float', x: sx, y: sy, t: Date.now() }; if (o) layout[id].orient = o; placePanel(id); showDock(id); };
   const up = () => { removeEventListener('pointermove', mv); removeEventListener('pointerup', up); el.classList.remove('dragging'); dockHint.hidden = true;
-    const { ex, ey } = snapEdges(id, 40); if (ex || ey) pinAt(id, ex, ey); resolveOverlap(id); };
+    const { ex, ey } = snapEdges(id, 40); if (ex || ey) { const t = layout[id].t; pinAt(id, ex, ey); layout[id].t = t; } resolveOverlap(id); };
   addEventListener('pointermove', mv); addEventListener('pointerup', up);
 }
 for (const id of PANEL_IDS) {
@@ -4960,10 +5009,10 @@ for (const id of PANEL_IDS) {
   head.querySelector('.pgrip').addEventListener('pointerdown', e => startPanelDrag(e, id));
   head.querySelector('.ppin').addEventListener('click', e => { e.stopPropagation(); togglePin(id); });
   head.querySelector('.porient')?.addEventListener('click', e => { e.stopPropagation(); toggleOrient(id); });
-  new ResizeObserver(() => { if (layout[id]) placePanel(id); }).observe(el);
+  new ResizeObserver(() => relayout()).observe(el); // a panel that grows or shrinks (or appears) re-arranges the floating ones
 }
-new ResizeObserver(() => PANEL_IDS.forEach(id => layout[id] && placePanel(id))).observe(stage);
-PANEL_IDS.forEach(placePanel);
+new ResizeObserver(() => relayout()).observe(stage);
+PANEL_IDS.forEach(placePanel); relayout();
 if (layout.viewMenu) { $('#viewMenu').hidden = false; renderViews(); }
 $('#resetPanels').addEventListener('click', () => { layout = {}; saveLayout(); PANEL_IDS.forEach(placePanel); $('#viewMenu').hidden = true; $('#views').setAttribute('aria-expanded', 'false'); flash('Panels are back in their default places.'); });
 
