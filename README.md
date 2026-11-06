@@ -2,6 +2,8 @@
 
 A browser tool for making bicycle frame protection film decals. Load a frame model (or build one from geometry), draw the decals right on the 3D tubes, and Decal Studio unwraps them flat without distortion, packs them on a sheet and exports a clean SVG for the plotter/cutter.
 
+**Manual:** [English](MANUAL.md) · [Deutsch](MANUAL.de.md)
+
 It is one self-contained `index.html` — no build step, no install. Open it in a browser, or serve the repo with GitHub Pages.
 
 ## Workflow
