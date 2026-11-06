@@ -154,6 +154,17 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .open-up .viewmenu{ top:auto; bottom:calc(100% + 10px); }
 .open-right .viewmenu{ right:auto; left:0; }
 .floating .viewmenu{ max-height:calc(100vh - 160px); overflow:auto; }
+/* transform gizmo for the selected decal */
+#gizmo{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+#gizmo svg{ position:absolute; inset:0; overflow:visible; }
+#gizmo .gz{ pointer-events:auto; }
+#gizmo .ring{ fill:none; stroke:var(--accent); stroke-width:1.2; stroke-dasharray:4 4; opacity:.7; pointer-events:none; }
+#gizmo .ringhit{ fill:none; stroke:transparent; stroke-width:12; cursor:grab; }
+#gizmo .knob, #gizmo .sq, #gizmo .mv{ fill:var(--surface); stroke:var(--accent); stroke-width:1.5; filter:drop-shadow(0 1px 2px rgba(0,0,0,.25)); }
+#gizmo .knob{ cursor:grab; } #gizmo .mv{ cursor:move; }
+#gizmo .icon{ fill:none; stroke:var(--accent); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; pointer-events:none; }
+#gizmo .sq.nwse{ cursor:nwse-resize; } #gizmo .sq.nesw{ cursor:nesw-resize; }
+#gizmo .label{ font:600 11px -apple-system, "Segoe UI", sans-serif; fill:var(--accent); paint-order:stroke; stroke:var(--surface); stroke-width:3px; pointer-events:none; }
 .viewmenu .keys{ font-size:11.5px; color:var(--muted); margin:8px 0 0; }
 
 /* side panel */
@@ -425,6 +436,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div class="ghost" id="placeGhost" hidden></div>
       <div class="ghost" id="knifeLine" hidden></div>
       <div class="ghost" id="vlineOverlay" hidden></div>
+      <div id="gizmo" hidden></div>
       <div class="placebar" id="placeBar" hidden>
         <strong>Place artwork</strong>
         <label>Width <input type="number" id="pbW" step="0.1" min="1"> mm</label>
@@ -1387,7 +1399,7 @@ new ResizeObserver(() => {
   lineMats.forEach(m => m.resolution.set(w, h));
 }).observe(stage);
 let tween = null;
-(function loop(){ if (tween) tween(); controls.update(); syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
+(function loop(){ if (tween) tween(); controls.update(); syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
   if (S.model && !camera.isOrthographicCamera) { const dd = camera.position.distanceTo(controls.target); const nn = Math.max(0.05, dd * 0.01); if (Math.abs(camera.near - nn) > nn * 0.2) { camera.near = nn; camera.updateProjectionMatrix(); } } renderer.render(scene, camera); requestAnimationFrame(loop); })();
 
 // ---------- model ----------
@@ -4393,7 +4405,7 @@ for (const id of ['#pbSnap', '#pbSizeStep', '#pbSnapOn']) $(id).addEventListener
 // ---------- move, turn and size a whole decal along the surface ----------
 // Each point keeps its unwrapped position relative to the decal's centre and is walked along the surface from the centre,
 // so on a tube a decal keeps its true size and shape when it slides around or along it, turns or grows.
-const xformTarget = () => S.mode === 'edit' && S.active && S.active.closed && !S.active.locked && !S.placing ? S.active : null;
+function xformTarget() { return S.mode === 'edit' && S.active && S.active.closed && !S.active.locked && !S.placing ? S.active : null; }
 let xform = null, xformT = null;
 const v3 = { add: (a, b) => [a[0]+b[0], a[1]+b[1], a[2]+b[2]], sub: (a, b) => [a[0]-b[0], a[1]-b[1], a[2]-b[2]], mul: (a, k) => [a[0]*k, a[1]*k, a[2]*k], dot: (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2], len: a => Math.hypot(a[0], a[1], a[2]) };
 const v3cross = (a, b) => [a[1]*b[2] - a[2]*b[1], a[2]*b[0] - a[0]*b[2], a[0]*b[1] - a[1]*b[0]];
@@ -4465,6 +4477,63 @@ function applyXform() {
   updateDecalVisual(d, true);
 }
 const ctrlSig = d => d.ctrl.map(c => c.p.map(v => v.toFixed(4)).join(',')).join(';');
+// ---------- the on-screen gizmo: centre handle moves, ring and knob turn, corner squares size ----------
+var gizmoKey = '', gzDrag = null;
+function gizmoTarget() { const d = xformTarget(); return d && d.samples?.length && !selList().length && !press ? d : (gzDrag ? gzDrag.d : null); }
+function drawGizmo() {
+  const el = $('#gizmo'); if (!el) return;
+  const d = gizmoTarget();
+  if (!d) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; gizmoKey = ''; } return; }
+  const sp = d.samples.map(q => screenOf(q.point)).concat((d.twin?.res?.samples || []).length && !d.mergedMap ? [] : []);
+  let cx = 0, cy = 0; for (const p of sp) { cx += p.x; cy += p.y; } cx /= sp.length; cy /= sp.length;
+  if (gzDrag) { cx = gzDrag.cx ?? cx; cy = gzDrag.cy ?? cy; }
+  let R = 0; for (const p of sp) R = Math.max(R, Math.hypot(p.x - cx, p.y - cy)); R = Math.max(28, R + 14);
+  const key = [cx, cy, R].map(v => v.toFixed(1)).join(',') + (gzDrag ? gzDrag.label : '');
+  if (key === gizmoKey) return; gizmoKey = key; el.hidden = false;
+  const k = R / Math.SQRT2, sq = 9, ky = cy - R - 18;
+  el.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}">
+    <circle class="ring" cx="${cx}" cy="${cy}" r="${R}"/><circle class="gz ringhit" data-g="rot" cx="${cx}" cy="${cy}" r="${R}"><title>${tr('Drag to turn')}</title></circle>
+    <line x1="${cx}" y1="${cy - R}" x2="${cx}" y2="${ky + 9}" stroke="var(--accent)" stroke-width="1.2" opacity=".7"/>
+    <circle class="gz knob" data-g="rot" cx="${cx}" cy="${ky}" r="9"><title>${tr('Drag to turn (Shift: 15° steps)')}</title></circle>
+    <path class="icon" d="M${cx - 4} ${ky - 1} a4 4 0 1 1 1.5 3.6 M${cx - 4.5} ${ky + 3} l0.5 -4 l3.5 1.5"/>
+    ${[[-1, -1, 'nwse'], [1, -1, 'nesw'], [1, 1, 'nwse'], [-1, 1, 'nesw']].map(([sx, sy, c]) => `<rect class="gz sq ${c}" data-g="scale" x="${cx + sx * k - sq / 2}" y="${cy + sy * k - sq / 2}" width="${sq}" height="${sq}" rx="2"><title>${tr('Drag to size (Shift: 5% steps)')}</title></rect>`).join('')}
+    <circle class="gz mv" data-g="move" cx="${cx}" cy="${cy}" r="11"><title>${tr('Drag to move')}</title></circle>
+    <path class="icon" d="M${cx} ${cy - 6}v12M${cx - 6} ${cy}h12M${cx - 2} ${cy - 4}l2 -2l2 2M${cx - 2} ${cy + 4}l2 2l2 -2M${cx - 4} ${cy - 2}l-2 2l2 2M${cx + 4} ${cy - 2}l2 2l-2 2"/>
+    ${gzDrag?.label ? `<text class="label" x="${cx + R * 0.72 + 10}" y="${cy - R * 0.72 - 6}">${gzDrag.label}</text>` : ''}
+  </svg>`;
+}
+$('#gizmo').addEventListener('pointerdown', e => {
+  const g = e.target.closest('[data-g]')?.dataset.g; if (!g || e.button !== 0) return;
+  const d = gizmoTarget(); if (!d) return;
+  e.preventDefault(); e.stopPropagation();
+  const X = ensureXform(d); if (!X) { flash('Unwrap this decal first (it has no valid layout yet).'); return; }
+  const { x, y } = rel(e), sp = d.samples.map(q => screenOf(q.point));
+  let cx = 0, cy = 0; for (const p of sp) { cx += p.x; cy += p.y; } cx /= sp.length; cy /= sp.length;
+  // which way the layout turns on screen, so dragging clockwise turns the decal clockwise
+  const c0 = screenOf(X.C), a1 = screenOf(v3.add(X.C, X.E1)), a2 = screenOf(v3.add(X.C, X.E2));
+  const scr = Math.sign((a1.x - c0.x) * (a2.y - c0.y) - (a1.y - c0.y) * (a2.x - c0.x)) || 1;
+  const sym = d.mirror && d.ctrl.some(c => c.plane);
+  if (g === 'rot' && sym) { flash('A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.'); return; }
+  gzDrag = { d, g, cx, cy, x0: x, y0: y, a0: Math.atan2(y - cy, x - cx), r0: Math.max(4, Math.hypot(x - cx, y - cy)), ang0: X.ang, sc0: X.sc, scr, last: null, label: '' };
+  if (g === 'move') { const h = pickAt(x, y) || pickAt(cx, cy); gzDrag.p = { d, last: h ? h.p : null, twin: false }; }
+  $('#gizmo').setPointerCapture(e.pointerId);
+});
+$('#gizmo').addEventListener('pointermove', e => {
+  if (!gzDrag) return; const G = gzDrag, X = xform; if (!X || X.d !== G.d) return;
+  const { x, y } = rel(e);
+  if (G.g === 'move') { if (!G.p.last) { const h = pickAt(x, y); if (h) G.p.last = h.p; return; } G.cx += 0; moveDecalTo(G.p, x, y); G.cx = null; G.cy = null; G.label = ''; gizmoKey = ''; return; }
+  if (G.g === 'rot') {
+    let dA = (Math.atan2(y - G.cy, x - G.cx) - G.a0) * 180 / Math.PI; dA = ((dA + 540) % 360) - 180;
+    let ang = G.ang0 + G.scr * dA * X.sgn; const st = e.shiftKey ? 15 : 1; ang = Math.round(ang / st) * st;
+    if (ang === X.ang) return; X.ang = ang; G.label = `${Math.round(G.scr * X.sgn * ang)}°`;
+  } else {
+    let sc = G.sc0 * Math.hypot(x - G.cx, y - G.cy) / G.r0; const st = e.shiftKey ? 0.05 : 0.01; sc = Math.max(0.05, Math.round(sc / st) * st);
+    if (sc === X.sc) return; X.sc = sc; G.label = `${Math.round(sc * 100)}%`;
+  }
+  applyXform(); gizmoKey = '';
+});
+const endGizmo = () => { if (!gzDrag) return; const d = gzDrag.d; gzDrag = null; gizmoKey = ''; if (xform && xform.d === d) { clearTimeout(xformT); xformT = null; solve(d); } };
+$('#gizmo').addEventListener('pointerup', endGizmo); $('#gizmo').addEventListener('pointercancel', endGizmo);
 function ensureXform(d) {
   if (xform && xform.d === d && xform.sig === ctrlSig(d)) return xform; // the same gesture goes on while nothing else changed the decal
   if (xformT) { clearTimeout(xformT); xformT = null; if (S.decals.includes(d)) solveNow(d); } // start from a fresh layout
@@ -4781,6 +4850,7 @@ const DE = {
   'Drag inside the decal to move it; Ctrl + scroll turns it, Alt + scroll sizes it (Shift for bigger steps).': 'Zieh innerhalb des Decals, um es zu verschieben; Strg + Scrollen dreht es, Alt + Scrollen ändert die Größe (Umschalt für größere Schritte).',
   'A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.': 'Ein symmetrisches Decal bleibt auf der Mittellinie und kann nicht gedreht werden. Wende zuerst die Spiegelung an, um es frei zu drehen.',
   'Unwrap this decal first (it has no valid layout yet).': 'Wickle dieses Decal zuerst ab (es hat noch kein gültiges Layout).',
+  'Drag to turn': 'Ziehen zum Drehen', 'Drag to turn (Shift: 15° steps)': 'Ziehen zum Drehen (Umschalt: 15°-Schritte)', 'Drag to size (Shift: 5% steps)': 'Ziehen zum Skalieren (Umschalt: 5-%-Schritte)', 'Drag to move': 'Ziehen zum Verschieben',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };

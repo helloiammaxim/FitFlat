@@ -19,6 +19,10 @@ Projects save and load as `.json` (frame + decals + views).
 
 Z is the vertical axis. Named views: Front, Back, Left, Right, Top, Bottom (keys 1, 3, 7, Ctrl for the opposite side), perspective / orthographic, 45° turns, saved views, grid with 2.5D snapping, and adjustable frame opacity (Alt+Z).
 
+## Moving, turning and sizing decals
+
+In Edit mode the selected decal shows a gizmo: drag the centre handle to move it, the knob or ring to turn it, a corner square to size it (Shift for 15° / 5% steps). Ctrl + scroll turns and Alt + scroll sizes too. Decals follow the surface, so they keep their true size on a tube. Lock a decal in the list to draw over it without picking it.
+
 ## Panels
 
 The tool bar, tool options, view bar, point tools and Views panel float: drag one by its grip, drop it near an edge to pin it there, or use its pin button. Pin the Views panel to keep it open. **Reset panels** (in Views) puts everything back.
