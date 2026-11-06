@@ -3638,6 +3638,15 @@ function knifePath(K, kp0, kp1) {
   rec(0, pts.length - 1);
   return pts.filter((_, i) => keep[i]);
 }
+// is a surface point inside the decal? Tested on the unwrapped outline, so narrow decals on thin tubes work too
+function insideDecal(d, q) {
+  const r = d.res; if (!r || r.error) return false;
+  const uv = r.uvOf && r.outline ? r.uvOf(q.face, affineBary(q.point, q.face)) : null;
+  if (!uv) return !!r.insideSet?.has(q.face);
+  const O = r.outline; let c = false;
+  for (let i = 0, j = O.length - 1; i < O.length; j = i++) { const [xi, yi] = O[i], [xj, yj] = O[j]; if ((yi > uv[1]) !== (yj > uv[1]) && uv[0] < (xj - xi) * (uv[1] - yi) / (yj - yi) + xi) c = !c; }
+  return c;
+}
 // split one decal with the first knife pass that goes in and out again
 function knifeCutOnce(d, K) {
   if (!d.closed || d.mergedMap || !d.res || d.res.error) return null;
@@ -3646,7 +3655,7 @@ function knifeCutOnce(d, K) {
   for (let q = 0; q + 1 < X.length; q++) { // the stretch between these two crossings must run inside the shape without leaving the model
     let ok = true; for (let i = Math.floor(X[q].kp) + 1; i <= Math.floor(X[q + 1].kp); i++) if (K[i].brk) { ok = false; break; }
     const mid = K[Math.min(K.length - 1, Math.floor((X[q].kp + X[q + 1].kp) / 2))];
-    if (ok && d.res.insideSet?.has(mid.face)) { p0 = q; break; }
+    if (ok && insideDecal(d, mid)) { p0 = q; break; }
   }
   if (p0 < 0) return null;
   const c0 = X[p0], c1 = X[p0 + 1];
@@ -3708,8 +3717,22 @@ function applyKnife() {
   const before = snapshot();
   setBusy('Cutting…');
   setTimeout(() => {
-    let r = knifeCutAll(withMirror(knifeLines()), before);
-    if (!r && S.knifeThrough) { r = knifeCutAll(withMirror([knifeSamples()]), before); if (r) console.warn('[knife] cut through found no crossings; used the visible side'); } // never worse than the visible-side knife
+    // first the side you see; with Cut through, the line then reaches the decals behind that the visible cut did not touch
+    // (so a mirrored decal is cut once where you drew, not again where the line passes its mirror copy behind)
+    const pre = new Set(S.decals);
+    let r = knifeCutAll(withMirror([knifeSamples()]), before);
+    if (S.knifeThrough) {
+      const touched = new Set(r ? S.decals.filter(d => !pre.has(d)) : []);
+      const lines = knifeLines(), mirrorOnly = withMirror(lines).filter(K => !lines.includes(K));
+      const pre2 = new Set(S.decals);
+      const r2 = knifeCutAll(lines, r ? null : before, touched); // what the line itself passes through, front and back
+      if (r2) r = r ? { cuts: r.cuts + r2.cuts, mirrored: r.mirrored } : r2;
+      if (S.mirrorDefault && mirrorOnly.length) { // then its mirror image, only on decals nothing has cut yet
+        for (const d of S.decals) if (!pre2.has(d)) touched.add(d);
+        const r3 = knifeCutAll(mirrorOnly, r ? null : before, touched);
+        if (r3) r = r ? { cuts: r.cuts + r3.cuts, mirrored: true } : { ...r3, mirrored: true };
+      }
+    }
     if (!r) { setBusy(false); flash(S.knifeThrough ? 'The knife line has to cross a decal outline twice. Draw it past the edges.' : 'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
     resymmetrize();
     setBusy(false);
@@ -3734,13 +3757,14 @@ function withMirror(Ks) {
   return out;
 }
 // cut every decal with every knife line; returns null (and restores) when nothing was cut
-function knifeCutAll(Ks, before) {
+// skip: decals to leave alone; before: the state to go back to when nothing was cut (null keeps what is there)
+function knifeCutAll(Ks, before, skip) {
   {
     let expanded = 0;
-    if (S.mirrorDefault) for (const d of S.decals.filter(d => d.closed && d.mergedMap && !d.holeOf && !d.locked)) if (Ks.some(k => knifeCrossings(d, k).length >= 2)) { expandSymmetric(d); expanded++; }
+    if (S.mirrorDefault) for (const d of S.decals.filter(d => d.closed && d.mergedMap && !d.holeOf && !d.locked && !skip?.has(d))) if (Ks.some(k => knifeCrossings(d, k).length >= 2)) { expandSymmetric(d); expanded++; }
     let cuts = 0, guard = 0;
     for (const KK of Ks) {
-      const queue = S.decals.filter(d => d.closed && !d.holeOf && !d.locked);
+      const queue = S.decals.filter(d => d.closed && !d.holeOf && !d.locked && !skip?.has(d));
       while (queue.length && guard++ < 400) {
         const d = queue.shift(); if (!S.decals.includes(d)) continue;
         const made = knifeCutOnce(d, KK);
@@ -3748,7 +3772,7 @@ function knifeCutAll(Ks, before) {
       }
     }
     for (const d of S.decals) { delete d.cutSegs; delete d.cutPts; }
-    if (!cuts) { if (expanded) applySnapshot(before); return null; }
+    if (!cuts) { if (expanded && before) applySnapshot(before); return null; }
     return { cuts, mirrored: !!Ks.mirrored };
   }
 }
