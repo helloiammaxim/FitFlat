@@ -166,6 +166,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 #gizmo .sq.nwse{ cursor:nwse-resize; } #gizmo .sq.nesw{ cursor:nesw-resize; }
 #gizmo .label{ font:600 11px -apple-system, "Segoe UI", sans-serif; fill:var(--accent); paint-order:stroke; stroke:var(--surface); stroke-width:3px; pointer-events:none; }
 #turnAxis .axx[aria-pressed="true"]{ color:#FF3B30; } #turnAxis .axy[aria-pressed="true"]{ color:#34C759; } #turnAxis .axz[aria-pressed="true"]{ color:#007AFF; }
+#moveAxis .axx[aria-pressed="true"]{ color:#FF3B30; } #moveAxis .axy[aria-pressed="true"]{ color:#34C759; } #moveAxis .axz[aria-pressed="true"]{ color:#007AFF; }
 .viewmenu .keys{ font-size:11.5px; color:var(--muted); margin:8px 0 0; }
 
 /* side panel */
@@ -431,6 +432,8 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <button class="btn" id="simpBtn" title="Remove points the shape does not need (decimate). Works on the selected points, or the whole decal">Simplify</button>
           <button class="btn" id="zoomSel" title="Zoom in on the selection (F)">Zoom to</button>
           <span class="sep"></span>
+          <span class="count">Move along</span>
+          <div class="seg" id="moveAxis" role="group" aria-label="Move along"><button data-mx="" aria-pressed="true" title="Move freely over the surface">Free</button><button data-mx="x" class="axx" aria-pressed="false" title="Move only along the X axis (front to back). X while dragging">X</button><button data-mx="y" class="axy" aria-pressed="false" title="Move only along the Y axis (side to side). Y while dragging">Y</button><button data-mx="z" class="axz" aria-pressed="false" title="Move only along the Z axis (up and down). Z while dragging">Z</button></div>
           <span class="count">Turn around</span>
           <div class="seg" id="turnAxis" role="group" aria-label="Turn around"><button data-ax="view" aria-pressed="true" title="Turn the decal as you see it, around the line of sight, and lay it back on the surface">View</button><button data-ax="surface" aria-pressed="false" title="Turn the decal on the surface, around the surface normal at its centre">Surface</button><button data-ax="x" class="axx" aria-pressed="false" title="Turn around the X axis (front to back), through the middle of the tube">X</button><button data-ax="y" class="axy" aria-pressed="false" title="Turn around the Y axis (side to side), through the middle of the tube">Y</button><button data-ax="z" class="axz" aria-pressed="false" title="Turn around the Z axis (vertical), through the middle of the tube">Z</button></div>
         </div>
@@ -2269,10 +2272,24 @@ const lineHit = hitLine(x, y);
   }
   press = { type: 'select', x0: x, y0: y, hit: pickAt(x, y), moved: false };
 }
+// world axes as shown (Z up) in the tool's own coordinates
+const AXIS_V = { x: [1, 0, 0], y: [0, 0, -1], z: [0, 1, 0] };
 function moveDecalTo(p, x, y) {
-  const hit = pickAt(x, y); if (!hit) return;
   const X = ensureXform(p.d); if (!X) return;
-  let dl = v3.sub(hit.p, p.last); p.last = hit.p;
+  let dl;
+  const ax = AXIS_V[S.moveAxis];
+  if (ax && p.last) { // locked to an axis: follow the point on the axis line closest to the pointer's line of sight
+    if (!p.O || p.axis !== S.moveAxis) { p.O = p.last.slice(); p.tPrev = 0; p.axis = S.moveAxis; }
+    const w = canvas.clientWidth, h = canvas.clientHeight; raycaster.setFromCamera({ x: x / w * 2 - 1, y: -(y / h) * 2 + 1 }, camera);
+    const o = raycaster.ray.origin, dv = [raycaster.ray.direction.x, raycaster.ray.direction.y, raycaster.ray.direction.z], w0 = v3.sub(p.O, [o.x, o.y, o.z]);
+    const b = v3.dot(ax, dv), den = 1 - b * b; if (den < 1e-4) return; // looking straight along the axis
+    const t = (b * v3.dot(dv, w0) - v3.dot(ax, w0)) / den;
+    dl = v3.mul(ax, t - p.tPrev); p.tPrev = t; p.last = v3.add(p.O, v3.mul(ax, t));
+  } else {
+    const hit = pickAt(x, y); if (!hit) return;
+    if (!p.last) { p.last = hit.p; return; }
+    dl = v3.sub(hit.p, p.last); p.last = hit.p; p.O = null;
+  }
   const pl = p.d.mirror ? mirrorPlane() : null;
   if (pl && p.twin) dl[pl.k] = -dl[pl.k]; // dragging the mirrored copy moves the original the mirrored way
   if (X.sym) dl[pl.k] = 0; // a symmetric decal slides along the centre plane
@@ -2761,7 +2778,16 @@ $('#modeKnife').addEventListener('click', () => setMode('knife'));
 $('#knifeApply').addEventListener('click', applyKnife);
 $('#knifeClear').addEventListener('click', clearKnife);
 $('#simpBtn').addEventListener('click', simplifyCurve);
-S.turnAxis = 'view';
+S.turnAxis = 'view'; S.moveAxis = '';
+function setMoveAxis(a) { S.moveAxis = a || ''; document.querySelectorAll('#moveAxis [data-mx]').forEach(x => x.setAttribute('aria-pressed', x.dataset.mx === S.moveAxis)); gizmoKey = ''; flash(S.moveAxis ? `Moving along the ${S.moveAxis.toUpperCase()} axis only.` : 'Moving freely over the surface.'); }
+document.querySelectorAll('#moveAxis [data-mx]').forEach(b => b.addEventListener('click', () => setMoveAxis(b.dataset.mx)));
+// X, Y, Z while dragging a decal lock the move to that axis; the same key again frees it
+window.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey || e.target.matches('input, select, textarea')) return;
+  const k = e.key.toLowerCase(); if (!['x', 'y', 'z'].includes(k)) return;
+  const moving = (press && press.type === 'move') || (gzDrag && gzDrag.g === 'move'); if (!moving) return;
+  setMoveAxis(S.moveAxis === k ? '' : k); e.preventDefault(); e.stopImmediatePropagation();
+}, true);
 document.querySelectorAll('#turnAxis [data-ax]').forEach(b => b.addEventListener('click', () => { S.turnAxis = b.dataset.ax; document.querySelectorAll('#turnAxis [data-ax]').forEach(x => x.setAttribute('aria-pressed', x.dataset.ax === S.turnAxis)); flash(S.turnAxis === 'view' ? 'Turning around the view: the decal turns as you see it.' : S.turnAxis === 'surface' ? 'Turning around the surface normal at the decal\'s centre.' : `Turning around the ${S.turnAxis.toUpperCase()} axis through the middle of the tube.`); }));
 $('#shapeMid').addEventListener('click', () => { S.shapeMid = !S.shapeMid; updateUI(); flash(S.shapeMid ? 'Shapes snap their centre onto the mirror plane.' : 'Shapes sit where you draw them.'); });
 // the tips panel folds down to a small button; the choice is remembered
@@ -4506,7 +4532,15 @@ function applyXform() {
 const ctrlSig = d => d.ctrl.map(c => c.p.map(v => v.toFixed(4)).join(',')).join(';');
 // ---------- the on-screen gizmo: centre handle moves, ring and knob turn, corner squares size ----------
 var gizmoKey = '', gzDrag = null;
-function gizmoTarget() { const d = xformTarget(); return d && d.samples?.length && !selList().length && !press ? d : (gzDrag ? gzDrag.d : null); }
+// a coloured line through the decal along the axis moves are locked to
+function axisGuide(cx, cy) {
+  const ax = AXIS_V[S.moveAxis]; if (!ax || !S.active) return '';
+  const C = xform && xform.d === S.active ? v3.add(xform.C, [0, 0, 0]) : null; if (!C) return '';
+  const a = screenOf(v3.add(C, v3.mul(ax, 2000))), b = screenOf(v3.add(C, v3.mul(ax, -2000))), col = { x: '#FF3B30', y: '#34C759', z: '#007AFF' }[S.moveAxis];
+  const dx = a.x - b.x, dy = a.y - b.y, L = Math.hypot(dx, dy) || 1, ux = dx / L * 3000, uy = dy / L * 3000;
+  return `<line x1="${cx - ux}" y1="${cy - uy}" x2="${cx + ux}" y2="${cy + uy}" stroke="${col}" stroke-width="1.2" stroke-dasharray="6 4" opacity=".8" pointer-events="none"/>`;
+}
+function gizmoTarget() { const d = xformTarget(); return d && d.samples?.length && !selList().length && (!press || press.type === 'move') ? d : (gzDrag ? gzDrag.d : null); }
 function drawGizmo() {
   const el = $('#gizmo'); if (!el) return;
   const d = gizmoTarget();
@@ -4515,7 +4549,7 @@ function drawGizmo() {
   let cx = 0, cy = 0; for (const p of sp) { cx += p.x; cy += p.y; } cx /= sp.length; cy /= sp.length;
   if (gzDrag) { cx = gzDrag.cx ?? cx; cy = gzDrag.cy ?? cy; }
   let R = 0; for (const p of sp) R = Math.max(R, Math.hypot(p.x - cx, p.y - cy)); R = Math.max(28, R + 14);
-  const key = [cx, cy, R].map(v => v.toFixed(1)).join(',') + (gzDrag ? gzDrag.label : '');
+  const key = [cx, cy, R].map(v => v.toFixed(1)).join(',') + (gzDrag ? gzDrag.label : '') + '|' + (S.moveAxis || '');
   if (key === gizmoKey) return; gizmoKey = key; el.hidden = false;
   const k = R / Math.SQRT2, sq = 9, ky = cy - R - 18;
   el.innerHTML = `<svg width="${canvas.clientWidth}" height="${canvas.clientHeight}">
@@ -4526,6 +4560,7 @@ function drawGizmo() {
     ${[[-1, -1, 'nwse'], [1, -1, 'nesw'], [1, 1, 'nwse'], [-1, 1, 'nesw']].map(([sx, sy, c]) => `<rect class="gz sq ${c}" data-g="scale" x="${cx + sx * k - sq / 2}" y="${cy + sy * k - sq / 2}" width="${sq}" height="${sq}" rx="2"><title>${tr('Drag to size (Shift: 5% steps)')}</title></rect>`).join('')}
     <circle class="gz mv" data-g="move" cx="${cx}" cy="${cy}" r="11"><title>${tr('Drag to move')}</title></circle>
     <path class="icon" d="M${cx} ${cy - 6}v12M${cx - 6} ${cy}h12M${cx - 2} ${cy - 4}l2 -2l2 2M${cx - 2} ${cy + 4}l2 2l2 -2M${cx - 4} ${cy - 2}l-2 2l2 2M${cx + 4} ${cy - 2}l2 2l-2 2"/>
+    ${axisGuide(cx, cy)}
     ${gzDrag?.label ? `<text class="label" x="${cx + R * 0.72 + 10}" y="${cy - R * 0.72 - 6}">${gzDrag.label}</text>` : ''}
   </svg>`;
 }
@@ -4542,7 +4577,7 @@ $('#gizmo').addEventListener('pointerdown', e => {
   const sym = d.mirror && d.ctrl.some(c => c.plane);
   if (g === 'rot' && sym) { flash('A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.'); return; }
   gzDrag = { d, g, cx, cy, x0: x, y0: y, a0: Math.atan2(y - cy, x - cx), r0: Math.max(4, Math.hypot(x - cx, y - cy)), ang0: X.ang, sc0: X.sc, scr, last: null, label: '' };
-  if (g === 'move') { const h = pickAt(x, y) || pickAt(cx, cy); gzDrag.p = { d, last: h ? h.p : null, twin: false }; }
+  if (g === 'move') { const h = pickAt(x, y) || pickAt(cx, cy); gzDrag.p = { d, last: h ? h.p : X.C.slice(), twin: false }; }
   $('#gizmo').setPointerCapture(e.pointerId);
 });
 $('#gizmo').addEventListener('pointermove', e => {
@@ -4885,6 +4920,10 @@ const DE = {
   'Turning around the view: the decal turns as you see it.': 'Drehen um die Ansicht: Das Decal dreht sich so, wie du es siehst.', "Turning around the surface normal at the decal's centre.": 'Drehen um die Flächennormale in der Mitte des Decals.',
   'Turn around the X axis (front to back), through the middle of the tube': 'Um die X-Achse drehen (vorne–hinten), durch die Rohrmitte', 'Turn around the Y axis (side to side), through the middle of the tube': 'Um die Y-Achse drehen (seitlich), durch die Rohrmitte',
   'Turn around the Z axis (vertical), through the middle of the tube': 'Um die Z-Achse drehen (senkrecht), durch die Rohrmitte',
+  'Move along': 'Verschieben entlang', 'Free': 'Frei', 'Move freely over the surface': 'Frei über die Fläche verschieben',
+  'Move only along the X axis (front to back). X while dragging': 'Nur entlang der X-Achse verschieben (vorne–hinten). X beim Ziehen',
+  'Move only along the Y axis (side to side). Y while dragging': 'Nur entlang der Y-Achse verschieben (seitlich). Y beim Ziehen',
+  'Move only along the Z axis (up and down). Z while dragging': 'Nur entlang der Z-Achse verschieben (hoch–runter). Z beim Ziehen', 'Moving freely over the surface.': 'Freies Verschieben über die Fläche.',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
@@ -4920,6 +4959,7 @@ const DE_PAT = [ // {0}, {1}… stand for the parts that change
   ['{0} is locked. You can draw over it now.', '{0} ist gesperrt. Du kannst jetzt darüber zeichnen.'], ['{0} is unlocked.', '{0} ist entsperrt.'], ['{0} moved.', '{0} verschoben.'],
   ['Turned {0}°', 'Gedreht {0}°'], ['Size {0}%', 'Größe {0} %'],
   ['Turning around the {0} axis through the middle of the tube.', 'Drehen um die {0}-Achse durch die Rohrmitte.'],
+  ['Moving along the {0} axis only.', 'Verschieben nur entlang der {0}-Achse.'],
   ['{0}: {1} mm', '{0*}: {1} mm'], ['{0}-gon', '{0}-Eck'], ['Rectangle {0}', 'Rechteck {0}'], ['Circle {0}', 'Kreis {0}'], ['Fork leg {0}', 'Gabelbein {0}'], ['{0} (edited)', '{0} (bearbeitet)'],
 ];
 const DE_RE = DE_PAT.map(([en, de]) => [new RegExp('^' + en.replace(/[.*+?^$()|[\]\\]/g, '\\$&').replace(/\{(\d)\}/g, '(.*?)') + '$'), en, de]);
