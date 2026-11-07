@@ -185,7 +185,7 @@ Choose **Knife** and click points in the view — on or off the model.
 
 ## 9. Combining decals
 
-Select a decal, then **Shift-click** a second one (on the model or in the list). The second shows in blue.
+Select a decal, then **Shift-click** a second one (on the model or in the list). The second shows in blue, and the **Options** panel shows both names with the buttons below.
 
 - **Union** joins both shapes.
 - **Subtract** cuts the blue shape out of the first one (**Swap** switches which is cut out of which).

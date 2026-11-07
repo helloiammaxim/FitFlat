@@ -87,9 +87,9 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .pointbar .btn{ padding:5px 9px; font-size:13px; }
 .pointbar .seg button{ padding:4px 10px; }
 .pointbar .radius input{ width:52px; border:0; background:var(--fill); border-radius:6px; padding:4px 6px; font-variant-numeric:tabular-nums; }
-.combinebar{ border-color:color-mix(in srgb, var(--accent) 40%, var(--line)); }
-.combinebar .count{ color:var(--ink); }
-.combinebar .blue{ color:#2F8FFF; }
+.combo .cbl{ font-size:12.5px; color:var(--ink); padding:0 6px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.combo .blue{ color:#2F8FFF; }
+.topbar .grp.combo{ background:color-mix(in srgb, var(--accent) 8%, transparent); }
 .clip{ display:inline-flex; align-items:center; gap:5px; padding:0 6px; font-size:12.5px; color:var(--muted); }
 .clip input[type=number]{ width:48px; border:0; background:var(--fill); border-radius:6px; padding:4px 6px; color:var(--ink); font-variant-numeric:tabular-nums; }
 .opac input[type=range]{ width:70px; accent-color:var(--accent); }
@@ -406,6 +406,11 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             </div>
             <button class="btn accent" id="finish" title="Close the open line into a decal (Enter)">Close shape</button>
           </div>
+          <div class="grp combo" id="combineBar" aria-label="Combine" hidden>
+            <span class="cbl"><b id="cbA"></b> + <b id="cbB" class="blue"></b></span>
+            <div class="seg"><button id="cbUnion" title="Join both shapes into one">Union</button><button id="cbSub" title="Cut the blue shape out of the first one">Subtract</button><button id="cbInt" title="Keep only where they overlap">Intersect</button></div>
+            <button class="ib" id="cbSwap" title="Swap which shape is cut out of which" aria-label="Swap"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 4l-3 3 3 3"/><path d="M4 7h13"/><path d="M17 20l3-3-3-3"/><path d="M20 17H7"/></svg></button>
+          </div>
           <div class="grp" aria-label="Symmetry">
             <button class="btn tog" id="mirror" aria-pressed="false" title="Mirror the selected decal to the other side of the frame">Mirror</button>
             <select class="btn" id="mirrorAxis" aria-label="Mirror plane" hidden>
@@ -461,11 +466,6 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         </div>
         </div>
         <div class="ctxbars">
-        <div class="pointbar combinebar" id="combineBar" hidden>
-          <span class="count"><b id="cbA"></b> with <b id="cbB" class="blue"></b></span>
-          <div class="seg"><button id="cbUnion" title="Join both shapes into one">Union</button><button id="cbSub" title="Cut the blue shape out of the first one">Subtract</button><button id="cbInt" title="Keep only where they overlap">Intersect</button></div>
-          <button class="btn" id="cbSwap" title="Swap which shape is cut out of which">Swap</button>
-        </div>
         <div class="pointbar" id="pointbar" hidden>
           <span class="count" id="selCount"></span>
           <div class="seg" id="ptType" role="group" aria-label="Point type">

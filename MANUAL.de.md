@@ -185,7 +185,7 @@ Wähle **Messer** und klicke Punkte in der Ansicht — auf oder neben dem Modell
 
 ## 9. Decals kombinieren
 
-Wähle ein Decal und **Umschalt-Klick** auf ein zweites (auf dem Modell oder in der Liste). Das zweite erscheint blau.
+Wähle ein Decal und **Umschalt-Klick** auf ein zweites (auf dem Modell oder in der Liste). Das zweite erscheint blau, und das Panel **Optionen** zeigt beide Namen mit den Tasten unten.
 
 - **Vereinigen** verbindet beide Formen.
 - **Abziehen** schneidet die blaue Form aus der ersten (**Tauschen** wechselt, welche aus welcher geschnitten wird).
