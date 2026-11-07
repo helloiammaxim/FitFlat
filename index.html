@@ -2863,14 +2863,24 @@ function addCurve(d, ctrl, res, preview, faint) {
     const pos = [], col = [], base = new THREE.Color(d.color);
     const lift = S.model.diag * 0.00015;
     // faces the outline runs through are cut to the outline (in the flat layout), so the fill ends exactly at the line
-    const core = res.coreFaces ? new Set(res.coreFaces) : null, border = { has: f => core ? !core.has(f) : true }, outl = res.outline && res.uvOf ? [res.outline.map(p => [p[0], p[1]])] : null;
+    let outl = res.outline && res.uvOf ? [res.outline.map(p => [p[0], p[1]])] : null;
+    // holes (from Subtract, or loops cut out with the knife) stay empty: their outlines, laid into this decal's flat layout, are taken out of the fill
+    const holeBox = [];
+    if (outl) { const rings = [];
+      for (const h of holesOf(d)) { const hs = faint ? h.twinSamples : (h.samples || h.res?.samples); if (!hs || hs.length < 3) continue;
+        const ring = []; for (const q of hs) { const p = q.point || q.p, u = p && q.face != null ? res.uvOf(q.face, affineBary(p, q.face)) : null; if (!u) { ring.length = 0; break; } ring.push([u[0], u[1]]); }
+        if (ring.length >= 3) { rings.push([ring]); const xs = ring.map(p => p[0]), ys = ring.map(p => p[1]); holeBox.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); } }
+      if (rings.length) { try { outl = polygonClipping.difference(outl, ...rings); } catch (e) {} } }
+    const core = res.coreFaces ? new Set(res.coreFaces) : null;
+    const nearHole = U => holeBox.some(b => Math.max(U[0][0], U[1][0], U[2][0]) >= b[0] && Math.min(U[0][0], U[1][0], U[2][0]) <= b[2] && Math.max(U[0][1], U[1][1], U[2][1]) >= b[1] && Math.min(U[0][1], U[1][1], U[2][1]) <= b[3]);
     const pushTri = (A, B, C, c) => { pos.push(...A, ...B, ...C); for (let q = 0; q < 3; q++) col.push(c.r, c.g, c.b); };
     for (const f of faces) {
       // lifted a hair off the surface along the face normal, so it never flickers through the model on long thin triangles
       const c = S.showStretch ? heat(res.faceStretch.get(f) || 0) : base, nf = fnorm(f), V = [0, 1, 2].map(q => { const v = T[3*f+q]; return [P[3*v] + nf[0]*lift, P[3*v+1] + nf[1]*lift, P[3*v+2] + nf[2]*lift]; });
-      if (!outl || !border.has(f)) { pushTri(V[0], V[1], V[2], c); continue; }
+      if (!outl || (core && core.has(f) && !holeBox.length)) { pushTri(V[0], V[1], V[2], c); continue; }
       const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b));
       if (U.some(u => !u)) { pushTri(V[0], V[1], V[2], c); continue; }
+      if (core && core.has(f) && !nearHole(U)) { pushTri(V[0], V[1], V[2], c); continue; }
       const dt = (U[1][0]-U[0][0])*(U[2][1]-U[0][1]) - (U[2][0]-U[0][0])*(U[1][1]-U[0][1]); if (Math.abs(dt) < 1e-14) continue;
       const to3 = ([x, y]) => { const b1 = ((x-U[0][0])*(U[2][1]-U[0][1]) - (U[2][0]-U[0][0])*(y-U[0][1])) / dt, b2 = ((U[1][0]-U[0][0])*(y-U[0][1]) - (x-U[0][0])*(U[1][1]-U[0][1])) / dt, b0 = 1 - b1 - b2;
         return [0, 1, 2].map(k => b0*V[0][k] + b1*V[1][k] + b2*V[2][k]); };
@@ -2898,8 +2908,10 @@ function updateDecalVisual(d, preview) {
   if (d.mirror && d.ctrl.length >= 2) {
     const tc = preview || !d.twin ? twinCtrl(d) : d.twin.ctrl;
     if (preview && d.twin) d.twin.ctrl = tc;
-    addCurve(d, tc, preview ? null : d.twin?.res, preview, true);
-  }
+    d.twinSamples = addCurve(d, tc, preview ? null : d.twin?.res, preview, true);
+  } else d.twinSamples = null;
+  // a hole changed: its decal redraws its fill around it
+  if (d.holeOf && !preview) { const par = S.decals.find(x => x.id === d.holeOf); if (par && par.res && !par._redraw) { par._redraw = true; try { updateDecalVisual(par); } finally { par._redraw = false; } } }
   renderHandles();
 }
 
