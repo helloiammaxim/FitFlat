@@ -153,6 +153,52 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .rail.horiz .railgrp{ flex-direction:row; }
 .rail.horiz .railgrp button{ flex-direction:row; width:auto; height:36px; padding:0 12px 0 10px; gap:6px; font-size:13px; }
 .rail.horiz .railgrp button svg{ width:18px; height:18px; }
+.ptitle{ display:none; font-size:12px; font-weight:600; color:var(--ink); padding:0 4px 0 2px; white-space:nowrap; }
+.pfold svg{ transition:transform .15s; } .pfold[aria-expanded="false"] svg{ transform:rotate(-90deg); }
+/* collapsed: only the head with the panel's name */
+.fpanel.folded > :not(.phead){ display:none !important; }
+.fpanel.folded .ptitle{ display:inline; }
+.fpanel.folded{ min-height:0 !important; padding:6px !important; }
+.rail:not(.horiz) > .phead{ flex-wrap:wrap; width:56px; justify-content:center; row-gap:2px; }
+.fpanel.folded.vert{ width:auto !important; max-width:none !important; }
+.rail.folded:not(.horiz) .ptitle{ font-size:11px; padding:0; }
+/* standing panels: one control group under the other */
+.topbar.vert{ flex-direction:column; align-items:stretch; flex-wrap:nowrap; width:240px; max-width:240px; }
+.pointbar.vert{ flex-direction:row; flex-wrap:wrap; align-items:center; width:236px; max-width:236px; }
+.pointbar.vert > .phead, .pointbar.vert > .count, .pointbar.vert > .seg, .pointbar.vert > .sep{ flex-basis:100%; }
+.pointbar.vert > .seg{ justify-content:space-between; }
+.topbar.vert .grp, .pointbar.vert .seg, .topbar.vert .seg{ flex-wrap:wrap; }
+.topbar.vert .grp + .grp{ border-left:0; padding-left:2px; border-top:1px solid var(--line); padding-top:6px; border-radius:0; }
+.pointbar.vert{ padding:6px; gap:6px; }
+.pointbar.vert .sep{ width:auto; height:1px; margin:2px 0; align-self:auto; }
+.fpanel.vert > .phead{ align-self:flex-start; }
+/* the View panel: look from, turn, display, grid and saved views in one place */
+.viewbar{ align-items:flex-start; gap:10px; flex-wrap:wrap; max-width:min(860px, 100%); }
+.viewbar > .phead{ align-self:center; }
+.vsec{ display:flex; flex-direction:column; gap:5px; min-width:0; }
+.vlbl{ font-size:11px; font-weight:600; color:var(--muted); padding-left:2px; }
+.vbtns{ display:flex; flex-wrap:wrap; gap:4px; align-items:center; }
+.vbtns .btn{ padding:5px 10px; font-size:13px; }
+.viewbar .axes{ margin:0; gap:4px; }
+.vlook{ grid-template-columns:repeat(3, 58px); }
+.vturn{ grid-template-columns:repeat(2, 36px); }
+.viewbar .axes button{ padding:5px 0; font-size:12.5px; }
+.viewbar .opac input[type=range]{ width:90px; }
+.viewbar .clip{ padding:0 2px; }
+.vgrid select{ font-size:12.5px; padding:4px 22px 4px 8px; max-width:150px; }
+.vsaved{ min-width:150px; }
+.vsaved .viewlist{ max-height:96px; margin:0; }
+.viewbar.vert{ flex-direction:column; align-items:stretch; flex-wrap:nowrap; width:220px; max-width:220px; gap:10px; }
+.viewbar.vert > .phead{ align-self:flex-start; }
+/* in its default place the standing View panel keeps to the top right, so the bars on the left stay right under each other */
+.hudrow > #viewPanel.vert{ position:absolute; right:12px; top:12px; margin:0; }
+.hud:has(> .hudrow > #viewPanel.vert){ padding-right:244px; }
+.hud:has(> .hudrow > #viewPanel.vert.folded){ padding-right:120px; }
+.viewbar.vert .vlook{ grid-template-columns:repeat(3, 1fr); }
+.viewbar.vert .vturn{ grid-template-columns:repeat(4, 1fr); }
+.viewbar.vert .vgrid select{ max-width:none; width:100%; }
+.viewbar.vert .vsec + .vsec{ border-top:1px solid var(--line); padding-top:8px; }
+.viewbar:not(.vert) .vsec + .vsec{ border-left:1px solid var(--line); padding-left:10px; }
 .viewmenu > .phead{ position:absolute; top:8px; right:8px; }
 #dockHint{ position:absolute; background:color-mix(in srgb, var(--accent) 22%, transparent); border:1.5px dashed var(--accent); border-radius:10px; pointer-events:none; z-index:6; }
 .stolw{ display:inline-flex; align-items:center; gap:4px; } .stolw input{ width:58px; border:0; background:var(--fill); border-radius:7px; padding:4px 6px; color:var(--ink); font:inherit; font-variant-numeric:tabular-nums; }
@@ -194,7 +240,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .swatch{ width:10px; height:10px; border-radius:50%; background:var(--c); }
 .row input.name{ border:0; background:transparent; font-weight:600; padding:2px 0; min-width:0; width:100%; }
 .row input.name:focus{ outline:none; }
-.row .acts{ display:flex; gap:2px; opacity:.55; transition:opacity .12s; }
+.row .acts{ display:flex; flex-wrap:wrap; gap:2px; opacity:.55; transition:opacity .12s; grid-column:2 / -1; margin-left:-7px; }
 .row:hover .acts, .row.active .acts{ opacity:1; }
 .row .acts button{ border:0; background:transparent; border-radius:6px; padding:3px 7px; font-size:12px; cursor:pointer; color:var(--ink); }
 .row .acts button:hover{ background:var(--fill2); }
@@ -369,50 +415,50 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           </div>
 
         </div>
-        <div class="viewbar" id="viewPanel"><div class="grp" aria-label="View">
-            <div class="viewwrap">
-          <button class="btn" id="views" aria-haspopup="true" aria-expanded="false">Views</button>
-          <div class="viewmenu" id="viewMenu" hidden>
-            <h3>Look from</h3>
-            <div class="axes">
+        <div class="viewbar" id="viewPanel" aria-label="View">
+          <div class="vsec vlookw"><span class="vlbl">Look from</span>
+            <div class="axes vlook">
               <button class="ax-x" data-axis="0" data-sign="1" title="From the front, looking along −X (3)">Front</button>
               <button class="ax-z" data-axis="1" data-sign="1" title="From above, looking down −Z (7)">Top</button>
               <button class="ax-y" data-axis="2" data-sign="1" title="From the right side (1)">Right</button>
               <button class="ax-x" data-axis="0" data-sign="-1" title="From behind, looking along +X (Ctrl+3)">Back</button>
               <button class="ax-z" data-axis="1" data-sign="-1" title="From below, looking up +Z (Ctrl+7)">Bottom</button>
               <button class="ax-y" data-axis="2" data-sign="-1" title="From the left side (Ctrl+1)">Left</button>
+            </div></div>
+          <div class="vsec"><span class="vlbl">Turn</span>
+            <div class="axes vturn">
+              <button data-orbit="yaw:-45" title="Turn left 45° (4)">↺</button>
+              <button data-orbit="pitch:-45" title="Tilt up 45° (8)">⤒</button>
+              <button data-orbit="pitch:45" title="Tilt down 45° (2)">⤓</button>
+              <button data-orbit="yaw:45" title="Turn right 45° (6)">↻</button>
+            </div></div>
+          <div class="vsec vtools"><span class="vlbl">Display</span>
+            <div class="vbtns">
+              <button class="btn tog" id="ortho" aria-pressed="false" title="Switch between perspective and orthographic view (5)">Ortho</button>
+              <button class="btn" id="fit" title="Fit the whole frame in view (0)">Fit</button>
+              <button class="btn tog" id="stretch" aria-pressed="false" title="Colour each decal by how much the film has to stretch">Stretch</button>
             </div>
-            <h3>Turn the view</h3>
-            <div class="axes orbit">
-              <button data-orbit="yaw:-45" title="Turn left 45° (4)">↺ 45°</button>
-              <button data-orbit="pitch:-45" title="Tilt up 45° (8)">⤒ 45°</button>
-              <button data-orbit="yaw:45" title="Turn right 45° (6)">↻ 45°</button>
-              <button data-orbit="pitch:45" title="Tilt down 45° (2)" style="grid-column:2">⤓ 45°</button>
+            <label class="clip opac" title="Frame opacity: make it see-through so decals on the far side show (Alt+Z toggles)" aria-label="Frame opacity"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg> <input type="range" id="opac" min="5" max="100" value="100"> <span id="opacVal">100%</span></label>
+          </div>
+          <div class="vsec vgrid"><span class="vlbl">Grid</span>
+            <div class="vbtns">
+              <button class="btn tog" id="gridBtn" aria-pressed="false" title="Show or hide the grid (G)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/><rect x="4" y="4" width="16" height="16" rx="2"/></svg> Grid</button>
+              <label class="sw" title="Snapping rounds a point's position on the grid plane to the step, then drops it straight onto the surface, so depth comes from the frame (2.5D). Use it with an axis view and Ortho for exact layouts."><input type="checkbox" id="gSnap"> Snap</label>
+              <input type="checkbox" id="gShow" hidden>
             </div>
-            <h3>Saved views</h3>
+            <div class="vbtns">
+              <label class="clip" title="Grid step">Step <input type="number" id="gStep" value="5" min="0.1" step="0.5"> mm</label>
+              <select class="btn" id="gPlane" aria-label="Grid plane" title="Grid plane"><option value="auto">Facing the view</option><option value="y">Ground (XY)</option><option value="z">Side (XZ)</option><option value="x">Front (YZ)</option></select>
+            </div>
+          </div>
+          <div class="vsec vsaved"><span class="vlbl">Saved views</span>
             <ul class="viewlist" id="viewList"></ul>
-            <button class="btn" id="saveView">Save current view</button>
-            <button class="btn" id="resetPanels" title="Put all panels back in their default places">Reset panels</button>
-            <p class="keys">Keys: 1, 3, 7 look from the right, front and top (Ctrl for the opposite side). 4 and 6 turn, 8 and 2 tilt by 45°. 5 switches ortho. 0 fits the frame.</p>
+            <div class="vbtns">
+              <button class="btn" id="saveView" title="Save the current camera as a view">Save view</button>
+              <button class="btn" id="resetPanels" title="Put all panels back in their default places">Reset panels</button>
+            </div>
           </div>
         </div>
-            <div class="viewwrap">
-              <button class="btn tog" id="gridBtn" aria-pressed="false" aria-haspopup="true" aria-expanded="false" title="Grid and grid snapping (G shows or hides the grid)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 9h16M4 15h16M9 4v16M15 4v16"/><rect x="4" y="4" width="16" height="16" rx="2"/></svg> Grid</button>
-              <div class="viewmenu gridmenu" id="gridMenu" hidden>
-                <label class="sw"><input type="checkbox" id="gShow"> Show grid</label>
-                <label class="sw"><input type="checkbox" id="gSnap"> Snap points to grid</label>
-                <div class="gm2">
-                  <label class="field">Step (mm)<input type="number" id="gStep" value="5" min="0.1" step="0.5"></label>
-                  <label class="field">Plane<select id="gPlane"><option value="auto">Facing the view</option><option value="y">Ground (XY)</option><option value="z">Side (XZ)</option><option value="x">Front (YZ)</option></select></label>
-                </div>
-                <p class="keys">Snapping rounds a point's position on the grid plane to the step, then drops it straight onto the surface, so depth comes from the frame (2.5D). Use it with an axis view and Ortho for exact layouts.</p>
-              </div>
-            </div>
-            <button class="btn tog" id="ortho" aria-pressed="false" title="Switch between perspective and orthographic view (5)">Ortho</button>
-            <button class="btn tog" id="stretch" aria-pressed="false" title="Colour each decal by how much the film has to stretch">Stretch</button>
-            <label class="clip opac" title="Frame opacity: make it see-through so decals on the far side show (Alt+Z toggles)" aria-label="Frame opacity"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor" stroke="none"/></svg> <input type="range" id="opac" min="5" max="100" value="100"> <span id="opacVal">100%</span></label>
-            <button class="btn" id="fit" title="Fit the whole frame in view (0)">Fit</button>
-          </div></div>
         </div>
         <div class="ctxbars">
         <div class="pointbar combinebar" id="combineBar" hidden>
@@ -1546,7 +1592,7 @@ function loadSource(raw, fmt, name, after) {
       S.source = { raw, fmt, name };
       S.units = $('#units').value === 'auto' ? guessUnits(raw, fmt) : $('#units').value;
       $('#unitsAuto').textContent = $('#units').value === 'auto' ? `Auto (${S.units})` : 'Auto';
-      clearDecals(); resetHistory(); S.views = []; buildModel(); renderHandles(); setMode('draw'); if (typeof renderGrid === 'function') { gridKey = ''; renderGrid(); }
+      clearDecals(); resetHistory(); S.views = []; if (typeof renderViews === 'function') renderViews(); buildModel(); renderHandles(); setMode('draw'); if (typeof renderGrid === 'function') { gridKey = ''; renderGrid(); }
       S.dirty = false;
     } catch (e) { console.error(e); alert('This model could not be prepared: ' + e.message); setBusy(false); updateUI(); return; }
     setBusy(false); updateUI();
@@ -2002,7 +2048,7 @@ function loadProject(text, fname) {
     if (typeof pj.modelOpacity === 'number') setModelOpacity(pj.modelOpacity);
     if (pj.grid) { Object.assign(S.grid, pj.grid); gridKey = ''; renderGrid(); updateGridUI(); }
     if (typeof pj.clipDist === 'number') { S.clipDist = pj.clipDist; $('#clipDist').value = pj.clipDist; }
-    S.views = Array.isArray(pj.views) ? pj.views.filter(v => v && v.pos && v.target) : [];
+    S.views = Array.isArray(pj.views) ? pj.views.filter(v => v && v.pos && v.target) : []; if (typeof renderViews === 'function') renderViews();
     if (pj.frame && S.source) Object.assign(S.source, pj.frame);
     S.projectPresets = Array.isArray(pj.presets) ? pj.presets : [];
     if (S.views.length) flyTo(S.views[0].pos, S.views[0].target);
@@ -2973,10 +3019,7 @@ document.querySelectorAll('[data-orbit]').forEach(b => b.addEventListener('click
 
 // ---------- views ----------
 S.views = [];
-function closeViewMenu() { if (layout.viewMenu) return; $('#viewMenu').hidden = true; $('#views').setAttribute('aria-expanded', 'false'); }
-$('#views').addEventListener('click', e => { e.stopPropagation(); const m = $('#viewMenu'); m.hidden = !m.hidden; $('#views').setAttribute('aria-expanded', String(!m.hidden)); if (!m.hidden) renderViews(); });
-document.addEventListener('pointerdown', e => { if (!$('#viewMenu').hidden && !e.target.closest('#viewMenu, #views')) closeViewMenu(); });
-document.querySelectorAll('#viewMenu [data-axis]').forEach(b => b.addEventListener('click', () => axisView(+b.dataset.axis, +b.dataset.sign)));
+document.querySelectorAll('#viewPanel [data-axis]').forEach(b => b.addEventListener('click', () => axisView(+b.dataset.axis, +b.dataset.sign)));
 $('#saveView').addEventListener('click', () => {
   const p = camera.position, t = controls.target;
   S.views.push({ name: `View ${S.views.length + 1}`, pos: [p.x, p.y, p.z].map(v => +v.toFixed(3)), target: [t.x, t.y, t.z].map(v => +v.toFixed(3)) });
@@ -3152,7 +3195,7 @@ function updateUI() {
   $('#shapeMid').hidden = S.mode !== 'draw' || !S.drawShape || S.drawShape === 'free' || !S.mirrorDefault; $('#shapeMid').setAttribute('aria-pressed', !!S.shapeMid);
   $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', S.knifeThrough); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
   $('#lsStraight').setAttribute('aria-pressed', S.lineStyle !== 'curved'); $('#lsCurved').setAttribute('aria-pressed', S.lineStyle === 'curved');
-  for (const id of ['#modeDraw','#modeEdit','#stretch','#fit','#mirror','#mirrorAxis','#views']) $(id).disabled = !has;
+  for (const id of ['#modeDraw','#modeEdit','#stretch','#fit','#mirror','#mirrorAxis','#ortho','#gridBtn']) $(id).disabled = !has;
   $('#stretch').setAttribute('aria-pressed', S.showStretch);
   $('#mirror').setAttribute('aria-pressed', mirrorOn());
   $('#mirrorAxis').hidden = !mirrorOn(); $('#clipWrap').hidden = !mirrorOn();
@@ -4236,11 +4279,10 @@ function snapHit(hit) {
   return { p: [best.point.x, best.point.y, best.point.z], face: best.faceIndex };
 }
 function updateGridUI() {
-  $('#gridBtn').setAttribute('aria-pressed', S.grid.show || S.grid.snap);
+  $('#gridBtn').setAttribute('aria-pressed', S.grid.show);
   $('#gShow').checked = S.grid.show; $('#gSnap').checked = S.grid.snap; $('#gStep').value = S.grid.step; $('#gPlane').value = S.grid.plane;
 }
-$('#gridBtn').addEventListener('click', e => { e.stopPropagation(); const m = $('#gridMenu'); m.hidden = !m.hidden; $('#gridBtn').setAttribute('aria-expanded', String(!m.hidden)); });
-document.addEventListener('pointerdown', e => { if (!$('#gridMenu').hidden && !e.target.closest('#gridMenu, #gridBtn')) $('#gridMenu').hidden = true; });
+$('#gridBtn').addEventListener('click', () => { S.grid.show = !S.grid.show; gridKey = ''; renderGrid(); updateGridUI(); });
 $('#gShow').addEventListener('change', e => { S.grid.show = e.target.checked; gridKey = ''; renderGrid(); updateGridUI(); });
 $('#gSnap').addEventListener('change', e => { S.grid.snap = e.target.checked; if (S.grid.snap && !S.grid.show) { S.grid.show = true; renderGrid(); } updateGridUI(); flash(S.grid.snap ? `Points snap to a ${S.grid.step} mm grid on the ${['front (YZ)', 'ground (XY)', 'side (XZ)'][gridAxis()]} plane, then onto the surface.` : 'Grid snapping off.'); });
 $('#gStep').addEventListener('change', e => { const v = parseFloat(e.target.value); if (v > 0) S.grid.step = v; gridKey = ''; renderGrid(); updateGridUI(); });
@@ -4976,7 +5018,8 @@ $('#export').addEventListener('click', async () => {
 
 updateUI();
 // ---------- floating panels: drag by the grip, drop near an edge to pin it there; the pin button frees or docks a panel ----------
-const PANEL_IDS = ['railPanel', 'topPanel', 'viewPanel', 'pointbar', 'viewMenu'];
+const PANEL_IDS = ['railPanel', 'topPanel', 'viewPanel', 'pointbar'];
+const PANEL_NAMES = { railPanel: 'Tools', topPanel: 'Options', viewPanel: 'View', pointbar: 'Points' };
 const floatLayer = document.createElement('div'); floatLayer.id = 'floatLayer'; stage.appendChild(floatLayer);
 const dockHint = document.createElement('div'); dockHint.id = 'dockHint'; dockHint.hidden = true; stage.appendChild(dockHint);
 const panelHome = {};
@@ -4986,18 +5029,25 @@ const GRIP_SVG = '<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="t
 const ORIENT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="10" height="4" rx="1"/><rect x="15" y="3" width="4" height="10" rx="1"/><path d="M7 17a6 6 0 0 0 10 0"/><path d="M17 14v3h-3"/></svg>';
 const PIN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
 // layout[id]: { mode: 'float', x, y } or { mode: 'pin', ex: 'left'|'right'|null, ey: 'top'|'bottom'|null, x, y } (a corner pins both), plus orient 'h'|'v' for the tool panel
+delete layout.viewMenu; // the Views popup is part of the View panel now
+var folded = {}; try { folded = JSON.parse(localStorage.getItem('decal-studio-folded') || '{}') || {}; } catch (e) { folded = {}; }
+const saveFolded = () => { try { localStorage.setItem('decal-studio-folded', JSON.stringify(folded)); } catch (e) {} };
+const FOLD_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
 for (const k in layout) { const st = layout[k]; if (st && st.mode === 'pin' && st.edge) { // older saved layouts
   const e = st.edge; layout[k] = { mode: 'pin', ex: e === 'left' || e === 'right' ? e : null, ey: e === 'top' || e === 'bottom' ? e : null, x: st.off, y: st.off, orient: st.orient }; } }
-const isH = (id, st) => id === 'railPanel' && (st?.orient ? st.orient === 'h' : !!(st && st.mode === 'pin' && st.ey && !st.ex));
+// row or column: the tool and view panels stand as columns by default, the others lie along a row; pinned to one side edge they stand up, to the top or bottom they lie down
+const isH = (id, st) => st?.orient ? st.orient === 'h' : (id === 'railPanel' || id === 'viewPanel') ? !!(st && st.mode === 'pin' && st.ey && !st.ex) : !(st && st.mode === 'pin' && st.ex && !st.ey);
 function placePanel(id) {
   const el = document.getElementById(id); if (!el) return;
   const st = layout[id], pin = el.querySelector(':scope > .phead .ppin');
-  el.classList.toggle('horiz', isH(id, st));
+  const hz = isH(id, st); el.classList.toggle('horiz', hz); el.classList.toggle('vert', !hz);
+  el.classList.toggle('folded', !!folded[id]);
+  const fb = el.querySelector(':scope > .phead .pfold'); if (fb) { fb.setAttribute('aria-expanded', String(!folded[id])); fb.title = folded[id] ? 'Expand this panel' : 'Collapse this panel'; }
   if (!st || st.mode === 'home') { // its place in the default layout
     if (el.parentNode === floatLayer) { const h = panelHome[id]; h.parent.insertBefore(el, h.next && h.next.parentNode === h.parent ? h.next : null); }
     el.classList.remove('floating', 'pinned', 'open-up', 'open-right'); el.style.left = el.style.top = '';
-    pin.setAttribute('aria-pressed', id !== 'viewMenu');
-    pin.title = id === 'viewMenu' ? 'Pin the Views panel so it stays open' : 'Pinned. Click to let it float';
+    pin.setAttribute('aria-pressed', 'true');
+    pin.title = 'Pinned. Click to let it float';
     return;
   }
   if (el.parentNode !== floatLayer) floatLayer.appendChild(el);
@@ -5010,7 +5060,7 @@ function placePanel(id) {
   // menus inside a bar open towards the middle of the view, so they stay on screen wherever the bar sits
   el.classList.toggle('open-up', y + h / 2 > H / 2); el.classList.toggle('open-right', x + w / 2 < W / 2);
   pin.setAttribute('aria-pressed', st.mode === 'pin');
-  pin.title = st.mode === 'pin' ? (id === 'viewMenu' ? 'Pinned open. Click to let it float' : 'Pinned. Click to let it float') : 'Floating. Click to pin it to the nearest edge';
+  pin.title = st.mode === 'pin' ? 'Pinned. Click to let it float' : 'Floating. Click to pin it to the nearest edge';
 }
 // which edges a panel is close to: one edge, or two at a corner
 function snapEdges(id, dist) {
@@ -5024,16 +5074,11 @@ function floatAt(id) { const el = document.getElementById(id), r = el.getBoundin
 function pinNearest(id) { const n = snapEdges(id, 0).nearest; pinAt(id, n === 'left' || n === 'right' ? n : null, n === 'top' || n === 'bottom' ? n : null); }
 function togglePin(id) {
   const st = layout[id], el = document.getElementById(id);
-  if (id === 'viewMenu') { // the Views panel: pinned means it stays open
-    if (!st) { el.hidden = false; renderViews(); floatAt(id); pinNearest(id); resolveOverlap(id); }
-    else if (st.mode === 'pin') floatAt(id);
-    else { delete layout[id]; placePanel(id); saveLayout(); closeViewMenu(); }
-    return;
-  }
   if (!st || st.mode === 'pin') floatAt(id); else pinNearest(id);
   resolveOverlap(id);
 }
-// the tool panel can lie along a row or stand as a column, wherever it is
+function toggleFold(id) { folded[id] = !folded[id]; if (!folded[id]) delete folded[id]; saveFolded(); placePanel(id); relayout(); }
+// every panel can lie along a row or stand as a column, wherever it is
 function toggleOrient(id) {
   const el = document.getElementById(id), st = layout[id];
   const now = isH(id, st) ? 'h' : 'v';
@@ -5118,7 +5163,6 @@ function startPanelDrag(e, id) {
   if (e.button !== 0) return;
   e.preventDefault(); e.stopPropagation();
   const el = document.getElementById(id), r = el.getBoundingClientRect(), sr = stage.getBoundingClientRect(), dx = e.clientX - r.left, dy = e.clientY - r.top;
-  if (id === 'viewMenu') el.hidden = false;
   floatAt(id); el.classList.add('dragging');
   const o = layout[id].orient;
   const mv = ev => { const [sx, sy] = snapToPanels(id, ev.clientX - sr.left - dx, ev.clientY - sr.top - dy);
@@ -5131,17 +5175,18 @@ for (const id of PANEL_IDS) {
   const el = document.getElementById(id); if (!el) continue;
   panelHome[id] = { parent: el.parentNode, next: el.nextSibling };
   const head = document.createElement('div'); head.className = 'phead';
-  head.innerHTML = `<span class="pgrip" title="Drag to move this panel. Drop it at an edge or a corner to pin it there">${GRIP_SVG}</span><button class="ppin" aria-pressed="false">${PIN_SVG}</button>` + (id === 'railPanel' ? `<button class="ppin porient" title="Turn the panel: row or column">${ORIENT_SVG}</button>` : '');
+  head.innerHTML = `<span class="pgrip" title="Drag to move this panel. Drop it at an edge or a corner to pin it there">${GRIP_SVG}</span><span class="ptitle">${PANEL_NAMES[id]}</span><button class="ppin" aria-pressed="false">${PIN_SVG}</button><button class="ppin porient" title="Turn the panel: row or column">${ORIENT_SVG}</button><button class="ppin pfold" aria-expanded="true" title="Collapse this panel">${FOLD_SVG}</button>`;
   el.insertBefore(head, el.firstChild); el.classList.add('fpanel');
   head.querySelector('.pgrip').addEventListener('pointerdown', e => startPanelDrag(e, id));
   head.querySelector('.ppin').addEventListener('click', e => { e.stopPropagation(); togglePin(id); });
   head.querySelector('.porient')?.addEventListener('click', e => { e.stopPropagation(); toggleOrient(id); });
+  head.querySelector('.pfold').addEventListener('click', e => { e.stopPropagation(); toggleFold(id); });
   new ResizeObserver(() => relayout()).observe(el); // a panel that grows or shrinks (or appears) re-arranges the floating ones
 }
 new ResizeObserver(() => relayout()).observe(stage);
 PANEL_IDS.forEach(placePanel); relayout();
-if (layout.viewMenu) { $('#viewMenu').hidden = false; renderViews(); }
-$('#resetPanels').addEventListener('click', () => { layout = {}; saveLayout(); PANEL_IDS.forEach(placePanel); $('#viewMenu').hidden = true; $('#views').setAttribute('aria-expanded', 'false'); flash('Panels are back in their default places.'); });
+renderViews();
+$('#resetPanels').addEventListener('click', () => { layout = {}; folded = {}; saveLayout(); saveFolded(); PANEL_IDS.forEach(placePanel); relayout(); flash('Panels are back in their default places.'); });
 
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
@@ -5314,7 +5359,7 @@ const DE = {
   'Drag inside the decal to move it; Ctrl + scroll turns it, Alt + scroll sizes it (Shift for bigger steps).': 'Zieh innerhalb des Decals, um es zu verschieben; Strg + Scrollen dreht es, Alt + Scrollen ändert die Größe (Umschalt für größere Schritte).',
   'A symmetric decal stays on the centre line, so it cannot turn. Apply the mirror first to turn it freely.': 'Ein symmetrisches Decal bleibt auf der Mittellinie und kann nicht gedreht werden. Wende zuerst die Spiegelung an, um es frei zu drehen.',
   'Unwrap this decal first (it has no valid layout yet).': 'Wickle dieses Decal zuerst ab (es hat noch kein gültiges Layout).',
-  'Drag to turn': 'Ziehen zum Drehen', 'Drag to turn (Shift: 15° steps)': 'Ziehen zum Drehen (Umschalt: 15°-Schritte)', 'Drag to size (Shift: 5% steps)': 'Ziehen zum Skalieren (Umschalt: 5-%-Schritte)', 'Drag to move': 'Ziehen zum Verschieben', 'Moved': 'Verschoben', 'along the surface': 'entlang der Fläche', 'Turned': 'Gedreht', 'Size': 'Größe', 'Decal': 'Decal', 'Handle': 'Anfasser', 'To next points': 'Zu den Nachbarpunkten', 'Segment': 'Segment', 'Line': 'Linie',
+  'Drag to turn': 'Ziehen zum Drehen', 'Drag to turn (Shift: 15° steps)': 'Ziehen zum Drehen (Umschalt: 15°-Schritte)', 'Drag to size (Shift: 5% steps)': 'Ziehen zum Skalieren (Umschalt: 5-%-Schritte)', 'Drag to move': 'Ziehen zum Verschieben', 'Options': 'Optionen', 'Points': 'Punkte', 'Turn': 'Drehen', 'Display': 'Anzeige', 'Saved views': 'Gespeicherte Ansichten', 'Save view': 'Ansicht speichern', 'Collapse this panel': 'Panel einklappen', 'Expand this panel': 'Panel ausklappen', 'Turn the panel: row or column': 'Panel drehen: Zeile oder Spalte', 'Show or hide the grid (G)': 'Raster ein- oder ausblenden (G)', 'Grid step': 'Rasterabstand', 'Grid plane': 'Rasterebene', 'Step': 'Abstand', 'Save the current camera as a view': 'Aktuelle Kamera als Ansicht speichern', 'Moved': 'Verschoben', 'along the surface': 'entlang der Fläche', 'Turned': 'Gedreht', 'Size': 'Größe', 'Decal': 'Decal', 'Handle': 'Anfasser', 'To next points': 'Zu den Nachbarpunkten', 'Segment': 'Segment', 'Line': 'Linie',
   'Turn around': 'Drehen um', 'Turn the decal as you see it, around the line of sight, and lay it back on the surface': 'Das Decal so drehen, wie du es siehst, um die Blickachse, und wieder auf die Fläche legen',
   'Surface': 'Fläche', 'Turn the decal on the surface, around the surface normal at its centre': 'Das Decal auf der Fläche drehen, um die Flächennormale in seiner Mitte',
   'Turning around the view: the decal turns as you see it.': 'Drehen um die Ansicht: Das Decal dreht sich so, wie du es siehst.', "Turning around the surface normal at the decal's centre.": 'Drehen um die Flächennormale in der Mitte des Decals.',

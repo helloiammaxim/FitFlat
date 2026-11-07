@@ -27,7 +27,7 @@ In Edit mode the selected decal shows a gizmo: drag the centre handle to move it
 
 ## Panels
 
-The tool bar, tool options, view bar, point tools and Views panel float: drag one by its grip, drop it near an edge to pin it there, or use its pin button. Pin the Views panel to keep it open. **Reset panels** (in Views) puts everything back.
+The tools, tool options, View panel and point tools float: drag one by its grip, drop it near an edge to pin it there, or use its pin button. Every panel can be turned between a row and a column and collapsed to its name. Everything about the view (look from, turn, ortho, grid, opacity, saved views) sits in the one View panel. **Reset panels** (in the View panel) puts everything back.
 
 ## Language
 

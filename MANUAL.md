@@ -34,7 +34,7 @@ Open `index.html` in a current browser (Chrome, Edge, Safari, Firefox). Nothing 
 - **Top bar** — language (EN | DE), *Frame from geometry*, model units, and the file buttons *New*, *Open*, *Import SVG*, *Save*.
 - **Tools panel** (left) — *Draw*, *Edit*, *Knife*.
 - **Tool options** (top) — undo/redo and the options of the current tool, plus *Mirror*.
-- **View bar** — *Views*, *Grid*, *Ortho*, *Stretch*, frame opacity, *Fit*.
+- **View panel** — everything about the view in one place: *Look from*, *Turn*, *Ortho*, *Fit*, *Stretch*, frame opacity, *Grid* settings and *Saved views*.
 - **Point bar** — appears in Edit mode: point types and point tools, *Move along*, *Turn around*.
 - **Tips** (bottom left) — tells you what the next click does. Fold it away with the ⓘ button.
 - **Right side** — the cut sheet preview, the decal list, sheet settings and *Download SVG*.
@@ -68,9 +68,9 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 - **Turn:** drag the background, or hold Alt or Space and drag (also over the model).
 - **Pan:** right-drag.
 - **Zoom:** scroll — it zooms around the point under the cursor — or middle-drag. A trackpad pinch zooms too.
-- **Views** menu: *Front, Back, Left, Right, Top, Bottom*, turns by 45°, and **saved views** (turn the model to an angle you like and save it). Pin the Views panel to keep it open.
+- **View panel:** *Look from* Front, Back, Left, Right, Top, Bottom; *Turn* by 45°; and **Saved views** (turn the model to an angle you like and click *Save view*).
 - **Ortho** switches to an orthographic view (no perspective) — good with the axis views for exact layouts.
-- **Grid** shows a grid and can snap points to it (2.5D: the grid sets the position in the plane, the frame surface gives the depth). Choose the grid plane and step in the Grid menu.
+- **Grid** shows a grid and can snap points to it (2.5D: the grid sets the position in the plane, the frame surface gives the depth). Set the step, the plane and *Snap* in the Grid part of the View panel.
 - **Frame opacity** makes the frame see-through so you can see decals on the far side (Alt+Z toggles).
 - **Fit** shows the whole frame.
 
@@ -249,9 +249,9 @@ If a piece is larger than the sheet, increase the sheet or split the decal.
 
 - Every panel has a **grip** (⋮⋮) and a **pin**. Drag a panel anywhere; drop it near an edge or a corner to pin it there. The pin button frees a pinned panel or pins a floating one to the nearest edge.
 - Panels never overlap: a panel that is in the way moves aside. Drop a panel next to another one and it snaps to it, so you can stack panels.
-- The **Tools** panel has a turn button to switch between a row and a column.
-- Menus in a bar open towards the middle of the screen, wherever the bar sits.
-- **Reset panels** (in the Views panel) puts everything back. Your layout is remembered.
+- Every panel has a **turn** button to switch between a row and a column, and a **collapse** button (⌄) that folds it down to its name; click it again to open the panel.
+- Pinned to the left or right edge, a panel stands as a column; pinned to the top or bottom, it lies along a row (unless you turned it yourself).
+- **Reset panels** (in the View panel) puts everything back. Your layout is remembered.
 - **EN | DE** switches the language. German browsers start in German.
 
 ---

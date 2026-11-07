@@ -34,7 +34,7 @@ Decal Studio ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeic
 - **Obere Leiste** — Sprache (EN | DE), *Rahmen aus Geometrie*, Modelleinheit und die Dateischaltflächen *Neu*, *Öffnen*, *SVG importieren*, *Speichern*.
 - **Werkzeuge** (links) — *Zeichnen*, *Bearbeiten*, *Messer*.
 - **Werkzeugoptionen** (oben) — Rückgängig/Wiederholen und die Optionen des aktuellen Werkzeugs, dazu *Spiegeln*.
-- **Ansichtsleiste** — *Ansichten*, *Raster*, *Ortho*, *Dehnung*, Rahmendeckkraft, *Einpassen*.
+- **Ansicht-Panel** — alles zur Ansicht an einem Ort: *Ansicht von*, *Drehen*, *Ortho*, *Einpassen*, *Dehnung*, Rahmendeckkraft, *Raster*-Einstellungen und *Gespeicherte Ansichten*.
 - **Punktleiste** — erscheint beim Bearbeiten: Punkttypen und Punktwerkzeuge, *Verschieben entlang*, *Drehen um*.
 - **Tipps** (unten links) — zeigen, was der nächste Klick bewirkt. Mit der ⓘ-Taste einklappen.
 - **Rechts** — Vorschau des Schneidebogens, die Decal-Liste, Bogeneinstellungen und *SVG herunterladen*.
@@ -68,9 +68,9 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 - **Drehen:** Hintergrund ziehen, oder Alt bzw. Leertaste halten und ziehen (auch über dem Modell).
 - **Verschieben:** mit rechts ziehen.
 - **Zoomen:** scrollen — es zoomt um den Punkt unter dem Mauszeiger — oder mit der mittleren Taste ziehen. Auch ein Trackpad-Pinch zoomt.
-- Menü **Ansichten**: *Vorne, Hinten, Links, Rechts, Oben, Unten*, Drehen in 45°-Schritten und **gespeicherte Ansichten** (dreh das Modell in einen passenden Winkel und speichere ihn). Hefte das Ansichten-Panel an, damit es offen bleibt.
+- **Ansicht-Panel:** *Ansicht von* Vorne, Hinten, Links, Rechts, Oben, Unten; *Drehen* in 45°-Schritten; und **Gespeicherte Ansichten** (dreh das Modell in einen passenden Winkel und klicke *Ansicht speichern*).
 - **Ortho** schaltet auf orthografische Ansicht (ohne Perspektive) — ideal mit den Achsenansichten für genaue Layouts.
-- **Raster** zeigt ein Raster und kann Punkte daran fangen (2,5D: das Raster bestimmt die Position in der Ebene, die Rahmenoberfläche die Tiefe). Rasterebene und Schritt wählst du im Raster-Menü.
+- **Raster** zeigt ein Raster und kann Punkte daran fangen (2,5D: das Raster bestimmt die Position in der Ebene, die Rahmenoberfläche die Tiefe). Abstand, Ebene und *Fangen* stellst du im Raster-Teil des Ansicht-Panels ein.
 - **Rahmendeckkraft** macht den Rahmen durchsichtig, damit du Decals auf der Rückseite siehst (Alt+Z schaltet um).
 - **Einpassen** zeigt den ganzen Rahmen.
 
@@ -249,9 +249,9 @@ Ist ein Teil größer als der Bogen, vergrößere den Bogen oder teile das Decal
 
 - Jedes Panel hat einen **Griff** (⋮⋮) und eine **Nadel**. Zieh ein Panel an eine beliebige Stelle; leg es nahe einem Rand oder in einer Ecke ab, um es dort anzuheften. Die Nadel löst ein angeheftetes Panel oder heftet ein freies am nächsten Rand an.
 - Panels überlappen sich nie: ein Panel im Weg weicht aus. Leg ein Panel neben ein anderes, und es rastet daran ein, so kannst du Panels stapeln.
-- Das **Werkzeug**-Panel hat eine Dreh-Taste, um zwischen Zeile und Spalte zu wechseln.
-- Menüs in einer Leiste öffnen sich zur Bildschirmmitte hin, egal wo die Leiste sitzt.
-- **Panels zurücksetzen** (im Ansichten-Panel) stellt alles wieder her. Dein Layout wird gespeichert.
+- Jedes Panel hat eine **Dreh**-Taste, um zwischen Zeile und Spalte zu wechseln, und eine **Einklapp**-Taste (⌄), die es auf seinen Namen zusammenklappt; ein weiterer Klick öffnet es wieder.
+- Am linken oder rechten Rand angeheftet steht ein Panel als Spalte, oben oder unten liegt es als Zeile (außer du hast es selbst gedreht).
+- **Panels zurücksetzen** (im Ansicht-Panel) stellt alles wieder her. Dein Layout wird gespeichert.
 - **EN | DE** wechselt die Sprache. Deutschsprachige Browser starten auf Deutsch.
 
 ---
