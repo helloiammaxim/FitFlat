@@ -218,7 +218,7 @@ Jede Zeile zeigt den Namen des Decals (anklicken zum Umbenennen), seine flache G
 
 **Dehnung** in der Ansichtsleiste färbt jedes Decal auf dem Modell danach, wie stark sich die Folie dehnen muss.
 
-Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Seite tauschen** (die Fläche auf der anderen Seite der Kontur nutzen), **Lösen** (ein Loch zu einem eigenen Teil machen), **Duplizieren**, **🔒 Sperren**, **Löschen**.
+Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Umkehren** (die Folie deckt die Fläche außerhalb der Kontur statt innerhalb, z. B. um ein Rohrende), **Lösen** (ein Loch zu einem eigenen Teil machen), **Duplizieren**, **🔒 Sperren**, **Löschen**.
 
 **Duplizieren** (oder **Strg+D**) kopiert das Decal mit seinen Löchern und der Spiegel-Einstellung und legt die Kopie direkt daneben auf die Fläche, auf derselben Seite der Spiegelebene. Die Kopie ist ausgewählt, du kannst sie also gleich mit dem Gizmo an ihren Platz ziehen. Weiteres Duplizieren reiht weitere Kopien auf.
 

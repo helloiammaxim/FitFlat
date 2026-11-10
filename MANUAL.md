@@ -218,7 +218,7 @@ Each row shows the decal's name (click to rename), its flat size in mm and its *
 
 **Stretch** in the view bar colours each decal on the model by how much the film has to stretch.
 
-Row buttons: **Mirror**, **Apply** (mirror), **Swap side** (use the area on the other side of the outline), **Detach** (make a hole a separate piece), **Duplicate**, **🔒 Lock**, **Delete**.
+Row buttons: **Mirror**, **Apply** (mirror), **Invert** (the film covers the area outside the outline instead of inside, e.g. around a tube end), **Detach** (make a hole a separate piece), **Duplicate**, **🔒 Lock**, **Delete**.
 
 **Duplicate** (or **Ctrl+D**) copies the decal with its holes and mirror setting and puts the copy right next to it on the surface, on the same side of the mirror. The copy is selected, so you can drag it into place with the gizmo straight away. Duplicating again lines up further copies.
 
