@@ -53,7 +53,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 /* iOS style segmented control */
 .seg{ display:inline-flex; background:var(--fill); border-radius:9px; padding:2px; gap:0; }
 .seg button{ border:0; background:transparent; padding:5px 12px; border-radius:7px; cursor:pointer; font-weight:500; font-size:13px; color:var(--ink); }
-.seg button[aria-pressed="true"]{ background:var(--surface); box-shadow:0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
+.seg button[aria-pressed="true"], .seg button[aria-selected="true"]{ background:var(--surface); box-shadow:0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
 .grp .seg{ background:transparent; padding:0; }
 
 .layout{ display:grid; grid-template-columns:minmax(0,1fr) 380px; min-height:0; }
@@ -94,7 +94,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .clip input[type=number]{ width:48px; border:0; background:var(--fill); border-radius:6px; padding:4px 6px; color:var(--ink); font-variant-numeric:tabular-nums; }
 .opac input[type=range]{ width:70px; accent-color:var(--accent); }
 .opac span{ min-width:34px; text-align:right; font-variant-numeric:tabular-nums; }
-.hint{ position:absolute; left:12px; bottom:12px; max-width:540px; border-radius:12px; padding:9px 13px 9px 8px; font-size:13px; color:var(--ink); pointer-events:none; display:flex; gap:6px; align-items:flex-start; }
+.hint{ position:absolute; left:12px; bottom:12px; transition:bottom .15s; max-width:540px; border-radius:12px; padding:9px 13px 9px 8px; font-size:13px; color:var(--ink); pointer-events:none; display:flex; gap:6px; align-items:flex-start; }
 .hinttog{ pointer-events:auto; flex:none; border:0; background:transparent; color:var(--muted); width:22px; height:22px; margin:-2px 0; padding:0; border-radius:6px; display:grid; place-items:center; cursor:pointer; }
 .hinttog:hover{ background:var(--fill); color:var(--ink); }
 .hint.collapsed{ padding:6px; }
@@ -170,6 +170,12 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .topbar.vert .grp, .pointbar.vert .seg, .topbar.vert .seg{ flex-wrap:wrap; }
 .topbar.vert .grp + .grp{ border-left:0; padding-left:2px; border-top:1px solid var(--line); padding-top:6px; border-radius:0; }
 .pointbar.vert{ padding:6px; gap:6px; }
+.decalbar .dpgrp{ display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.decalbar .num input{ width:58px; }
+.decalbar .axl{ font-weight:600; }
+.decalbar .axl.axx{ color:#E0453A; } .decalbar .axl.axy{ color:#1F9D55; } .decalbar .axl.axz{ color:#2F6FDE; }
+.decalbar .axl input{ font-weight:400; color:var(--ink); }
+.decalbar.vert > .dpgrp{ flex-basis:100%; }
 .pointbar.vert .sep{ width:auto; height:1px; margin:2px 0; align-self:auto; }
 .fpanel.vert > .phead{ align-self:flex-start; }
 /* the View panel: look from, turn, display, grid and saved views in one place */
@@ -207,6 +213,13 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .floating .viewmenu{ max-height:calc(100vh - 160px); overflow:auto; }
 /* transform gizmo for the selected decal */
 #gizmo{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+.refov{ position:absolute; pointer-events:none; z-index:2; transform-origin:50% 50%; outline:1.5px dashed color-mix(in srgb, var(--accent) 70%, transparent); }
+.refov img{ width:100%; height:100%; display:block; user-select:none; -webkit-user-drag:none; }
+.refov .rgrip, .refov .rsize{ position:absolute; width:22px; height:22px; border-radius:7px; background:var(--accent); pointer-events:auto; box-shadow:0 1px 4px rgba(0,0,0,.3); }
+.refov .rgrip{ left:-11px; top:-11px; cursor:move; }
+.refov .rgrip::after{ content:''; position:absolute; inset:6px; border:2px solid #fff; border-radius:50%; }
+.refov .rsize{ right:-11px; bottom:-11px; cursor:nwse-resize; }
+.refov .rsize::after{ content:''; position:absolute; right:6px; bottom:6px; width:8px; height:8px; border:solid #fff; border-width:0 2px 2px 0; }
 #gizmo svg{ position:absolute; inset:0; overflow:visible; }
 #gizmo .gz{ pointer-events:auto; }
 #gizmo .ring{ fill:none; stroke:var(--accent); stroke-width:1.2; stroke-dasharray:4 4; opacity:.7; pointer-events:none; }
@@ -228,6 +241,27 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .matmeta strong{ color:#fff; font-weight:600; }
 .sec{ margin:0 12px 12px; padding:12px; background:var(--surface); border-radius:14px; }
 .sec h2{ font-size:13px; margin:0 0 10px; font-weight:600; }
+details.sec.fold > summary{ list-style:none; display:flex; align-items:center; gap:8px; cursor:pointer; margin:-4px; padding:4px; border-radius:8px; }
+details.sec.fold > summary::-webkit-details-marker{ display:none; }
+details.sec.fold > summary::before{ content:''; width:7px; height:7px; border:solid var(--muted); border-width:0 1.6px 1.6px 0; transform:rotate(-45deg); transition:transform .15s; margin:0 2px 0 1px; flex:none; }
+details.sec.fold[open] > summary::before{ transform:rotate(45deg); }
+details.sec.fold > summary h2{ margin:0; }
+details.sec.fold[open] > summary{ margin-bottom:8px; }
+details.sec.fold > summary .sum{ margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%; }
+details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
+.field.span2{ grid-column:span 2; } .field.span3{ grid-column:1 / -1; }
+.sizechips{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px; }
+.sizechips label{ display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; background:var(--fill); font-size:12.5px; cursor:pointer; }
+.sizechips label.cur{ box-shadow:inset 0 0 0 1.5px var(--accent); }
+.sizechips input{ accent-color:var(--accent); margin:0; }
+#secSizes .btn{ margin-top:10px; width:100%; }
+.hist{ list-style:none; margin:0 0 8px; padding:0; max-height:220px; overflow:auto; display:flex; flex-direction:column; gap:1px; font-size:12.5px; }
+.hist li button{ all:unset; box-sizing:border-box; width:100%; display:flex; gap:8px; align-items:baseline; padding:5px 8px; border-radius:7px; cursor:pointer; color:var(--ink); }
+.hist li button:hover{ background:var(--fill); }
+.hist li button:focus-visible{ outline:2px solid var(--accent); }
+.hist li .t{ margin-left:auto; color:var(--muted); font-size:11px; font-variant-numeric:tabular-nums; }
+.hist li.now button{ background:color-mix(in srgb, var(--accent) 14%, transparent); font-weight:600; }
+.hist li.future button{ color:var(--muted); }
 .dhead{ display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap; }
 .dhead h2{ margin:0 auto 0 0; }
 .boolseg button{ padding:4px 9px; font-size:12.5px; }
@@ -258,6 +292,8 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .checks label{ display:inline-flex; gap:6px; align-items:center; cursor:pointer; }
 .checks input{ accent-color:var(--accent); }
 .export{ margin:0 12px 16px; display:flex; flex-direction:column; gap:8px; }
+.layoutsel{ width:auto !important; flex:none !important; max-width:170px; }
+.exprow{ display:flex; gap:8px; } .exprow #export{ flex:1; }
 .export .btn{ justify-content:center; padding:11px; border-radius:12px; font-weight:600; }
 .note{ font-size:12px; color:var(--muted); margin:0; }
 .note.warn{ color:var(--bad); }
@@ -278,6 +314,32 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 /* dialogs */
 dialog.geo{ border:0; border-radius:18px; padding:0; width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); background:var(--surface); color:var(--ink); box-shadow:0 24px 80px rgba(0,0,0,.25); }
 dialog.unitdlg{ width:min(480px, calc(100vw - 24px)); }
+dialog.libdlg{ width:min(900px, calc(100vw - 24px)); }
+.libtabs{ margin-top:12px; display:inline-flex; }
+.libbar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+.projname{ all:unset; cursor:pointer; font-size:13px; font-weight:600; color:var(--ink); padding:4px 8px; border-radius:8px; max-width:220px; display:inline-flex; gap:6px; align-items:center; }
+.projname span:first-child{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.projname:hover{ background:var(--fill); } .projname:focus-visible{ outline:2px solid var(--accent); }
+.projname .dirty{ color:var(--accent); font-size:10px; }
+.libtools{ display:flex; gap:8px; align-items:center; margin:0 0 12px; flex-wrap:wrap; }
+.libtools input[type=search]{ flex:1; min-width:160px; border:0; background:var(--fill); border-radius:8px; padding:7px 10px; color:var(--ink); }
+.libtools select{ border:0; background:var(--fill); border-radius:8px; padding:7px 9px; color:var(--ink); }
+.cards li.start .th{ background:color-mix(in srgb, var(--accent) 10%, var(--fill)); }
+.cards{ list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:12px; }
+.cards li{ background:var(--paper); border:1px solid var(--line); border-radius:12px; overflow:hidden; display:flex; flex-direction:column; }
+.cards li.cur{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.cards .th{ aspect-ratio:16/10; background:var(--fill); display:grid; place-items:center; overflow:hidden; cursor:pointer; border:0; padding:0; width:100%; }
+.cards .th img{ width:100%; height:100%; object-fit:cover; display:block; }
+.cards .th svg{ width:80%; height:80%; color:var(--accent); }
+.cards .meta{ padding:8px 10px 2px; font-size:12px; color:var(--muted); }
+.cards .meta b{ display:block; color:var(--ink); font-size:13.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.cards .acts{ display:flex; flex-wrap:wrap; gap:2px; padding:4px 6px 8px; }
+.cards .acts button{ all:unset; font-size:12px; padding:4px 7px; border-radius:6px; cursor:pointer; color:var(--ink); }
+.cards .acts button:hover{ background:var(--fill); }
+.cards .acts button:focus-visible{ outline:2px solid var(--accent); }
+.cards .acts button.primary{ color:var(--accent); font-weight:600; }
+.cards .acts button.del{ color:var(--bad); margin-left:auto; }
+.cards .empty{ grid-column:1 / -1; border:1px dashed var(--line); background:none; padding:24px; text-align:center; font-size:13px; color:var(--muted); }
 dialog.unitdlg .modes{ display:grid; grid-template-columns:1fr; gap:6px; }
 dialog.unitdlg i{ font-style:normal; color:var(--accent); font-weight:500; }
 dialog.geo::backdrop{ background:rgba(0,0,0,.28); backdrop-filter:blur(4px); }
@@ -350,9 +412,16 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 <div class="app">
   <header class="top">
     <div class="brand"><span class="knife" aria-hidden="true"></span>Decal Studio</div>
+    <button class="projname" id="projName" title="Your projects: open, rename, duplicate or start from a template"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span></button>
     <span class="modelinfo" id="modelinfo"></span>
     <span class="spacer"></span>
     <div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div>
+    <div class="grp" aria-label="Panel layout">
+      <select class="btn layoutsel" id="layoutSel" aria-label="Panel layout" title="Panel layout: where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown">
+        <option value="draw">Layout: Drawing</option><option value="edit">Layout: Editing</option><option value="clean">Layout: Clean</option>
+        <option disabled>──────</option><option value="keep" title="Keep the current arrangement as the layout shown">Keep current…</option>
+      </select>
+    </div>
     <div class="grp" aria-label="Frame">
       <button class="btn" id="geoBtn" title="Build a frame from geometry numbers or change its size">Frame from geometry</button>
       <select class="btn" id="units" aria-label="Model units" title="Model units">
@@ -361,9 +430,10 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     </div>
     <div class="grp" aria-label="File">
       <button class="btn" id="demo" title="Start over with the start frame">New</button>
+      <button class="btn" id="libBtn" title="Your saved projects and decal templates, kept in this browser">Projects</button>
       <label class="btn" tabindex="0" title="Open a frame model (.glb, .obj, .stl), a saved project (.json) or SVG artwork">Open<input type="file" id="file" accept=".glb,.gltf,.obj,.stl,.json,.svg" hidden></label>
       <label class="btn" tabindex="0" title="Place SVG artwork on the frame as editable decals">Import SVG<input type="file" id="importSvg" accept=".svg,image/svg+xml" hidden></label>
-      <button class="btn" id="save" title="Save the frame and all decals as a project file">Save</button>
+      <button class="btn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button>
     </div>
   </header>
   <main class="layout">
@@ -456,11 +526,19 @@ select optgroup{ font-weight:600; color:#6E6E73; }
               <select class="btn" id="gPlane" aria-label="Grid plane" title="Grid plane"><option value="auto">Facing the view</option><option value="y">Ground (XY)</option><option value="z">Side (XZ)</option><option value="x">Front (YZ)</option></select>
             </div>
           </div>
+          <div class="vsec vref"><span class="vlbl">Reference image</span>
+            <div class="vbtns">
+              <label class="btn" tabindex="0" title="Load a photo of the real frame to trace paint lines, logos and cable ports">Load…<input type="file" id="refFile" accept="image/*" hidden></label>
+              <button class="btn tog" id="refStick" aria-pressed="false" title="Stick the image onto the model as seen from this view. Line the view up with the photo first" disabled>Stick to model</button>
+              <button class="btn" id="refDel" title="Remove the reference image" disabled>Remove</button>
+            </div>
+            <label class="clip opac" title="Reference image opacity" aria-label="Reference image opacity"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/></svg> <input type="range" id="refOpac" min="5" max="100" value="60" disabled> <span id="refOpacVal">60%</span></label>
+          </div>
           <div class="vsec vsaved"><span class="vlbl">Saved views</span>
             <ul class="viewlist" id="viewList"></ul>
             <div class="vbtns">
               <button class="btn" id="saveView" title="Save the current camera as a view">Save view</button>
-              <button class="btn" id="resetPanels" title="Put all panels back in their default places">Reset panels</button>
+              <button class="btn" id="resetPanels" title="Put all panels back in their default places and the layouts back to their defaults">Reset panels</button>
             </div>
           </div>
         </div>
@@ -493,6 +571,43 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <span class="count">Turn around</span>
           <div class="seg" id="turnAxis" role="group" aria-label="Turn around"><button data-ax="view" aria-pressed="true" title="Turn the decal as you see it, around the line of sight, and lay it back on the surface">View</button><button data-ax="surface" aria-pressed="false" title="Turn the decal on the surface, around the surface normal at its centre">Surface</button><button data-ax="x" class="axx" aria-pressed="false" title="Turn around the X axis (front to back), through the middle of the tube">X</button><button data-ax="y" class="axy" aria-pressed="false" title="Turn around the Y axis (side to side), through the middle of the tube">Y</button><button data-ax="z" class="axz" aria-pressed="false" title="Turn around the Z axis (vertical), through the middle of the tube">Z</button></div>
         </div>
+        <div class="pointbar decalbar" id="decalPanel" hidden aria-label="Decal">
+          <span class="count"><b id="dpName" translate="no"></b></span>
+          <span class="sep"></span>
+          <div class="dpgrp" role="group" aria-label="Move by">
+            <span class="count">Move</span>
+            <label class="inline num axl axx" title="Front to back, following the surface">X <input type="number" id="dpX" value="0" step="1"></label>
+            <label class="inline num axl axy" title="Side to side, following the surface">Y <input type="number" id="dpY" value="0" step="1"></label>
+            <label class="inline num axl axz" title="Up and down, following the surface">Z <input type="number" id="dpZ" value="0" step="1"></label>
+            <span class="count">mm</span>
+            <button class="btn" id="dpMove" title="Move the decal by these distances along the surface">Move</button>
+          </div>
+          <div class="dpgrp" id="dpTube" role="group" aria-label="Distance to tube ends" hidden>
+            <span class="count" id="dpTubeName"></span>
+            <label class="inline num" title="Gap from the decal to the start of the tube (its centre line end). Type a new value to move the decal along the tube">start <input type="number" id="dpStart" step="1"></label>
+            <label class="inline num" title="Gap from the decal to the end of the tube (its centre line end). Type a new value to move the decal along the tube">end <input type="number" id="dpEnd" step="1"></label>
+            <span class="count">mm</span>
+          </div>
+          <span class="sep"></span>
+          <div class="dpgrp" role="group" aria-label="Turn and size">
+            <label class="inline num" title="Turn by this angle around the axis chosen in Turn around (Points panel)">Turn <input type="number" id="dpTurn" value="0" step="1"> °</label>
+            <label class="inline num" title="New size in percent of the current size">Size <input type="number" id="dpSize" value="100" step="1" min="1"> %</label>
+            <button class="btn" id="dpApply" title="Turn and size the decal by these values">Apply</button>
+          </div>
+          <span class="sep"></span>
+          <div class="dpgrp" role="group" aria-label="Offset outline">
+            <label class="inline num" title="Distance to grow or shrink the outline, measured along the surface">Offset <input type="number" id="dpOff" value="1" min="0.1" step="0.5"> mm</label>
+            <button class="btn" id="dpGrow" title="Move the whole outline outwards by this distance">Grow</button>
+            <button class="btn" id="dpShrink" title="Move the whole outline inwards by this distance">Shrink</button>
+          </div>
+          <span class="sep"></span>
+          <div class="dpgrp" role="group" aria-label="Snap to other decals">
+            <label class="sw" title="While moving a decal, its edge snaps to other decals at this gap"><input type="checkbox" id="dpSnap"> Snap to decals</label>
+            <label class="inline num" title="Gap kept between snapped decals">gap <input type="number" id="dpGap" value="2" min="0" step="0.5"> mm</label>
+          </div>
+          <span class="sep"></span>
+          <button class="btn" id="dpLib" title="Keep this decal in your library to place it again on any frame">Save to library</button>
+        </div>
         </div>
       </div>
       <div class="box" id="box" hidden></div>
@@ -501,6 +616,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div class="ghost" id="knifeLine" hidden></div>
       <div class="ghost" id="vlineOverlay" hidden></div>
       <div id="gizmo" hidden></div>
+      <div class="refov" id="refOv" hidden><img id="refImg" alt="Reference image"><span class="rgrip" id="refMove" title="Drag to move the image"></span><span class="rsize" id="refSize" title="Drag to size the image; hold Alt to turn it"></span></div>
       <div class="placebar" id="placeBar" hidden>
         <strong>Place artwork</strong>
         <label>Width <input type="number" id="pbW" step="0.1" min="1"> mm</label>
@@ -535,6 +651,31 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         </div>
         <ul class="list" id="list"></ul>
       </div>
+      <details class="sec fold" id="secHist">
+        <summary><h2>History</h2><span class="sum" id="histSum"></span></summary>
+        <ol class="hist" id="histList" aria-label="Undo history"></ol>
+        <p class="note">Click a step to go back to it. Later steps stay in the list until you change something.</p>
+      </details>
+      <details class="sec fold" id="secSizes" hidden>
+        <summary><h2>Sizes</h2><span class="sum" id="sizesSum"></span></summary>
+        <p class="note">The decals are drawn once on this size and moved onto the others along each tube, then unwrapped for each size.</p>
+        <div class="sizechips" id="sizeChips" role="group" aria-label="Sizes to export"></div>
+        <div class="grid2">
+          <label class="field span3" title="How decals move along a tube when it gets longer or shorter">Position on the tube<select id="gradeMode"><option value="ends">Keep the gap to the nearer tube end</option><option value="scale">Scale with the tube length</option></select></label>
+          <label class="field" title="Show another size in the 3D view, with the decals moved onto it">Show size<select id="sizeShow"></select></label>
+        </div>
+        <div class="checks"><label title="One SVG file per size instead of all sizes in one file"><input type="checkbox" id="gradeSplit"> One file per size</label></div>
+        <button class="btn" id="gradeExport" title="Unwrap the decals on every ticked size and download the cut sheets">Download all sizes</button>
+        <p class="note" id="gradeNote" role="status"></p>
+      </details>
+      <details class="sec fold" id="secFilm">
+        <summary><h2>Film</h2><span class="sum" id="filmSum"></span></summary>
+        <div class="grid2">
+          <label class="field span2">Film<select id="filmPreset"></select></label>
+          <label class="field" title="Stretch above this is shown red, gets a warning and a relief-cut suggestion">Max stretch (%)<input id="filmMax" type="number" min="0.5" max="20" step="0.5"></label>
+        </div>
+        <p class="note">Stretch colours, warnings and relief cuts use this limit. The presets are starting points; check your film's data sheet.</p>
+      </details>
       <div class="sec">
         <h2>Sheet</h2>
         <div class="grid2">
@@ -547,17 +688,46 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <label><input type="checkbox" id="sbor" checked> Sheet outline</label>
           <label><input type="checkbox" id="smir"> Mirror pieces</label>
           <label title="Export clean Bézier curves with few nodes instead of dense straight segments"><input type="checkbox" id="scurve" checked> Clean curves</label>
+          <label title="Cut from a roll: the sheet is as long as the pieces need, Height is ignored"><input type="checkbox" id="sroll"> Roll</label>
+          <label title="Add three print-and-cut registration marks and keep pieces clear of them"><input type="checkbox" id="sreg"> Registration marks</label>
+          <label title="Cut a box around each piece and the sheet, so the waste film comes off in strips"><input type="checkbox" id="sweed"> Weeding boxes</label>
           <label class="stolw" title="How far exported curves may stray from the unwrapped outline. Higher gives fewer, smoother nodes">± <input type="number" id="stol" value="0.1" min="0.01" max="2" step="0.05"> mm</label>
         </div>
         <p class="note warn" id="sheetWarn"></p>
       </div>
       <div class="export">
-        <button class="btn primary" id="export" disabled>Download SVG</button>
+        <div class="exprow"><button class="btn primary" id="export" disabled>Download SVG</button><button class="btn" id="exportDxf" disabled title="Download the cut sheet as DXF (millimetres), for cutter software that prefers it">DXF</button></div>
         <p class="note" id="exportNote">Cut lines are black paths in millimetres on a "cut" layer. Labels and the sheet outline sit on their own layers so you can hide them in the cutter software.</p>
       </div>
     </aside>
   </main>
 </div>
+<dialog class="geo libdlg" id="libDlg" aria-labelledby="libTitle">
+  <form method="dialog" onsubmit="return false">
+    <header><h2 id="libTitle">Projects and templates</h2>
+      <p>Kept in this browser on this computer. Download a project or your templates to back them up or move them to another computer.</p>
+      <div class="seg libtabs" role="tablist"><button type="button" role="tab" id="tabProj" aria-selected="true">Projects</button><button type="button" role="tab" id="tabStart" aria-selected="false">Starting points</button><button type="button" role="tab" id="tabTpl" aria-selected="false">Decal templates</button></div>
+    </header>
+    <div class="body">
+      <div id="libProj" role="tabpanel" aria-labelledby="tabProj">
+        <div class="libbar"><button type="button" class="btn primary" id="libSaveNew" title="Save the current frame and decals as a new project">Save current as new</button><button type="button" class="btn" id="libDownload" title="Download the current project as a .json file">Download current</button><label class="btn" tabindex="0">Open file…<input type="file" id="libFile" accept=".json,.glb,.gltf,.obj,.stl,.svg" hidden></label></div>
+        <div class="libtools"><input type="search" id="libSearch" placeholder="Search by name or frame" aria-label="Search projects"><select id="libSort" aria-label="Sort"><option value="recent">Newest first</option><option value="name">By name</option><option value="frame">By frame</option></select></div>
+        <ul class="cards" id="projList"></ul>
+      </div>
+      <div id="libStart" role="tabpanel" aria-labelledby="tabStart" hidden>
+        <div class="libbar"><button type="button" class="btn primary" id="startSave" title="Keep the current frame and decals as a starting point for new projects">Save current as starting point</button></div>
+        <p class="note">A starting point is a frame with the decals you always use on it (for example one bike model). <b>New from it</b> opens a copy as a new, unsaved project, so the starting point itself never changes.</p>
+        <ul class="cards" id="startList"></ul>
+      </div>
+      <div id="libTpl" role="tabpanel" aria-labelledby="tabTpl" hidden>
+        <div class="libbar"><button type="button" class="btn" id="tplExport" title="Download all templates as one file">Download templates</button><label class="btn" tabindex="0" title="Add templates from a downloaded templates file">Add from file…<input type="file" id="tplFile" accept=".json" hidden></label></div>
+        <p class="note">Save a decal as a template with <b>Save to library</b> in the Decal panel (Edit mode). Placing a template works like placing artwork: move over the model, click, adjust, Apply.</p>
+        <ul class="cards" id="tplList"></ul>
+      </div>
+    </div>
+    <footer><span class="note" id="libMsg" role="status"></span><span class="spacer"></span><button type="button" class="btn" id="libClose">Close</button></footer>
+  </form>
+</dialog>
 <dialog class="geo unitdlg" id="unitDlg" aria-labelledby="unitTitle">
   <form method="dialog" onsubmit="return false">
     <header><h2 id="unitTitle">Check the model size</h2>
@@ -626,18 +796,25 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     </footer>
   </form>
 </dialog>
-<script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/OBJLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/SVGLoader.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineSegmentsGeometry.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineGeometry.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineMaterial.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineSegments2.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/Line2.js"></script>
+<script>
+// On the public site, only this page and the pinned libraries may run, and nothing may be sent anywhere:
+// a crafted project or SVG file cannot load or leak anything even if it slipped past the checks below.
+if (!/(^|\.)claude(usercontent)?\.(ai|com)$|^localhost$|^$/.test(location.hostname)) { const m = document.createElement('meta'); m.httpEquiv = 'Content-Security-Policy';
+  m.content = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'";
+  document.head.appendChild(m); }
+</script>
+<script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js" integrity="sha384-2gzcIyrtB96QDjrxsFcJ1O461CWiXJ8fiHgIkJLwTgy4WTktHXTOXt4dviXz9Y5Q" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js" integrity="sha384-vV17nr/rMaJqmeZkFUzXLpHdQ+ME5QHKdydaqqN+3Ga39RJlNrTatJxHwGV4ml2C" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js" integrity="sha384-I0DMsfimAPIqWT8lF+oA997gRgdUi3jhidoTq3fN0zmn35smXZukD01FLnsPRU9i" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js" integrity="sha384-FassWWYNEPQsuRQm+59KIMcDetEc30bNyE9yfx16Ok8lvoowyH81LtrPmLWltJMh" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/OBJLoader.js" integrity="sha384-zfBxZaiI8ZUg+I969NX47atW0LUUD1FLZxHlKLXLBAV8auKwVZCrF4i2BmMYdD89" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js" integrity="sha384-z6Lbfx7Kh5dVdhEISsKE58gMRQj53xGx7jmDq6OgcXZ0UPVWLe1y46AZhp7DsiL1" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/SVGLoader.js" integrity="sha384-fk8EqljrTozHuOoi2NP/E81AqUQieLbJuWHsBOMPvgTIxD5RUXwNaH1wyaTDz245" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineSegmentsGeometry.js" integrity="sha384-myvbuu07Ikobcpiipf+WNHm0pZLVEslrAcOVM/wdMvG8+SAC7Ei0e96sZFlf7pgo" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineGeometry.js" integrity="sha384-ByLKh9yfmFQTjn6gnQ0IUEo1pzOrqLKnjMMX2BbXXGKIY2r05b5TDT5zDudQlK4h" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineMaterial.js" integrity="sha384-IysLpP+Ly1pP5wmDWOP9440DUD50qkc6SPvXj4SOSKHkmcSOOWw4Es2nwDRor8B0" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineSegments2.js" integrity="sha384-KeRPoF0zM5NtVfYoZz1Oeo2IthunIvkcIAlC7qCQBTjOtGHFLSgri19QgypiUAmA" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/Line2.js" integrity="sha384-WcZdtfooDu/YcIXQxXsmu7SNOrvAf6IXMBTabEB2o+qUBcBfw0wwQCp0xE5OYyGL" crossorigin="anonymous"></script>
 <script>
 /* ===== CORE GEOMETRY (DOM-free) ===== */
 const Core = (() => {
@@ -1354,32 +1531,37 @@ const Core = (() => {
     return { pts, holes: hs, w: x1-x0, h: y1-y0, tf: ([x,y]) => [c*x-s*y-x0, s*x+c*y-y0] };
   }
 
-  function pack(pieces, W, H, gap) {
+  function pack(pieces, W, H, gap, margin) {
+    const m = margin == null ? gap : Math.max(gap, margin);
     // pieces: [{id, poly}] poly in mm, y-down already
     const items = pieces.map(p => ({ id: p.id, curves: p.curves, ...orientPiece(p.poly, p.holes) }));
-    for (const it of items) if (it.w > W - 2*gap && it.h <= W - 2*gap && it.w <= H - 2*gap) {
+    for (const it of items) if (it.w > W - 2*m && it.h <= W - 2*m && it.w <= H - 2*m) {
       it.pts = it.pts.map(([x,y]) => [it.h - y, x]); it.holes = it.holes.map(h => h.map(([x,y]) => [it.h - y, x])); const t0 = it.tf, hh = it.h; it.tf = q => { const [x,y] = t0(q); return [hh - y, x]; }; [it.w, it.h] = [it.h, it.w];
     }
     items.sort((a,b) => b.h - a.h);
-    const placed = []; let sheet = 0, x = gap, y = gap, shelf = 0, oversize = false;
+    const placed = []; let sheet = 0, x = m, y = m, shelf = 0, oversize = false, used = 0;
     for (const it of items) {
-      if (it.w > W - 2*gap || it.h > H - 2*gap) oversize = true;
-      if (x + it.w > W - gap && x > gap) { x = gap; y += shelf + gap; shelf = 0; }
-      if (y + it.h > H - gap && y > gap) { sheet++; x = gap; y = gap; shelf = 0; }
+      if (it.w > W - 2*m || it.h > H - 2*m) oversize = true;
+      if (x + it.w > W - m && x > m) { x = m; y += shelf + gap; shelf = 0; }
+      if (y + it.h > H - m && y > m) { sheet++; x = m; y = m; shelf = 0; }
       const ox = x, oy = y, T = q => { const [px, py] = it.tf(q); return [px + ox, py + oy]; };
-      placed.push({ id: it.id, sheet, pts: it.pts.map(([px,py]) => [px + x, py + y]), holes: it.holes.map(h => h.map(([px,py]) => [px + x, py + y])), curves: it.curves ? it.curves.map(r => r && r.map(sg => sg.map(T))) : null, x, y, w: it.w, h: it.h });
-      x += it.w + gap; shelf = Math.max(shelf, it.h);
+      placed.push({ id: it.id, sheet, pts: it.pts.map(([px,py]) => [px + x, py + y]), holes: it.holes.map(h => h.map(([px,py]) => [px + x, py + y])), curves: it.curves ? it.curves.map(r => r && r.map(sg => sg.map(T))) : null, x, y, w: it.w, h: it.h, tf: T });
+      x += it.w + gap; shelf = Math.max(shelf, it.h); used = Math.max(used, y + it.h);
     }
-    return { placed, sheets: placed.length ? sheet + 1 : 1, oversize };
+    return { placed, sheets: placed.length ? sheet + 1 : 1, oversize, used: used + m, margin: m };
   }
 
   function buildSVG(packing, W, H, opts, names) {
     const gapY = 40, total = packing.sheets * H + (packing.sheets - 1) * gapY;
     const f = v => (Math.round(v*100)/100).toString();
-    let cut = '', lab = '', sh = '';
+    let cut = '', lab = '', sh = '', reg = '', weed = '';
     for (let s = 0; s < packing.sheets; s++) {
-      sh += `<rect x="0" y="${f(s*(H+gapY))}" width="${f(W)}" height="${f(H)}" fill="none" stroke="#e5007e" stroke-width="0.2" stroke-dasharray="2 2"/>\n`;
+      const oy = s*(H+gapY);
+      sh += `<rect x="0" y="${f(oy)}" width="${f(W)}" height="${f(H)}" fill="none" stroke="#e5007e" stroke-width="0.2" stroke-dasharray="2 2"/>\n`;
+      if (opts.reg) { const r = 2.5, k = 8; for (const [x, y] of [[k, k], [W - k, k], [k, H - k]]) reg += `<circle cx="${f(x)}" cy="${f(oy + y)}" r="${r}" fill="#000000"/>\n`; } // print-and-cut marks: printed, read by the cutter's sensor
+      if (opts.weed) weed += `<rect x="${f(opts.weed / 2)}" y="${f(oy + opts.weed / 2)}" width="${f(W - opts.weed)}" height="${f(H - opts.weed)}" fill="none" stroke="#0070c0" stroke-width="0.1"/>\n`;
     }
+    if (opts.title) lab += `<text x="${f((packing.margin || 6))}" y="${f(Math.max(4, (packing.margin || 6) - 2))}" font-family="Arial, sans-serif" font-size="4" fill="#e5007e">${String(opts.title).replace(/[<&>"]/g, '')}</text>\n`;
     for (const p of packing.placed) {
       const oy = p.sheet * (H + gapY);
       const ring = r => `M${r.map(([x,y]) => f(x)+' '+f(y+oy)).join(' L')} Z`;
@@ -1388,13 +1570,15 @@ const Core = (() => {
       const cring = r => `M${P(r[0][0])} ` + r.map(sg => straight(sg) ? `L${P(sg[3])}` : `C${P(sg[1])} ${P(sg[2])} ${P(sg[3])}`).join(' ') + ' Z';
       const rings = opts.curves && p.curves && p.curves.every(Boolean) ? p.curves.map(cring) : [p.pts, ...(p.holes || [])].map(ring);
       cut += `<path id="${'piece-' + p.id}" d="${rings.join(' ')}" fill="none" stroke="#000000" stroke-width="0.1"/>\n`;
+      if (opts.weed) { const g2 = opts.weed / 2; weed += `<rect x="${f(p.x - g2)}" y="${f(oy + p.y - g2)}" width="${f(p.w + opts.weed)}" height="${f(p.h + opts.weed)}" fill="none" stroke="#0070c0" stroke-width="0.1"/>\n`; }
       const fs = Math.max(2.5, Math.min(8, p.h / 5, p.w / Math.max(4, (names[p.id]||'').length) * 1.6));
       lab += `<text x="${f(p.x + p.w/2)}" y="${f(oy + p.y + p.h/2 + fs*0.35)}" font-family="Arial, sans-serif" font-size="${f(fs)}" text-anchor="middle" fill="#e5007e">${(names[p.id]||'').replace(/[<&>"]/g, c => ({'<':'&lt;','&':'&amp;','>':'&gt;','"':'&quot;'}[c]))}</text>\n`;
     }
     return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(total)}mm" viewBox="0 0 ${f(W)} ${f(total)}">
-${opts.border ? `<g id="sheet">\n${sh}</g>\n` : ''}<g id="cut">
+${opts.border ? `<g id="sheet">\n${sh}</g>\n` : ''}${reg ? `<g id="registration">\n${reg}</g>\n` : ''}<g id="cut">
 ${cut}</g>
+${weed ? `<g id="weed">\n${weed}</g>\n` : ''}
 ${opts.labels ? `<g id="labels">\n${lab}</g>\n` : ''}</svg>`;
   }
 
@@ -1478,7 +1662,17 @@ new ResizeObserver(() => {
   lineMats.forEach(m => m.resolution.set(w, h));
 }).observe(stage);
 let tween = null;
-(function loop(){ if (tween) tween(); controls.update(); syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
+// draw only while something happens: input, camera moves, scene changes, work in progress; otherwise a slow heartbeat
+let awakeUntil = 0, lastDraw = 0;
+const wake = (ms = 1500) => { awakeUntil = Math.max(awakeUntil, performance.now() + ms); };
+controls.addEventListener('change', () => wake());
+for (const ev of ['pointerdown', 'pointermove', 'pointerup', 'wheel', 'keydown', 'keyup', 'resize', 'focus']) addEventListener(ev, () => wake(), { passive: true, capture: true });
+for (const g of [scene, decalGroup]) { const add = g.add.bind(g), rem = g.remove.bind(g); g.add = (...a) => { wake(); return add(...a); }; g.remove = (...a) => { wake(); return rem(...a); }; }
+new MutationObserver(() => wake(600)).observe(document.body, { subtree: true, childList: true, attributes: true, characterData: true });
+(function loop(){ const now = performance.now(); if (tween) { wake(); tween(); } controls.update();
+  let pressing = false; try { pressing = !!press; } catch (e) {} // press is declared further down
+  if (now > awakeUntil && !S.busy && !pressing && now - lastDraw < 1000) { requestAnimationFrame(loop); return; } lastDraw = now;
+  syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
   if (S.model && !camera.isOrthographicCamera) { const dd = camera.position.distanceTo(controls.target); const nn = Math.max(0.05, dd * 0.01); if (Math.abs(camera.near - nn) > nn * 0.2) { camera.near = nn; camera.updateProjectionMatrix(); } } renderer.render(scene, camera); requestAnimationFrame(loop); })();
 
 // ---------- model ----------
@@ -1509,9 +1703,9 @@ function guessUnits(raw, fmt) {
   return 'mm';
 }
 
-function buildModel() {
-  const src = S.source; const sc = UNIT[S.units];
-  const pos = src.raw.pos.map(x => x * sc), idx = src.raw.idx;
+// the surface the tools work on: welded, evenly subdivided, with neighbours and a lookup grid (no drawing)
+function prepModel(raw, sc) {
+  const pos = raw.pos.map(x => x * sc), idx = raw.idx;
   let mn = [1e30,1e30,1e30], mx = [-1e30,-1e30,-1e30];
   for (let i = 0; i < pos.length; i += 3) for (let d = 0; d < 3; d++) { mn[d] = Math.min(mn[d], pos[i+d]); mx[d] = Math.max(mx[d], pos[i+d]); }
   const size = mx.map((v,d) => v - mn[d]), diag = Math.hypot(...size);
@@ -1520,6 +1714,11 @@ function buildModel() {
   if (mesh.tri.length / 3 < 350000) mesh = Core.subdivide(mesh, L, 400000);
   const topo = Core.topology(mesh); mesh._topo = topo;
   const grid = Core.buildGrid(mesh, Math.max(L, topo.medianEdge) * 2); grid.L = L;
+  return { mesh, topo, grid, L, diag, mn, mx, size, lineR: Math.max(diag * 0.0011, L * 0.12) };
+}
+function buildModel() {
+  const src = S.source;
+  const M = prepModel(src.raw, UNIT[S.units]), { mesh, topo, grid, L, diag, mn, mx, size } = M;
   // render geometry
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(mesh.pos, 3));
@@ -1527,6 +1726,7 @@ function buildModel() {
   g.computeVertexNormals();
   if (modelMesh) { scene.remove(modelMesh); modelMesh.geometry.dispose(); }
   modelMesh = new THREE.Mesh(g, modelMat); modelMesh.renderOrder = 1; scene.add(modelMesh);
+  if (S.ref?.stuck) buildRefMesh(); // a stuck photo follows the new geometry
   // pick geometry
   const nf = mesh.tri.length / 3, pp = new Float32Array(nf * 9), fid = new Float32Array(nf * 3);
   for (let f = 0; f < nf; f++) for (let k = 0; k < 3; k++) { const v = mesh.tri[3*f+k]; pp.set([mesh.pos[3*v], mesh.pos[3*v+1], mesh.pos[3*v+2]], (3*f+k)*3); fid[3*f+k] = f; }
@@ -1538,7 +1738,7 @@ function buildModel() {
     side: THREE.DoubleSide,
   }));
   pickScene.add(pickMesh);
-  S.model = { mesh, topo, grid, L, diag, mn, mx, lineR: Math.max(diag * 0.0011, L * 0.12) };
+  S.model = M;
   $('#modelinfo').textContent = `${src.name}: ${[size[0], size[2], size[1]].map(v => Math.round(v)).join(' × ')} mm`; // shown Z-up: length × width × height
   // fit view
   const c = new THREE.Vector3((mn[0]+mx[0])/2, (mn[1]+mx[1])/2, (mn[2]+mx[2])/2);
@@ -1597,6 +1797,7 @@ function loadSource(raw, fmt, name, after) {
     } catch (e) { console.error(e); alert('This model could not be prepared: ' + e.message); setBusy(false); updateUI(); return; }
     setBusy(false); updateUI();
     if (after) after();
+    renderSizes();
   }, 30);
 }
 
@@ -1756,14 +1957,16 @@ function toTube(p, tubes) {
     const b = tubeBasis(tb), w = v.clone().sub(b.A), s = w.dot(b.u), tc = Math.min(Math.max(s / b.len, 0), 1);
     const radial = w.clone().sub(b.u.clone().multiplyScalar(s)), dist = radial.length(), r = tb.r1 + (tb.r2 - tb.r1) * tc;
     const err = Math.hypot(dist - r, (s - tc * b.len));
-    if (!best || err < best.err) best = { err, name: tb.name, t: s / b.len, ang: Math.atan2(radial.dot(b.e2), radial.dot(b.e1)), off: dist - r };
+    if (!best || err < best.err) best = { err, name: tb.name, t: s / b.len, sA: s, sB: b.len - s, ang: Math.atan2(radial.dot(b.e2), radial.dot(b.e1)), off: dist - r };
   }
   return best;
 }
-function fromTube(rec, tubes) {
+// ends = true keeps the gap in mm to the nearer tube end (decals by a joint stay by it); otherwise the position scales with the tube
+function fromTube(rec, tubes, ends) {
   const tb = tubes.find(x => x.name === rec.name); if (!tb) return null;
-  const b = tubeBasis(tb), tc = Math.min(Math.max(rec.t, 0), 1), r = tb.r1 + (tb.r2 - tb.r1) * tc + rec.off;
-  const p = b.A.clone().add(b.u.clone().multiplyScalar(rec.t * b.len)).add(b.e1.clone().multiplyScalar(Math.cos(rec.ang) * r)).add(b.e2.clone().multiplyScalar(Math.sin(rec.ang) * r));
+  const b = tubeBasis(tb), t = ends && rec.sA != null ? (rec.t <= 0.5 ? rec.sA : b.len - rec.sB) / b.len : rec.t;
+  const tc = Math.min(Math.max(t, 0), 1), r = tb.r1 + (tb.r2 - tb.r1) * tc + rec.off;
+  const p = b.A.clone().add(b.u.clone().multiplyScalar(t * b.len)).add(b.e1.clone().multiplyScalar(Math.cos(rec.ang) * r)).add(b.e2.clone().multiplyScalar(Math.sin(rec.ang) * r));
   return [p.x, p.y, p.z];
 }
 
@@ -1783,7 +1986,7 @@ function buildFromGeometry(geo, tubesIn, name, carryDecals, meta) {
   const keepViews = S.views;
   loadSource(raw, 'geometry', name, () => {
     S.source.tubes = tubes; S.source.geo = { ...geo }; S.source.tubeSizes = t; Object.assign(S.source, meta || {});
-    if (carry) { S.views = keepViews; restoreDecals(carry.map(d => ({ ...d, ctrl: d.ctrl.map(c => ({ ...c, p: fromTube(c.p, tubes), hin: c.hin && fromTube(c.hin, tubes), hout: c.hout && fromTube(c.hout, tubes) })).filter(c => c.p) })), `Moved ${carry.length} decal${carry.length === 1 ? '' : 's'} onto ${name}.`); }
+    if (carry) { S.views = keepViews; restoreDecals(carry.map(d => ({ ...d, ctrl: d.ctrl.map(c => ({ ...c, p: fromTube(c.p, tubes, S.gradeEnds), hin: c.hin && fromTube(c.hin, tubes, S.gradeEnds), hout: c.hout && fromTube(c.hout, tubes, S.gradeEnds) })).filter(c => c.p) })), `Moved ${carry.length} decal${carry.length === 1 ? '' : 's'} onto ${name}.`); }
   });
 }
 function demoFrame() { const p = BUILTIN_PRESETS.find(q => q.name === 'Road race'), g = {}; for (const k in p.geo) g[k] = p.geo[k][1]; buildFromGeometry(g, p.tubes, 'Start frame (road, M)', false, { start: true, presetName: p.name, sizeIndex: 1 }); }
@@ -1851,7 +2054,7 @@ function geoDialog() {
   const presets = allPresets();
   const cur = S.source?.geo ? { geo: S.source.geo, tubes: S.source.tubeSizes } : null;
   const groups = {};
-  presets.forEach((p, i) => { const c = p.cat || 'My presets'; (groups[c] = groups[c] || []).push(`<option value="${i}">${p.name.replace(/</g, '&lt;')}</option>`); });
+  presets.forEach((p, i) => { const c = esc(p.cat || 'My presets'); (groups[c] = groups[c] || []).push(`<option value="${i}">${esc(p.name)}</option>`); });
   $('#gPreset').innerHTML = ['Road', 'Gravel', 'MTB', 'My presets'].filter(c => groups[c]).map(c => `<optgroup label="${c}">${groups[c].join('')}</optgroup>`).join('') + '<optgroup label="Other"><option value="custom">Custom numbers</option></optgroup>';
   $('#gFields').innerHTML = GEO_FIELDS.map(([k, l, u]) => `<label class="field">${l} (${u})${GEO_OPTIONAL.has(k) && k !== 'ttSlope' ? ' <i>optional</i>' : ''}<input type="number" step="0.1" id="g_${k}"${GEO_OPTIONAL.has(k) ? ' placeholder="–"' : ''}></label>`).join('') + '<p class="note derived" id="gDerived"></p>';
   $('#gFields').oninput = showDerived;
@@ -1965,7 +2168,7 @@ function askUnits(raw, fmt, name) {
 function openFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
   if (ext === 'svg') { openSVG(file); return; }
-  if (ext === 'json') { file.text().then(t => loadProject(t, file.name)).catch(e => alert('This project file could not be read: ' + e.message)); return; }
+  if (ext === 'json') { file.text().then(t => { loadProject(t, file.name); S.project = { id: null, name: file.name.replace(/(\.decals)?\.json$/i, '') }; updateProjName(); }).catch(e => alert('This project file could not be read: ' + e.message)); return; }
   if (!['glb','gltf','obj','stl'].includes(ext)) { alert('Use a .glb, .obj or .stl model, or a saved .json project.'); return; }
   if (S.decals.length && S.dirty && !confirm('Opening a new model clears the current decals. Save the project first if you want to keep them. Continue?')) return;
   $('#units').value = 'auto'; // a new model detects its own units
@@ -1985,7 +2188,7 @@ stage.addEventListener('dragleave', () => stage.classList.remove('dragging'));
 stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('dragging'); const f = e.dataTransfer.files[0]; if (f) openFile(f); });
 $('#demo').addEventListener('click', () => {
   if (S.decals.length && S.dirty && !confirm('Start a new file? Decals that are not saved will be lost.')) return;
-  demoFrame();
+  S.project = { id: null, name: '' }; demoFrame();
 });
 
 // ---------- project save / load ----------
@@ -1997,7 +2200,7 @@ function projectJSON() {
   return JSON.stringify({
     app: 'decal-unwrap', version: 1, name: src.name, fmt: src.fmt, units: S.units,
     model: { pos: b64(new Float32Array(src.raw.pos)), idx: b64(new Uint32Array(src.raw.idx)) },
-    sheet: S.sheet, mirrorAxis: S.mirrorAxis, mirrorDefault: S.mirrorDefault, clipDist: S.clipDist, modelOpacity: S.modelOpacity, grid: S.grid, views: S.views,
+    sheet: S.sheet, film: S.film, ref: S.ref, mirrorAxis: S.mirrorAxis, mirrorDefault: S.mirrorDefault, clipDist: S.clipDist, modelOpacity: S.modelOpacity, grid: S.grid, views: S.views,
     frame: src.tubes ? { tubes: src.tubes, geo: src.geo, tubeSizes: src.tubeSizes, presetName: src.presetName, sizeIndex: src.sizeIndex } : null,
     presets: userPresets,
     decals: S.decals.filter(d => d.ctrl.length).map(d => ({
@@ -2011,14 +2214,263 @@ async function saveFile(filename, data, note) {
     try { await downloadsApi.save({ filename, data }); if (note) note.textContent = 'Saved ' + filename; return true; }
     catch (e) { if (e?.code !== 'declined' && note) note.textContent = 'The file could not be saved here: ' + (e?.message || e?.code); return false; }
   }
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: filename.endsWith('.json') ? 'application/json' : 'image/svg+xml' })); a.download = filename; a.click();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], { type: filename.endsWith('.json') ? 'application/json' : filename.endsWith('.dxf') ? 'application/dxf' : 'image/svg+xml' })); a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 4000); if (note) note.textContent = 'Saved ' + filename; return true;
 }
-const baseName = () => (S.source?.name || 'decals').replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '_');
-$('#save').addEventListener('click', async () => {
-  if (!S.source) return;
-  if (await saveFile(baseName() + '.decals.json', projectJSON(), $('#exportNote'))) { S.dirty = false; flash('Project saved with the frame and all decals.'); }
+// ---------- projects and templates kept in this browser (IndexedDB) ----------
+const DB = (() => {
+  let ready = null;
+  const open = () => ready || (ready = new Promise((res, rej) => { const r = indexedDB.open('decal-studio', 1);
+    r.onupgradeneeded = () => { const db = r.result; for (const s of ['projects', 'templates']) if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' }); };
+    r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
+  const tx = async (store, mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction(store, mode), q = fn(t.objectStore(store)); t.oncomplete = () => res(q?.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
+  return { all: s => tx(s, 'readonly', st => st.getAll()), get: (s, id) => tx(s, 'readonly', st => st.get(id)), put: (s, v) => tx(s, 'readwrite', st => st.put(v)), del: (s, id) => tx(s, 'readwrite', st => st.delete(id)) };
+})();
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+S.project = { id: null, name: '' };
+// a small picture of the current view for the project card
+function viewThumb() {
+  try { renderer.render(scene, camera); const src = renderer.domElement, c = document.createElement('canvas'), w = 320, h = 200; c.width = w; c.height = h;
+    const g = c.getContext('2d'), k = Math.max(w / src.width, h / src.height), sw = w / k, sh = h / k;
+    g.fillStyle = getComputedStyle(document.body).getPropertyValue('--fill') || '#eee'; g.fillRect(0, 0, w, h);
+    g.drawImage(src, (src.width - sw) / 2, (src.height - sh) / 2, sw, sh, 0, 0, w, h); return c.toDataURL('image/jpeg', 0.8); } catch (e) { return ''; }
+}
+async function saveProject(asNew, quietName) {
+  if (!S.source) return false;
+  let name = S.project.name;
+  if (asNew || !S.project.id) { name = quietName || prompt(tr('Name for this project:'), name || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return false; name = name.trim() || tr('Untitled'); }
+  const id = asNew || !S.project.id ? uid() : S.project.id, old = asNew ? null : await DB.get('projects', id).catch(() => null);
+  const data = projectJSON(), rec = { id, name, created: old?.created || Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data };
+  try { await DB.put('projects', rec); } catch (e) { flash(tr('Could not save in this browser: {0}').replace('{0}', e?.message || e)); return false; }
+  S.project = { id, name }; S.dirty = false; updateProjName(); flash(tr('Saved "{0}" in Projects.').replace('{0}', name)); renderLibSoon(); return true;
+}
+async function openProjectRec(id) {
+  const rec = await DB.get('projects', id); if (!rec) return;
+  if (S.decals.length && S.dirty && !confirm(tr('Open "{0}"? Changes that are not saved will be lost.').replace('{0}', rec.name))) return;
+  S.dirty = false; $('#libDlg').close(); loadProject(rec.data, rec.name);
+  S.project = rec.id === 'autosave' ? { id: null, name: '' } : { id: rec.id, name: rec.name };
+}
+const fmtDate = t => new Date(t).toLocaleString([], { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+let libT = 0; const renderLibSoon = () => { clearTimeout(libT); libT = setTimeout(renderLib, 80); };
+async function renderLib() {
+  if (!$('#libDlg').open) return;
+  let ps = [], ts = []; try { [ps, ts] = await Promise.all([DB.all('projects'), DB.all('templates')]); } catch (e) { $('#libMsg').textContent = tr('This browser does not allow saving here (private window?).'); }
+  const starts = ps.filter(r => r.kind === 'start'); ps = ps.filter(r => r.kind !== 'start');
+  const qq = ($('#libSearch').value || '').trim().toLowerCase(); if (qq) ps = ps.filter(r => (r.name + ' ' + r.frame).toLowerCase().includes(qq));
+  const sortBy = $('#libSort').value;
+  ps.sort((a, b) => (b.id === 'autosave') - (a.id === 'autosave') || (sortBy === 'name' ? a.name.localeCompare(b.name) : sortBy === 'frame' ? (a.frame || '').localeCompare(b.frame || '') || b.updated - a.updated : b.updated - a.updated));
+  ts.sort((a, b) => b.created - a.created); starts.sort((a, b) => a.name.localeCompare(b.name));
+  $('#startList').innerHTML = starts.length ? starts.map(r => `<li class="start" data-id="${esc(r.id)}"><button type="button" class="th" data-a="new" title="${esc(tr('New project from this starting point'))}">${r.thumb ? `<img src="${r.thumb}" alt="">` : ''}</button>
+    <div class="meta"><b translate="no">${esc(r.name)}</b>${esc(r.frame)} · ${r.decals} ${esc(tr(r.decals === 1 ? 'decal' : 'decals'))}</div>
+    <div class="acts"><button type="button" class="primary" data-a="new">${tr('New from it')}</button><button type="button" data-a="ren">${tr('Rename')}</button><button type="button" data-a="dl">${tr('Download')}</button><button type="button" class="del" data-a="del">${tr('Delete')}</button></div></li>`).join('')
+    : `<li class="empty">${tr('No starting points yet. Set up a frame with the decals you always use, then click Save current as starting point.')}</li>`;
+  $('#projList').innerHTML = ps.length ? ps.map(r => `<li class="${r.id === S.project.id ? 'cur' : ''}" data-id="${esc(r.id)}"><button type="button" class="th" data-a="open" title="${esc(tr('Open'))}">${r.thumb ? `<img src="${r.thumb}" alt="">` : ''}</button>
+    <div class="meta"><b translate="no">${esc(r.id === 'autosave' ? tr('Last session (autosaved)') : r.name)}</b>${esc(r.frame)} · ${r.decals} ${esc(tr(r.decals === 1 ? 'decal' : 'decals'))}<br>${fmtDate(r.updated)}</div>
+    <div class="acts"><button type="button" class="primary" data-a="open">${tr('Open')}</button>${r.id === 'autosave' ? '' : `<button type="button" data-a="ren">${tr('Rename')}</button>`}${r.id === 'autosave' ? '' : `<button type="button" data-a="dup">${tr('Duplicate')}</button>`}<button type="button" data-a="dl">${tr('Download')}</button><button type="button" class="del" data-a="del">${tr('Delete')}</button></div></li>`).join('')
+    : `<li class="empty">${tr(qq ? 'No project matches the search.' : 'No saved projects yet. Click Save in the top bar to keep this one.')}</li>`;
+  $('#tplList').innerHTML = ts.length ? ts.map(t => { const pad = Math.max(t.w, t.h) * 0.08;
+    return `<li data-id="${esc(t.id)}"><button type="button" class="th" data-a="place" title="${esc(tr('Place on the model'))}"><svg viewBox="${-pad} ${-pad} ${t.w + 2*pad} ${t.h + 2*pad}" xmlns="http://www.w3.org/2000/svg"><path d="${esc(t.d)}" fill="currentColor" fill-opacity=".18" fill-rule="evenodd" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></button>
+    <div class="meta"><b translate="no">${esc(t.name)}</b>${fmm(t.w)} × ${fmm(t.h)} mm${t.mirror ? ' · ' + esc(tr('mirrored')) : ''}</div>
+    <div class="acts"><button type="button" class="primary" data-a="place">${tr('Place')}</button><button type="button" data-a="ren">${tr('Rename')}</button><button type="button" class="del" data-a="del">${tr('Delete')}</button></div></li>`; }).join('')
+    : `<li class="empty">${tr('No templates yet. Select a decal in Edit mode and click Save to library in the Decal panel.')}</li>`;
+}
+$('#projList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const id = li.dataset.id, rec = await DB.get('projects', id); if (!rec) return;
+  if (b.dataset.a === 'open') openProjectRec(id);
+  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), rec.name); if (n && n.trim()) { rec.name = n.trim(); await DB.put('projects', rec); if (S.project.id === id) S.project.name = rec.name; renderLib(); } }
+  if (b.dataset.a === 'dl') saveFile(rec.name.replace(/[^\w-]+/g, '_') + '.decals.json', rec.data, $('#libMsg'));
+  if (b.dataset.a === 'dup') { await DB.put('projects', { ...rec, id: uid(), name: tr('{0} copy').replace('{0}', rec.name), created: Date.now(), updated: Date.now() }); renderLib(); }
+  if (b.dataset.a === 'del' && confirm(tr('Delete "{0}" from this browser? This cannot be undone.').replace('{0}', rec.id === 'autosave' ? tr('Last session (autosaved)') : rec.name))) { await DB.del('projects', id); if (S.project.id === id) S.project = { id: null, name: '' }; renderLib(); }
 });
+$('#tplList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const t = await DB.get('templates', li.dataset.id); if (!t) return;
+  if (b.dataset.a === 'place') { $('#libDlg').close(); placeTemplate(t); }
+  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), t.name); if (n && n.trim()) { t.name = n.trim(); await DB.put('templates', t); renderLib(); } }
+  if (b.dataset.a === 'del' && confirm(tr('Delete the template "{0}"?').replace('{0}', t.name))) { await DB.del('templates', t.id); renderLib(); }
+});
+function libTab(t) { t = t === true ? 'tpl' : t === false ? 'proj' : t; for (const [tab, pan, k] of [['#tabProj', '#libProj', 'proj'], ['#tabStart', '#libStart', 'start'], ['#tabTpl', '#libTpl', 'tpl']]) { $(tab).setAttribute('aria-selected', String(t === k)); $(pan).hidden = t !== k; } }
+$('#tabProj').addEventListener('click', () => libTab('proj')); $('#tabTpl').addEventListener('click', () => libTab('tpl')); $('#tabStart').addEventListener('click', () => libTab('start'));
+$('#libSearch').addEventListener('input', renderLibSoon); $('#libSort').addEventListener('change', renderLib);
+$('#projName').addEventListener('click', () => { libTab('proj'); $('#libMsg').textContent = ''; $('#libDlg').showModal(); renderLib(); });
+// starting points: a frame with its usual decals, opened as a new project each time
+$('#startSave').addEventListener('click', async () => {
+  if (!S.source) return; const name = prompt(tr('Name for this starting point:'), S.project.name || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return;
+  const data = projectJSON();
+  try { await DB.put('projects', { id: uid(), kind: 'start', name: name.trim() || tr('Untitled'), created: Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }); }
+  catch (e) { $('#libMsg').textContent = tr('Could not save in this browser: {0}').replace('{0}', e?.message || e); return; }
+  $('#libMsg').textContent = tr('Saved "{0}" as a starting point.').replace('{0}', name.trim()); renderLib();
+});
+$('#startList').addEventListener('click', async e => {
+  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const rec = await DB.get('projects', li.dataset.id); if (!rec) return;
+  if (b.dataset.a === 'new') { if (S.decals.length && S.dirty && !confirm(tr('Start a new project from "{0}"? Changes that are not saved will be lost.').replace('{0}', rec.name))) return;
+    S.dirty = false; $('#libDlg').close(); loadProject(rec.data, rec.name); S.project = { id: null, name: rec.name }; updateProjName(); }
+  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), rec.name); if (n && n.trim()) { rec.name = n.trim(); await DB.put('projects', rec); renderLib(); } }
+  if (b.dataset.a === 'dl') saveFile(rec.name.replace(/[^\w-]+/g, '_') + '.decals.json', rec.data, $('#libMsg'));
+  if (b.dataset.a === 'del' && confirm(tr('Delete the starting point "{0}"? Projects made from it stay.').replace('{0}', rec.name))) { await DB.del('projects', rec.id); renderLib(); }
+});
+// the project's name in the top bar, with a dot while there are unsaved changes
+function updateProjName() { const n = S.project?.name; $('#projNameText').textContent = n || tr('Untitled project'); $('#projDirty').hidden = !(S.dirty && S.source); }
+$('#libBtn').addEventListener('click', () => { $('#libMsg').textContent = ''; $('#libDlg').showModal(); renderLib(); });
+$('#libClose').addEventListener('click', () => $('#libDlg').close());
+$('#libSaveNew').addEventListener('click', async () => { if (await saveProject(true)) renderLib(); });
+$('#libDownload').addEventListener('click', () => { if (S.source) saveFile(baseName() + '.decals.json', projectJSON(), $('#libMsg')); });
+$('#libFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) { $('#libDlg').close(); openFile(f); } e.target.value = ''; });
+$('#tplExport').addEventListener('click', async () => { const ts = await DB.all('templates'); if (!ts.length) { $('#libMsg').textContent = tr('No templates to download yet.'); return; } saveFile('decal_templates.json', JSON.stringify({ app: 'decal-studio-templates', version: 1, templates: ts }), $('#libMsg')); });
+$('#tplFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try { const j = JSON.parse(await f.text()); if (j.app !== 'decal-studio-templates' || !Array.isArray(j.templates)) throw new Error(tr('not a templates file'));
+    let n = 0; for (const t of j.templates) { if (typeof t.d !== 'string' || !(t.w > 0) || !(t.h > 0) || !/^[MLCZ0-9 .,eE+-]*$/i.test(t.d)) continue; await DB.put('templates', { id: uid(), name: String(t.name || 'Template').slice(0, 80), created: Date.now(), w: +t.w, h: +t.h, d: t.d, mirror: !!t.mirror }); n++; }
+    $('#libMsg').textContent = tr('Added {0} templates.').replace('{0}', n); renderLib(); }
+  catch (err) { $('#libMsg').textContent = tr('That file could not be read: {0}').replace('{0}', err.message); } });
+// a decal's flat outline (with holes) as a template, in mm
+async function saveTemplate(d) {
+  const pc = solvedPieces().find(p => p.id === 'd' + d.id); if (!pc) { flash('Unwrap this decal first.'); return; }
+  let rings = pc.curves && pc.curves.every(Boolean) ? pc.curves.map(r => ({ c: r })) : [pc.poly, ...(pc.holes || [])].map(r => ({ p: r }));
+  // lie it straight: the turn that gives the smallest box, long side across
+  let best = null; for (let a = 0; a < 180; a++) { const c = Math.cos(a * Math.PI / 180), s = Math.sin(a * Math.PI / 180); let x0 = 1e30, x1 = -1e30, y0 = 1e30, y1 = -1e30;
+    for (const q of pc.poly) { const X = c*q[0] - s*q[1], Y = s*q[0] + c*q[1]; x0 = Math.min(x0, X); x1 = Math.max(x1, X); y0 = Math.min(y0, Y); y1 = Math.max(y1, Y); }
+    const ar = (x1 - x0) * (y1 - y0); if (!best || ar < best.ar - 1e-9) best = { ar, a: (x1 - x0) >= (y1 - y0) ? a : a + 90 }; }
+  const rc = Math.cos(best.a * Math.PI / 180), rs = Math.sin(best.a * Math.PI / 180), rot = q => [rc*q[0] - rs*q[1], rs*q[0] + rc*q[1]];
+  rings = rings.map(r => r.c ? { c: r.c.map(sg => sg.map(rot)) } : { p: r.p.map(rot) });
+  const all = rings.flatMap(r => r.c ? r.c.flat() : r.p), x0 = Math.min(...all.map(q => q[0])), y0 = Math.min(...all.map(q => q[1])), x1 = Math.max(...all.map(q => q[0])), y1 = Math.max(...all.map(q => q[1]));
+  const f = v => (Math.round(v * 100) / 100).toString(), P = q => f(q[0] - x0) + ' ' + f(q[1] - y0);
+  const dd = rings.map(r => r.c ? `M${P(r.c[0][0])} ` + r.c.map(sg => `C${P(sg[1])} ${P(sg[2])} ${P(sg[3])}`).join(' ') + ' Z' : 'M' + r.p.map(P).join(' L') + ' Z').join(' ');
+  const name = prompt(tr('Name for this template:'), d.name); if (name == null) return;
+  try { await DB.put('templates', { id: uid(), name: name.trim() || d.name, created: Date.now(), w: x1 - x0, h: y1 - y0, d: dd, mirror: !!d.mirror }); }
+  catch (e) { flash(tr('Could not save in this browser: {0}').replace('{0}', e?.message || e)); return; }
+  flash(tr('Saved "{0}" to your templates. Find it under Projects → Templates.').replace('{0}', name.trim() || d.name));
+}
+function placeTemplate(t) {
+  if (!S.model) { alert('Open a frame first, then place a template on it.'); return; }
+  const r = parseSVG(`<svg xmlns="http://www.w3.org/2000/svg" width="${t.w}mm" height="${t.h}mm" viewBox="0 0 ${t.w} ${t.h}"><path d="${t.d}" fill-rule="evenodd"/></svg>`);
+  if (r.error) { flash(r.error); return; }
+  svgImport = { ...r, name: t.name, aspect: t.h / t.w, w: t.w, h: t.h, rot: 0, mode: 'wrap', mirror: !!t.mirror && S.mirrorDefault };
+  startPlacing(); flash(tr('Move over the model and click to place "{0}".').replace('{0}', t.name));
+}
+setTimeout(() => DB.get('projects', 'autosave').then(r => { if (r && !S.dirty) flash(tr('Your last session was saved automatically ({0}). Open it from Projects.').replace('{0}', fmtDate(r.updated))); }).catch(() => {}), 2500);
+// autosave: a copy of the work every half minute while something changed, offered again after a reload
+setInterval(() => { if (!S.dirty || !S.source || S.busy || press) return; const data = projectJSON(); DB.put('projects', { id: 'autosave', name: 'autosave', created: Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }).catch(() => {}); }, 30000);
+// ---------- size grading: the same decals on every size of a geometry chart ----------
+S.gradeEnds = true;
+const curPreset = () => { const n = S.source?.presetName; return n && S.source?.tubes ? allPresets().find(p => p.name === n && p.sizes?.length > 1) : null; };
+function geoForSize(pr, i) { if (i === S.source.sizeIndex && S.source.geo) return { ...S.source.geo }; const g = {}; for (const k in pr.geo) { const v = pr.geo[k]?.[i]; if (v != null && !isNaN(v)) g[k] = v; } return g; }
+let gradePick = null; // sizes ticked for export
+function renderSizes() {
+  const pr = curPreset(), sec = $('#secSizes'); sec.hidden = !pr; if (!pr) return;
+  if (!gradePick || gradePick.name !== pr.name) gradePick = { name: pr.name, on: pr.sizes.map(() => true) };
+  const cur = S.source.sizeIndex;
+  $('#sizeChips').innerHTML = pr.sizes.map((s, i) => `<label class="${i === cur ? 'cur' : ''}" title="${i === cur ? esc(tr('The size shown now')) : ''}"><input type="checkbox" data-i="${i}" ${gradePick.on[i] ? 'checked' : ''}> ${esc(s)}</label>`).join('');
+  $('#sizeShow').innerHTML = pr.sizes.map((s, i) => `<option value="${i}" ${i === cur ? 'selected' : ''}>${esc(s)}</option>`).join('');
+  $('#sizesSum').textContent = `${pr.name} · ${pr.sizes[cur] ?? ''}`;
+  $('#sizeChips').querySelectorAll('input').forEach(c => c.addEventListener('change', () => { gradePick.on[+c.dataset.i] = c.checked; }));
+}
+$('#gradeMode').addEventListener('change', e => { S.gradeEnds = e.target.value === 'ends'; });
+$('#sizeShow').addEventListener('change', e => {
+  const pr = curPreset(), i = +e.target.value; if (!pr || i === S.source.sizeIndex) return;
+  if (HIST.undo.length && !confirm(tr('Show size {0}? The decals move with it; the undo history starts over.').replace('{0}', pr.sizes[i]))) { e.target.value = S.source.sizeIndex; return; }
+  buildFromGeometry(geoForSize(pr, i), S.source.tubeSizes, `${pr.name} ${pr.sizes[i]}`, true, { presetName: pr.name, sizeIndex: i });
+});
+// the decals of this frame, unwrapped on another size (the 3D view is not touched)
+function gradedPieces(pr, i) {
+  const tubes = frameTubes(geoForSize(pr, i), { ...TUBE_DEFAULT, ...S.source.tubeSizes }), model = prepModel(tubesToRaw(tubes), 1), old = S.source.tubes;
+  const map = q => q && fromTube(toTube(q, old), tubes, S.gradeEnds);
+  const idMap = new Map(), copies = [];
+  for (const d of S.decals) { if (!d.closed || d.ctrl.length < 3) continue;
+    const ctrl = d.ctrl.map(c => { const p = map(c.p); if (!p) return null; const h = Core.closestPoint(model.mesh, model.grid, p, 200); return h && { ...cloneC(c), p: h.point, face: h.face, hin: map(c.hin) || undefined, hout: map(c.hout) || undefined }; });
+    if (ctrl.some(c => !c)) continue;
+    const n = { ...d, ctrl, res: null, twin: null, obj: [], samples: null, twinSamples: null, mergedMap: null }; idMap.set(d.id, n); copies.push(n); }
+  const keep = { model: S.model, decals: S.decals }; let pieces = [], failed = [];
+  S.model = model; S.decals = copies;
+  try {
+    for (const d of copies) { const mc = mergedCtrl(d); d.mergedMap = mc || null; d.res = solveOne(mc || d.ctrl, d.flip); d.merged = !!mc; d.twin = !mc && d.mirror ? (() => { const tc = twinCtrl(d); return { ctrl: tc, res: solveOne(tc, d.flip) }; })() : null; if (d.res?.error) failed.push(d.name); }
+    pieces = solvedPieces();
+  } finally { S.model = keep.model; S.decals = keep.decals; }
+  return { pieces, failed };
+}
+$('#gradeExport').addEventListener('click', async () => {
+  const pr = curPreset(); if (!pr) return; const sel = pr.sizes.map((s, i) => i).filter(i => gradePick.on[i]); if (!sel.length) { $('#gradeNote').textContent = tr('Tick at least one size.'); return; }
+  const sh = S.sheet, out = [], notes = [];
+  for (const [k, i] of sel.entries()) {
+    setBusy(tr('Size {0} ({1} of {2})…').replace('{0}', pr.sizes[i]).replace('{1}', k + 1).replace('{2}', sel.length)); await new Promise(r => setTimeout(r, 30));
+    try { const { pieces, failed } = gradedPieces(pr, i); out.push({ size: pr.sizes[i], pieces }); if (failed.length) notes.push(`${pr.sizes[i]}: ${failed.join(', ')}`); }
+    catch (e) { console.error(e); notes.push(`${pr.sizes[i]}: ${e.message}`); }
+  }
+  setBusy(false);
+  const files = out.map(o => ({ size: o.size, text: cutSheetSVG(o.pieces, o.size) }));
+  if ($('#gradeSplit').checked) { for (const f of files) await saveFile(`${baseName()}_${f.size}_cut_sheet.svg`, f.text.svg, $('#gradeNote')); }
+  else await saveFile(`${baseName()}_all_sizes_cut_sheet.svg`, stackSVGs(files), $('#gradeNote'));
+  $('#gradeNote').textContent = tr('Exported {0} sizes.').replace('{0}', files.length) + (notes.length ? ' ' + tr('Could not unwrap: {0}').replace('{0}', notes.join('; ')) : '');
+});
+// ---------- reference image: a photo over the view, then stuck onto the model from that view ----------
+S.ref = null; // { src, cx, cy, w, h, rot, opacity, stuck: { VP, W, H, camPos } }
+let refMesh = null, refTex = null, refDepth = null;
+function placeRefOverlay() {
+  const R = S.ref, ov = $('#refOv'); ov.hidden = !R || !!R.stuck;
+  ['#refStick', '#refDel', '#refOpac'].forEach(s => $(s).disabled = !R); $('#refStick').setAttribute('aria-pressed', String(!!R?.stuck));
+  $('#refStick').textContent = tr(R?.stuck ? 'Unstick' : 'Stick to model');
+  if (!R) return;
+  $('#refOpac').value = Math.round(R.opacity * 100); $('#refOpacVal').textContent = Math.round(R.opacity * 100) + '%';
+  ov.style.left = (R.cx - R.w / 2) + 'px'; ov.style.top = (R.cy - R.h / 2) + 'px'; ov.style.width = R.w + 'px'; ov.style.height = R.h + 'px';
+  ov.style.transform = `rotate(${R.rot}rad)`; $('#refImg').style.opacity = R.opacity;
+  if (refMesh) refMesh.material.uniforms.opacity.value = R.opacity;
+}
+function loadRef(src, keep) {
+  const img = new Image(); img.onload = () => {
+    const W = canvas.clientWidth, H = canvas.clientHeight, k = Math.min(W * 0.7 / img.width, H * 0.7 / img.height);
+    S.ref = keep ? { ...keep, src } : { src, cx: W / 2, cy: H / 2, w: img.width * k, h: img.height * k, rot: 0, opacity: 0.6, stuck: null };
+    $('#refImg').src = src; if (refTex) refTex.dispose(); refTex = new THREE.Texture(img); refTex.needsUpdate = true; if ('colorSpace' in refTex) refTex.colorSpace = THREE.SRGBColorSpace; else refTex.encoding = THREE.sRGBEncoding;
+    if (S.ref.stuck) buildRefMesh(); else removeRefMesh();
+    placeRefOverlay(); if (!keep) flash('Line the model up with the photo (turn and zoom the view, move and size the photo by its corners), then click Stick to model.');
+  }; img.src = src;
+}
+function removeRefMesh() { if (refMesh) { scene.remove(refMesh); refMesh.material.dispose(); refMesh = null; } }
+function buildRefMesh() {
+  removeRefMesh(); const R = S.ref; if (!R?.stuck || !modelMesh || !refTex) return;
+  const st = R.stuck;
+  refMesh = new THREE.Mesh(modelMesh.geometry, new THREE.ShaderMaterial({
+    uniforms: { map: { value: refTex }, VP: { value: new THREE.Matrix4().fromArray(st.VP) }, scr: { value: new THREE.Vector2(st.W, st.H) }, ctr: { value: new THREE.Vector2(R.cx, R.cy) }, sz: { value: new THREE.Vector2(R.w, R.h) }, rot: { value: R.rot }, opacity: { value: R.opacity }, camPos: { value: new THREE.Vector3(...st.camPos) }, depthMap: { value: refDepth?.depthTexture || null }, useDepth: { value: refDepth ? 1 : 0 }, ortho: { value: st.ortho ? 1 : 0 }, camDir: { value: new THREE.Vector3(...(st.camDir || [0, 0, -1])) } },
+    vertexShader: 'varying vec3 vW; varying vec3 vN; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `uniform sampler2D map; uniform sampler2D depthMap; uniform mat4 VP; uniform vec2 scr, ctr, sz; uniform float rot, opacity, useDepth, ortho; uniform vec3 camPos, camDir; varying vec3 vW; varying vec3 vN;
+      void main(){ vec4 c = VP * vec4(vW,1.0); vec3 n = c.xyz / c.w; if (abs(n.x) > 1.0 || abs(n.y) > 1.0 || n.z < -1.0 || n.z > 1.0) discard;
+        vec3 toCam = ortho > 0.5 ? -camDir : normalize(camPos - vW); if (dot(normalize(vN), toCam) < 0.08) discard;
+        if (useDepth > 0.5) { float dz = texture2D(depthMap, n.xy * 0.5 + 0.5).x; if (n.z * 0.5 + 0.5 > dz + 0.0015) discard; }
+        vec2 px = vec2((n.x + 1.0) * 0.5 * scr.x, (1.0 - n.y) * 0.5 * scr.y) - ctr; float cs = cos(-rot), sn = sin(-rot); vec2 l = vec2(cs*px.x - sn*px.y, sn*px.x + cs*px.y);
+        vec2 uv = l / sz + 0.5; if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) discard;
+        vec4 t = texture2D(map, vec2(uv.x, 1.0 - uv.y)); gl_FragColor = vec4(t.rgb, t.a * opacity); }`,
+    transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1,
+  }));
+  refMesh.renderOrder = 1.5; scene.add(refMesh);
+}
+function stickRef() {
+  const R = S.ref; if (!R || !modelMesh) return;
+  camera.updateMatrixWorld(); const VP = new THREE.Matrix4().multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+  const W = canvas.clientWidth, H = canvas.clientHeight, dir = new THREE.Vector3(); camera.getWorldDirection(dir);
+  // what the camera sees from here, so only the near side of each tube gets the photo
+  try { if (refDepth) refDepth.dispose(); refDepth = new THREE.WebGLRenderTarget(Math.round(W), Math.round(H)); refDepth.depthTexture = new THREE.DepthTexture(Math.round(W), Math.round(H));
+    const ds = new THREE.Scene(); ds.add(new THREE.Mesh(modelMesh.geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })));
+    renderer.setRenderTarget(refDepth); renderer.clear(); renderer.render(ds, camera); renderer.setRenderTarget(null); } catch (e) { refDepth = null; }
+  R.stuck = { VP: VP.toArray(), W, H, camPos: camera.position.toArray(), camDir: dir.toArray(), ortho: !!camera.isOrthographicCamera };
+  buildRefMesh(); placeRefOverlay(); flash('The photo is on the model now. Turn the view to check it; Unstick to line it up again.');
+}
+$('#refFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const r = new FileReader(); r.onload = () => loadRef(r.result); r.readAsDataURL(f); });
+$('#refStick').addEventListener('click', () => { if (!S.ref) return; if (S.ref.stuck) { S.ref.stuck = null; removeRefMesh(); placeRefOverlay(); } else stickRef(); });
+$('#refDel').addEventListener('click', () => { S.ref = null; removeRefMesh(); placeRefOverlay(); });
+$('#refOpac').addEventListener('input', e => { if (!S.ref) return; S.ref.opacity = e.target.value / 100; placeRefOverlay(); });
+// move by the round grip, size (and turn with Alt) by the corner
+for (const [id, kind] of [['#refMove', 'move'], ['#refSize', 'size']]) $(id).addEventListener('pointerdown', e => {
+  const R = S.ref; if (!R) return; e.preventDefault(); e.stopPropagation(); const el = e.currentTarget; el.setPointerCapture(e.pointerId);
+  const st = canvas.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY, o = { ...R }, d0 = Math.hypot(x0 - st.left - R.cx, y0 - st.top - R.cy), a0 = Math.atan2(y0 - st.top - R.cy, x0 - st.left - R.cx);
+  const mv = ev => { if (kind === 'move') { R.cx = o.cx + ev.clientX - x0; R.cy = o.cy + ev.clientY - y0; }
+    else { const dx = ev.clientX - st.left - R.cx, dy = ev.clientY - st.top - R.cy, k = Math.max(0.05, Math.hypot(dx, dy) / d0); R.w = o.w * k; R.h = o.h * k; if (ev.altKey) R.rot = o.rot + Math.atan2(dy, dx) - a0; }
+    placeRefOverlay(); };
+  const up = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); };
+  el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up);
+});
+const baseName = () => (S.source?.name || 'decals').replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '_');
+$('#save').addEventListener('click', () => saveProject(false));
+addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(false); } });
+// names and colours from opened files are checked before they reach the page
+const safeName = n => typeof n === 'string' ? n.replace(/[\u0000-\u001f<>]/g, '').slice(0, 120) : '';
+const safeColor = c => typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c) ? c : null;
 function restoreDecals(list, msg, fname) {
   setBusy('Restoring decals…');
   setTimeout(() => {
@@ -2027,7 +2479,7 @@ function restoreDecals(list, msg, fname) {
       const id = S.nextId++; if (dd.id != null) idMap.set(dd.id, id);
       const ctrl = dd.ctrl.map(c => { const h = c.p && Core.closestPoint(mesh, grid, c.p, 120); return h && { p: h.point, face: h.face, type: c.type, hin: c.hin || undefined, hout: c.hout || undefined, plane: !!c.plane }; }).filter(Boolean);
       if (!ctrl.length) continue;
-      const d = { id, name: dd.name || `Decal ${id}`, color: dd.color || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, res: null, twin: null, obj: [], _hole: dd.holeOf };
+      const d = { id, name: safeName(dd.name) || `Decal ${id}`, color: safeColor(dd.color) || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, res: null, twin: null, obj: [], _hole: dd.holeOf };
       S.decals.push(d); made.push(d);
     }
     for (const d of made) { if (d._hole != null && idMap.has(d._hole)) d.holeOf = idMap.get(d._hole); delete d._hole; }
@@ -2042,14 +2494,17 @@ function loadProject(text, fname) {
   if (pj.app !== 'decal-unwrap') { alert('This JSON file is not a Decal Studio project.'); return; }
   if (S.decals.length && S.dirty && !confirm('Opening a project replaces the current frame and decals. Continue?')) return;
   const restore = () => {
-    if (pj.sheet) { Object.assign(S.sheet, pj.sheet); $('#sw').value = S.sheet.w; $('#shh').value = S.sheet.h; $('#sgap').value = S.sheet.gap; $('#slab').checked = S.sheet.labels; $('#sbor').checked = S.sheet.border; $('#smir').checked = S.sheet.mirror; $('#scurve').checked = S.sheet.curves !== false; $('#stol').value = S.sheet.tol || 0.1; }
+    if (pj.sheet) { Object.assign(S.sheet, pj.sheet); $('#sw').value = S.sheet.w; $('#shh').value = S.sheet.h; $('#sgap').value = S.sheet.gap; $('#slab').checked = S.sheet.labels; $('#sbor').checked = S.sheet.border; $('#smir').checked = S.sheet.mirror; $('#scurve').checked = S.sheet.curves !== false; $('#stol').value = S.sheet.tol || 0.1; $('#sroll').checked = !!S.sheet.roll; $('#sreg').checked = !!S.sheet.reg; $('#sweed').checked = !!S.sheet.weed; $('#shh').disabled = !!S.sheet.roll; }
+    if (pj.film && pj.film.max > 0) setFilm(pj.film, true);
+    S.ref = null; removeRefMesh(); placeRefOverlay(); if (pj.ref?.src && /^data:image\//.test(pj.ref.src)) loadRef(pj.ref.src, pj.ref);
     if (pj.mirrorAxis) { S.mirrorAxis = pj.mirrorAxis; $('#mirrorAxis').value = pj.mirrorAxis; }
     if (typeof pj.mirrorDefault === 'boolean') S.mirrorDefault = pj.mirrorDefault;
     if (typeof pj.modelOpacity === 'number') setModelOpacity(pj.modelOpacity);
     if (pj.grid) { Object.assign(S.grid, pj.grid); gridKey = ''; renderGrid(); updateGridUI(); }
     if (typeof pj.clipDist === 'number') { S.clipDist = pj.clipDist; $('#clipDist').value = pj.clipDist; }
-    S.views = Array.isArray(pj.views) ? pj.views.filter(v => v && v.pos && v.target) : []; if (typeof renderViews === 'function') renderViews();
+    S.views = Array.isArray(pj.views) ? pj.views.filter(v => v && Array.isArray(v.pos) && Array.isArray(v.target)).map(v => ({ ...v, name: safeName(v.name) || 'View', pos: v.pos.slice(0, 3).map(Number), target: v.target.slice(0, 3).map(Number) })) : []; if (typeof renderViews === 'function') renderViews();
     if (pj.frame && S.source) Object.assign(S.source, pj.frame);
+    renderSizes();
     S.projectPresets = Array.isArray(pj.presets) ? pj.presets : [];
     if (S.views.length) flyTo(S.views[0].pos, S.views[0].target);
     restoreDecals(pj.decals || [], null, fname);
@@ -2069,9 +2524,15 @@ $('#units').addEventListener('change', () => {
 
 // ---------- picking ----------
 function rel(e) { const r = canvas.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+let pickCache = null; // the last pick, reused while the view and the model are unchanged
 function pickAt(x, y) {
   if (!pickMesh) return null;
   const w = canvas.clientWidth, h = canvas.clientHeight;
+  camera.updateMatrixWorld(); const key = x + ',' + y + ',' + w + ',' + h + ',' + pickMesh.id + ',' + camera.matrixWorld.elements.join(',') + ',' + camera.projectionMatrix.elements[0] + ',' + camera.projectionMatrix.elements[5] + ',' + camera.projectionMatrix.elements[14];
+  if (pickCache && pickCache.key === key) return pickCache.hit && { face: pickCache.hit.face, p: pickCache.hit.p.slice() };
+  const hit = pickRaw(x, y, w, h); pickCache = { key, hit }; return hit && { face: hit.face, p: hit.p.slice() };
+}
+function pickRaw(x, y, w, h) {
   camera.setViewOffset(w, h, x, y, 1, 1);
   renderer.setRenderTarget(pickRT); renderer.setClearColor(0x000000, 0); renderer.clear();
   renderer.render(pickScene, camera);
@@ -2170,8 +2631,10 @@ const HIST = { undo: [], redo: [] };
 const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked,
   ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken })) });
 const snapshot = () => JSON.stringify({ decals: S.decals.map(decalState), drawing: S.drawing?.id ?? null });
-function pushHistory() { HIST.undo.push(snapshot()); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; }
-function resetHistory() { HIST.undo = []; HIST.redo = []; }
+// each entry is the state before a step, with the step's name and time
+function pushHistory(label) { HIST.undo.push({ s: snapshot(), label: label ? tr(label) : null, t: Date.now() }); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; renderHistorySoon(); }
+function histPush(s, label) { HIST.undo.push({ s, label: label ? tr(label) : null, t: Date.now() }); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; renderHistorySoon(); }
+function resetHistory() { HIST.undo = []; HIST.redo = []; renderHistorySoon(); }
 function applySnapshot(str) {
   const st = JSON.parse(str);
   for (const d of [...S.decals]) if (!st.decals.some(a => a.id === d.id)) removeDecal(d, true);
@@ -2190,8 +2653,57 @@ function applySnapshot(str) {
   if (S.active && !S.decals.includes(S.active)) S.active = null;
   S.sel = null; setBusy(false); renderHandles(); updateUI();
 }
-function undo() { if (!HIST.undo.length || press) return; HIST.redo.push(snapshot()); applySnapshot(HIST.undo.pop()); flash('Undone'); }
-function redo() { if (!HIST.redo.length || press) return; HIST.undo.push(snapshot()); applySnapshot(HIST.redo.pop()); flash('Redone'); }
+function undo() { if (!HIST.undo.length || press) return; const e = HIST.undo.pop(); HIST.redo.push({ s: snapshot(), label: e.label, t: e.t }); applySnapshot(e.s); flash(e.label ? tr('Undone: {0}').replace('{0}', e.label) : 'Undone'); renderHistorySoon(); }
+function redo() { if (!HIST.redo.length || press) return; const e = HIST.redo.pop(); HIST.undo.push({ s: snapshot(), label: e.label, t: e.t }); applySnapshot(e.s); flash(e.label ? tr('Redone: {0}').replace('{0}', e.label) : 'Redone'); renderHistorySoon(); }
+// jump several steps at once: the steps in between move to the other stack, and only the target state is rebuilt
+function historyJump(k) { // k = number of steps done in the target state (0 = before the first listed step)
+  if (press) return; const n = HIST.undo.length; if (k === n || k < 0 || k > n + HIST.redo.length) return;
+  const cur = snapshot();
+  if (k < n) { // back
+    const moved = HIST.undo.splice(k); // entries k..n-1, each the state before its step
+    const states = [...moved.map(e => e.s).slice(1), cur]; // the state after each moved step
+    for (let i = moved.length - 1; i >= 0; i--) HIST.redo.push({ s: states[i], label: moved[i].label, t: moved[i].t });
+    applySnapshot(moved[0].s);
+  } else { // forward
+    let s = cur, target = null;
+    for (let i = 0; i < k - n; i++) { const e = HIST.redo.pop(); HIST.undo.push({ s, label: e.label, t: e.t }); s = e.s; target = e.s; }
+    applySnapshot(target);
+  }
+  renderHistorySoon();
+}
+// a step without a name gets one from what changed
+function stepLabel(before, after) {
+  try {
+    const A = JSON.parse(before).decals, B = JSON.parse(after).decals, ia = new Map(A.map(d => [d.id, d])), ib = new Map(B.map(d => [d.id, d]));
+    const added = B.filter(d => !ia.has(d.id)), gone = A.filter(d => !ib.has(d.id));
+    if (added.length && gone.length) return tr('Changed {0}').replace('{0}', gone.map(d => d.name).join(', '));
+    if (added.length) return tr('Added {0}').replace('{0}', added.map(d => d.name).join(', '));
+    if (gone.length) return tr('Deleted {0}').replace('{0}', gone.map(d => d.name).join(', '));
+    const ch = B.filter(d => JSON.stringify(d) !== JSON.stringify(ia.get(d.id)));
+    if (ch.length === 1) { const a = ia.get(ch[0].id), b = ch[0]; if (a.ctrl.length !== b.ctrl.length) return tr(b.ctrl.length > a.ctrl.length ? 'Added points to {0}' : 'Removed points from {0}').replace('{0}', b.name); if (a.name !== b.name) return tr('Renamed {0}').replace('{0}', b.name); return tr('Edited {0}').replace('{0}', b.name); }
+    if (ch.length) return tr('Edited {0}').replace('{0}', ch.map(d => d.name).join(', '));
+  } catch (e) {}
+  return tr('Step');
+}
+let histT = 0;
+function renderHistorySoon() { clearTimeout(histT); histT = setTimeout(renderHistory, 60); }
+function renderHistory() {
+  const el = $('#histList'); if (!el) return;
+  const n = HIST.undo.length, m = HIST.redo.length;
+  $('#histSum').textContent = n || m ? tr('{0} steps').replace('{0}', n) : '';
+  if (!$('#secHist').open) return;
+  const cur = snapshot(), redo = [...HIST.redo].reverse(); // redo[0] is the next step
+  const afterOf = i => i < n - 1 ? HIST.undo[i + 1].s : i === n - 1 ? cur : null;
+  const time = t => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const rows = [`<li class="${n === 0 ? 'now' : ''}"><button data-k="0">${tr('Start')}</button></li>`];
+  HIST.undo.forEach((e, i) => { if (!e.label) e.label = stepLabel(e.s, afterOf(i)); rows.push(`<li class="${i === n - 1 ? 'now' : ''}"><button data-k="${i + 1}"><span translate="no">${esc(e.label)}</span><span class="t">${time(e.t)}</span></button></li>`); });
+  redo.forEach((e, j) => { if (!e.label) e.label = tr('Step'); rows.push(`<li class="future"><button data-k="${n + j + 1}"><span translate="no">${esc(e.label)}</span><span class="t">${time(e.t)}</span></button></li>`); });
+  el.innerHTML = rows.join('');
+  el.querySelectorAll('button[data-k]').forEach(b => b.addEventListener('click', () => historyJump(+b.dataset.k)));
+  el.querySelector('li.now')?.scrollIntoView({ block: 'nearest' });
+}
+const esc = s => String(s).replace(/[<&>"]/g, c => ({ '<': '&lt;', '&': '&amp;', '>': '&gt;', '"': '&quot;' }[c]));
+$('#secHist').addEventListener('toggle', renderHistory);
 
 // ---------- mirror ----------
 function mirrorPlane() {
@@ -2342,7 +2854,7 @@ const lineHit = hitLine(x, y);
   }
   if (ls) {
     const before = snapshot(), i = insertMapped(S.active, ls);
-    if (i >= 0) { HIST.undo.push(before); HIST.redo = []; stopAll(e); selectPoints(S.active, [i], false); startDrag(e, { decal: S.active, index: i, kind: 'p', ghost: !!ls.ghostSide }, x, y); press.hist = true; press.inserted = true; renderHandles(); updateUI(); return; }
+    if (i >= 0) { histPush(before, 'Added a point'); stopAll(e); selectPoints(S.active, [i], false); startDrag(e, { decal: S.active, index: i, kind: 'p', ghost: !!ls.ghostSide }, x, y); press.hist = true; press.inserted = true; renderHandles(); updateUI(); return; }
   }
   const other = hitLineAny(x, y);
   if (other && other.d !== S.active && other.d !== S.drawing) { stopAll(e); setActive(other.d); return; } // clicking a line selects that decal
@@ -2366,6 +2878,7 @@ const lineHit = hitLine(x, y);
 const AXIS_V = { x: [1, 0, 0], y: [0, 0, -1], z: [0, 1, 0] };
 function moveDecalTo(p, x, y) {
   const X = ensureXform(p.d, p.idx); if (!X) return;
+  if (!p.began) { p.began = true; X.raw = null; X.snapLock = null; X.snapGrid = null; } // each drag starts where the decal is
   let dl;
   const ax = AXIS_V[S.moveAxis];
   if (ax && p.last) { // locked to an axis: follow the point on the axis line closest to the pointer's line of sight
@@ -2386,8 +2899,33 @@ function moveDecalTo(p, x, y) {
   // the drag step in the layout's directions at the decal's current centre
   const mv = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [E1, E2] = mv.carry;
   const a11 = v3.dot(E1, E1), a12 = v3.dot(E1, E2), a22 = v3.dot(E2, E2), b1 = v3.dot(dl, E1), b2 = v3.dot(dl, E2), det = a11*a22 - a12*a12 || 1e-12;
-  X.du += (a22*b1 - a12*b2) / det; X.dv += (a11*b2 - a12*b1) / det; X.t = performance.now();
-  applyXform(); measureXform(X, x, y);
+  // the pointer leads (raw position); a snap is laid on top of it
+  if (!X.raw) X.raw = [X.du, X.dv];
+  X.raw[0] += (a22*b1 - a12*b2) / det; X.raw[1] += (a11*b2 - a12*b1) / det; X.t = performance.now();
+  [X.du, X.dv] = X.raw;
+  let snapped = '';
+  if (S.snapDecals && !p.idx) {
+    const L = X.snapLock, R = Math.max(6, S.snapGap * 3); // how far the pointer may push on before the snap lets go
+    if (L) { // held against a neighbour: slide along it, until the pointer pushes through or pulls away
+      const into = (L.u[0] - X.raw[0]) * L.n[0] + (L.u[1] - X.raw[1]) * L.n[1];
+      if (into > 0 && into < R) { X.du = X.raw[0] + L.n[0] * into; X.dv = X.raw[1] + L.n[1] * into; snapped = 'held'; }
+      else X.snapLock = null;
+    }
+    applyXform();
+    if (snapped === 'held') { // sliding along a curved neighbour drifts: step back out if it overlaps, then snap again from here
+      const sn = snapToDecals(X, true);
+      if (sn?.into) { const k = S.snapGap + sn.best.dd + 0.5; X.du += L.n[0] * k; X.dv += L.n[1] * k; applyXform(); snapped = ''; }
+      else if (sn?.v && v3.len(sn.v) > 0.01) snapped = ''; }
+    if (!snapped) { const sn = snapToDecals(X); if (sn?.v) {
+      const m2 = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [F1, F2] = m2.carry;
+      const c11 = v3.dot(F1, F1), c12 = v3.dot(F1, F2), c22 = v3.dot(F2, F2), e1 = v3.dot(sn.v, F1), e2 = v3.dot(sn.v, F2), dt2 = c11*c22 - c12*c12 || 1e-12;
+      const c = [(c22*e1 - c12*e2) / dt2, (c11*e2 - c12*e1) / dt2], cl = Math.hypot(...c);
+      X.du += c[0]; X.dv += c[1]; applyXform(); snapped = 'snap';
+      if (cl > 1e-6) { const away = sn.best.dd < S.snapGap ? 1 : -1; X.snapLock = { u: [X.du, X.dv], n: [c[0] / cl * away, c[1] / cl * away] }; }
+    } else if (sn?.done) snapped = 'snap'; }
+    if (snapped) snapped = `<br><b>${tr('Snapped')}</b> ${fmm(S.snapGap)} mm ${tr('gap')}`;
+  } else applyXform();
+  measureXform(X, x, y, snapped);
 }
 // ---------- live measurements while dragging: how far, how big, which angle ----------
 const fmm = v => (Math.abs(v) < 100 ? v.toFixed(1) : Math.round(v).toString());
@@ -2433,7 +2971,7 @@ function applyDrag(e, x, y) {
   }
   if (!hit) return;
   if (p.kind === 'p' && !ax) hit = snapHit(hit);
-  if (!p.hist) { HIST.undo.push(snapshotBefore(p)); HIST.redo = []; S.dirty = true; p.hist = true; }
+  if (!p.hist) { histPush(snapshotBefore(p)); p.hist = true; }
   let hp = hit.p, hf = hit.face;
   if (p.ghost) { const h = Core.closestPoint(S.model.mesh, S.model.grid, reflect(hit.p), 80); if (!h) return; hp = h.point; hf = h.face; }
   if (p.kind === 'p') {
@@ -2735,7 +3273,7 @@ function deletePoints() {
   if (L.length) {
     const d = S.sel.decal, left = d.ctrl.length - L.length;
     if (d.closed && left < 3) { flash('A closed decal needs at least three points. Delete the whole decal from the list instead, or open it with the Split tool.'); return; }
-    pushHistory();
+    pushHistory('Deleted points');
     for (const i of [...L].reverse()) d.ctrl.splice(i, 1);
     S.sel = null;
     if (!d.ctrl.length) { removeDecal(d); return; }
@@ -2748,7 +3286,7 @@ function mergePoints() {
   const L = selList(); if (L.length < 2) { flash('Select two or more points to merge (Shift-click or Shift-drag a box).'); return; }
   const d = S.sel.decal;
   if (d.closed && d.ctrl.length - L.length + 1 < 3) { flash('Merging these would leave fewer than three points.'); return; }
-  pushHistory();
+  pushHistory('Merged points');
   const avg = [0,1,2].map(k => L.reduce((s, i) => s + d.ctrl[i].p[k], 0) / L.length);
   const h = Core.closestPoint(S.model.mesh, S.model.grid, avg, 80, f => S.model.topo.piece[f] === S.model.topo.piece[d.ctrl[L[0]].face]) || Core.closestPoint(S.model.mesh, S.model.grid, avg, 80);
   const plane = L.some(i => d.ctrl[i].plane);
@@ -2760,7 +3298,7 @@ function mergePoints() {
 }
 function setPointType(t) {
   const L = selList(); if (!L.length) return;
-  const d = S.sel.decal; pushHistory();
+  const d = S.sel.decal; pushHistory('Changed point type');
   for (const i of L) {
     const c = d.ctrl[i];
     if (t === 'auto') { c.type = 'auto'; delete c.hin; delete c.hout; c.broken = false; continue; }
@@ -2826,8 +3364,28 @@ function solve(d) {
   setTimeout(() => { solveNow(d); setBusy(false); updateUI(); }, 20);
 }
 
+// ---------- film: how much stretch counts as too much ----------
+const FILMS = [
+  { id: 'ppf-gloss', name: 'PPF, gloss (TPU)', max: 4 },
+  { id: 'ppf-matte', name: 'PPF, matte (TPU)', max: 3 },
+  { id: 'cast', name: 'Cast vinyl', max: 3 },
+  { id: 'calendered', name: 'Calendered vinyl', max: 1.5 },
+  { id: 'custom', name: 'Custom', max: 4 },
+];
+S.film = { id: 'ppf-gloss', max: 4 };
+try { const f = JSON.parse(localStorage.getItem('decal-studio-film') || 'null'); if (f && f.max > 0) S.film = f; } catch (e) {}
+const filmMax = () => Math.max(0.005, (+S.film.max || 4) / 100); // as a fraction
+const reliefAt = () => filmMax() * 0.75; // the red stretch level, where relief cuts are suggested
+function setFilm(f, quiet) {
+  S.film = { id: f.id, max: +f.max };
+  try { localStorage.setItem('decal-studio-film', JSON.stringify(S.film)); } catch (e) {}
+  $('#filmPreset').value = S.film.id; $('#filmMax').value = S.film.max;
+  const fm = FILMS.find(x => x.id === S.film.id); $('#filmSum').textContent = `${tr(fm ? fm.name : 'Custom')} · ${S.film.max}%`;
+  const lg = $('#legend span:last-child'); if (lg) lg.textContent = tr('{0}%+ stretch').replace('{0}', S.film.max);
+  if (!quiet) { for (const d of S.decals) if (d.closed && d.res) updateDecalVisual(d, false); reliefKey = ''; renderRelief?.(); renderList(); renderSheet(); }
+}
 function heat(t) {
-  t = Math.min(Math.max(t / 0.04, 0), 1);
+  t = Math.min(Math.max(t / filmMax(), 0), 1);
   const a = new THREE.Color('#1FA67A'), b = new THREE.Color('#F2C230'), c = new THREE.Color('#E0453A');
   return t < 0.5 ? a.lerp(b, t * 2) : b.lerp(c, (t - 0.5) * 2);
 }
@@ -3042,7 +3600,7 @@ function renderViews() {
   if (!S.views.length) { ul.innerHTML = '<li class="empty">Turn the model to an angle you like, then save it here.</li>'; return; }
   S.views.forEach((v, i) => {
     const li = document.createElement('li');
-    li.innerHTML = `<button class="go" title="Go to this view">${String(i + 1)}</button><input aria-label="View name" value="${v.name.replace(/"/g, '&quot;')}"><button class="del" title="Delete this view" aria-label="Delete ${v.name.replace(/"/g, '&quot;')}">×</button>`;
+    li.innerHTML = `<button class="go" title="Go to this view">${String(i + 1)}</button><input aria-label="View name" value="${esc(v.name)}"><button class="del" title="Delete this view" aria-label="Delete ${v.name.replace(/"/g, '&quot;')}">×</button>`;
     li.querySelector('.go').addEventListener('click', () => { flyTo(v.pos, v.target); });
     li.querySelector('input').addEventListener('change', e => { v.name = e.target.value || v.name; S.dirty = true; });
     li.querySelector('input').addEventListener('keydown', e => { if (e.key === 'Enter') { flyTo(v.pos, v.target); e.target.blur(); } });
@@ -3052,7 +3610,7 @@ function renderViews() {
 }
 $('#stretch').addEventListener('click', () => { S.showStretch = !S.showStretch; for (const d of S.decals) if (d.closed) updateDecalVisual(d, false); updateUI(); });
 $('#mirror').addEventListener('click', () => {
-  if (S.active) { pushHistory(); S.active.mirror = !S.active.mirror; S.mirrorDefault = S.active.mirror; if (S.active.closed) solve(S.active); else updateDecalVisual(S.active, true); }
+  if (S.active) { pushHistory('Mirror'); S.active.mirror = !S.active.mirror; S.mirrorDefault = S.active.mirror; if (S.active.closed) solve(S.active); else updateDecalVisual(S.active, true); }
   else S.mirrorDefault = !S.mirrorDefault;
   renderHandles(); updateUI();
 });
@@ -3094,7 +3652,7 @@ function copyName(n) {
 function duplicateDecal(d) {
   if (!d || !d.closed) { flash('Close the shape first, then duplicate it.'); return; }
   if (d.holeOf) d = S.decals.find(x => x.id === d.holeOf) || d;
-  pushHistory();
+  pushHistory('Duplicate');
   const copyOf = (src, holeOf) => { const id = S.nextId++;
     const n = { id, name: holeOf ? src.name : copyName(src.name), color: holeOf ? src.color : PALETTE[(id - 1) % PALETTE.length], ctrl: src.ctrl.map(cloneC), closed: true, flip: !!src.flip, mirror: !!src.mirror, side: src.side || 0, res: null, twin: null, obj: [] };
     if (holeOf) n.holeOf = holeOf; S.decals.push(n); return n; };
@@ -3130,12 +3688,11 @@ function duplicateDecal(d) {
   flash(`${nd.name} added next to ${d.name}. Drag it to place it.`);
 }
 // ---------- relief cuts: where a decal stretches too much, a notch from the edge lets the film lie flat ----------
-const RELIEF_AT = 0.03; // the red stretch level
 function reliefSuggest(d) {
-  const r = d.res; if (!r || r.error || !r.faceStretch || !(r.stretchMax >= RELIEF_AT) || !r.samples?.length) return [];
+  const r = d.res; if (!r || r.error || !r.faceStretch || !(r.stretchMax >= reliefAt()) || !r.samples?.length) return [];
   const { mesh } = S.model, T = mesh.tri, P = mesh.pos, cen = f => [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3);
   const inside = r.insideFaces.map(cen), mid = [0, 1, 2].map(k => inside.reduce((a, c) => a + c[k], 0) / inside.length);
-  const hot = [...r.faceStretch].filter(([, st]) => st >= RELIEF_AT).sort((a, b) => b[1] - a[1]);
+  const hot = [...r.faceStretch].filter(([, st]) => st >= reliefAt()).sort((a, b) => b[1] - a[1]);
   const sep = Math.max(12, Math.sqrt(r.area) * 0.3), peaks = []; // the worst spots, kept apart
   for (const [f, st] of hot) { const c = cen(f); if (peaks.every(p => dist3(p.c, c) > sep)) peaks.push({ f, st, c }); if (peaks.length >= 6) break; }
   const smp = r.samples, n = smp.length, piece = S.model.topo.piece[smp[0].face];
@@ -3185,7 +3742,7 @@ function applyRelief(d) {
       target = r.made.find(x => !x.holeOf) || r.made[0]; made++;
     }
     setBusy(false);
-    if (made) { HIST.undo.push(before); HIST.redo = []; S.dirty = true; S.active = target; renderHandles(); updateUI(); flash(`Added ${made} relief cut${made === 1 ? '' : 's'}. Stretch now ${(target.res?.stretchMax * 100 || 0).toFixed(1)}%.`); }
+    if (made) { histPush(before, 'Relief cuts'); S.active = target; renderHandles(); updateUI(); flash(`Added ${made} relief cut${made === 1 ? '' : 's'}. Stretch now ${(target.res?.stretchMax * 100 || 0).toFixed(1)}%.`); }
     else flash('The relief cuts could not be added here. Try splitting the decal with the Knife.');
   }, 20);
 }
@@ -3212,7 +3769,7 @@ function updateUI() {
   $('#mirror').setAttribute('aria-pressed', mirrorOn());
   $('#mirrorAxis').hidden = !mirrorOn(); $('#clipWrap').hidden = !mirrorOn();
   $('#legend').classList.toggle('on', S.showStretch);
-  $('#save').disabled = !has;
+  $('#save').disabled = !has; updateProjName();
   const canBool = has && S.active && S.active.closed && !S.active.holeOf && S.decals.filter(d => d.closed && !d.holeOf).length > 1;
   for (const id of ['#bUnion', '#bSub', '#bInt']) { $(id).disabled = !canBool; $(id).setAttribute('aria-pressed', !!S.boolOp && BOOL_NAMES[S.boolOp.op] === $(id).textContent); }
   $('#bCancel').hidden = !S.boolOp;
@@ -3221,6 +3778,7 @@ function updateUI() {
   $('#combineBar').hidden = !two;
   if (two) { $('#cbA').textContent = S.active.name; $('#cbB').textContent = S.second.name; }
   const pb = $('#pointbar'); pb.hidden = !has || !(L.length || (S.active && S.active.ctrl.length));
+  updateDecalPanel();
   if (!pb.hidden) {
     $('#selCount').textContent = L.length ? `${L.length} point${L.length === 1 ? '' : 's'}` : 'No points selected';
     const types = new Set(L.map(i => { const c = S.sel.decal.ctrl[i]; return ptype(c) === 'bezier' ? (c.broken ? 'broken' : 'smooth') : ptype(c); }));
@@ -3233,7 +3791,7 @@ function updateUI() {
 }
 
 function stretchBadge(r) {
-  const pct = r.stretchMax * 100, cls = pct < 1 ? 'ok' : pct < 3 ? 'warn' : 'bad';
+  const pct = r.stretchMax * 100, lim = filmMax() * 100, cls = pct < lim * 0.25 ? 'ok' : pct < lim * 0.75 ? 'warn' : 'bad';
   const tip = cls === 'ok' ? 'Lies flat without stretching' : cls === 'warn' ? 'Slight stretch. Usually fine for film' : 'Film may wrinkle here. Add a relief cut or split the decal';
   return `<span class="badge ${cls}" title="${tip}">${pct < 0.1 ? '<0.1' : pct.toFixed(1)}% stretch</span>`;
 }
@@ -3251,19 +3809,19 @@ function renderList() {
     else if (d.res) info = `<div class="info">${dims('d' + d.id, d.res)}</div>`;
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
-    li.innerHTML = `<span class="swatch" style="--c:${d.color}"></span><input class="name" aria-label="Decal name" value="${d.name.replace(/"/g,'&quot;')}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= RELIEF_AT ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, d); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
     li.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
-      if (b.dataset.a === 'del') { pushHistory(); removeDecal(d); }
+      if (b.dataset.a === 'del') { pushHistory(tr('Deleted {0}').replace('{0}', d.name)); removeDecal(d); }
       if (b.dataset.a === 'relief') { applyRelief(d); return; }
       if (b.dataset.a === 'dup') { duplicateDecal(d); return; }
-      if (b.dataset.a === 'lock') { pushHistory(); d.locked = !d.locked; if (d.locked && S.active === d) { S.active = null; S.sel = null; } renderHandles(); updateUI(); flash(d.locked ? `${d.name} is locked. You can draw over it now.` : `${d.name} is unlocked.`); }
+      if (b.dataset.a === 'lock') { pushHistory(d.locked ? 'Unlocked' : 'Locked'); d.locked = !d.locked; if (d.locked && S.active === d) { S.active = null; S.sel = null; } renderHandles(); updateUI(); flash(d.locked ? `${d.name} is locked. You can draw over it now.` : `${d.name} is unlocked.`); }
       if (b.dataset.a === 'applymir') applyMirror(d);
       if (b.dataset.a === 'unhole') { pushHistory(); delete d.holeOf; updateDecalVisual(d, false); updateUI(); }
-      if (b.dataset.a === 'flip') { pushHistory(); d.flip = !d.flip; solve(d); }
-      if (b.dataset.a === 'mir') { pushHistory(); d.mirror = !d.mirror; S.active = d; if (d.closed) solve(d); else updateDecalVisual(d, true); updateUI(); }
+      if (b.dataset.a === 'flip') { pushHistory('Invert'); d.flip = !d.flip; solve(d); }
+      if (b.dataset.a === 'mir') { pushHistory('Mirror'); d.mirror = !d.mirror; S.active = d; if (d.closed) solve(d); else updateDecalVisual(d, true); updateUI(); }
     }));
     ul.appendChild(li);
   }
@@ -3287,34 +3845,97 @@ function solvedPieces() {
   return out;
 }
 
+// pack pieces on the sheet as set up: a roll grows as long as needed; registration marks keep a clear border
+function packSheet(pieces) {
+  const sh = S.sheet, margin = sh.reg ? 16 : sh.gap;
+  const pk = Core.pack(pieces, sh.w, sh.roll ? 1e6 : sh.h, sh.gap, margin);
+  pk.H = sh.roll ? Math.max(60, Math.ceil(pk.used + 1)) : sh.h; return pk;
+}
+// one cut sheet as SVG text, for these pieces
+function cutSheetSVG(pieces, title) {
+  const sh = S.sheet, pk = packSheet(pieces), info = Object.fromEntries(pieces.map(p => [p.id, p]));
+  const mx = p => ([x, y]) => [2*p.x + p.w - x, y];
+  const placed = sh.mirror ? pk.placed.map(p => ({ ...p, pts: p.pts.map(mx(p)), holes: (p.holes || []).map(h => h.map(mx(p))), curves: p.curves ? p.curves.map(r => r && r.map(sg => sg.map(mx(p)))) : null })) : pk.placed;
+  const names = Object.fromEntries(Object.values(info).map(p => [p.id, p.name]));
+  const svg = Core.buildSVG({ ...pk, placed }, sh.w, pk.H, { labels: sh.labels, border: sh.border, curves: sh.curves !== false, reg: sh.reg, weed: sh.weed ? Math.max(1, sh.gap) : 0, title }, names);
+  const nodes = placed.reduce((s, p) => s + (p.curves && p.curves.every(Boolean) && sh.curves !== false ? p.curves.reduce((t, r) => t + r.length, 0) : p.pts.length + (p.holes || []).reduce((t, h) => t + h.length, 0)), 0);
+  return { svg, nodes, pk: { ...pk, placed }, names };
+}
+// several sheets (one per size) stacked in one file, each in its own group
+function stackSVGs(files) {
+  let y = 0, W = 0, body = '';
+  for (const f of files) { const m = f.text.svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), inner = f.text.svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, ''); const w = +m[1], h = +m[2];
+    body += `<g id="size-${String(f.size).replace(/[^\w-]/g, '')}" transform="translate(0 ${y})">\n${inner}</g>\n`; y += h + 30; W = Math.max(W, w); }
+  const H = Math.max(0, y - 30);
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">\n${body}</svg>`;
+}
+// DXF (R12 text, millimetres): cut outlines as closed polylines, curves flattened finely; labels, marks, weed boxes and the sheet on their own layers
+function cutSheetDXF(pk, W, names) {
+  const sh = S.sheet, H = pk.H, gapY = 40, total = pk.sheets * H + (pk.sheets - 1) * gapY, f = v => (Math.round(v * 1000) / 1000).toString();
+  const out = ['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '9', '$MEASUREMENT', '70', '1', '0', 'ENDSEC', '0', 'SECTION', '2', 'TABLES', '0', 'TABLE', '2', 'LAYER', '70', '5'];
+  for (const [ln, col] of [['CUT', 7], ['LABELS', 6], ['SHEET', 8], ['REGISTRATION', 7], ['WEED', 5]]) out.push('0', 'LAYER', '2', ln, '70', '0', '62', String(col), '6', 'CONTINUOUS');
+  out.push('0', 'ENDTAB', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES');
+  const Y = y => total - y; // DXF counts y upwards
+  const poly = (pts, layer) => { out.push('0', 'POLYLINE', '8', layer, '66', '1', '70', '1'); for (const [x, y] of pts) out.push('0', 'VERTEX', '8', layer, '10', f(x), '20', f(Y(y)), '30', '0'); out.push('0', 'SEQEND', '8', layer); };
+  const flat = ring => { const pts = []; for (const [a, b, c, d] of ring) { const L = Math.hypot(b[0]-a[0], b[1]-a[1]) + Math.hypot(c[0]-b[0], c[1]-b[1]) + Math.hypot(d[0]-c[0], d[1]-c[1]), n = Math.max(1, Math.min(200, Math.ceil(L / 0.4)));
+      const straight = Math.hypot(d[0]-a[0], d[1]-a[1]) > L * 0.9999; for (let i = 0; i < (straight ? 1 : n); i++) { const t = i / n, u = 1 - t; pts.push([u*u*u*a[0] + 3*u*u*t*b[0] + 3*u*t*t*c[0] + t*t*t*d[0], u*u*u*a[1] + 3*u*u*t*b[1] + 3*u*t*t*c[1] + t*t*t*d[1]]); } } return pts; };
+  for (let s = 0; s < pk.sheets; s++) { const oy = s * (H + gapY);
+    if (sh.border) poly([[0, oy], [W, oy], [W, oy + H], [0, oy + H]], 'SHEET');
+    if (sh.reg) for (const [x, y] of [[8, 8], [W - 8, 8], [8, H - 8]]) out.push('0', 'CIRCLE', '8', 'REGISTRATION', '10', f(x), '20', f(Y(oy + y)), '30', '0', '40', '2.5');
+    if (sh.weed) { const g = Math.max(1, sh.gap) / 2; poly([[g, oy + g], [W - g, oy + g], [W - g, oy + H - g], [g, oy + H - g]], 'WEED'); } }
+  for (const p of pk.placed) { const oy = p.sheet * (H + gapY), sft = r => r.map(([x, y]) => [x, y + oy]);
+    const rings = sh.curves !== false && p.curves && p.curves.every(Boolean) ? p.curves.map(flat) : [p.pts, ...(p.holes || [])];
+    for (const r of rings) poly(sft(r), 'CUT');
+    if (sh.weed) { const g = Math.max(1, sh.gap) / 2; poly([[p.x - g, oy + p.y - g], [p.x + p.w + g, oy + p.y - g], [p.x + p.w + g, oy + p.y + p.h + g], [p.x - g, oy + p.y + p.h + g]], 'WEED'); }
+    if (sh.labels && names[p.id]) out.push('0', 'TEXT', '8', 'LABELS', '10', f(p.x + p.w / 2), '20', f(Y(oy + p.y + p.h / 2)), '30', '0', '40', f(Math.max(2.5, Math.min(8, p.h / 5))), '1', String(names[p.id]).replace(/[\r\n]/g, ' '), '72', '1', '11', f(p.x + p.w / 2), '21', f(Y(oy + p.y + p.h / 2)), '31', '0'); }
+  out.push('0', 'ENDSEC', '0', 'EOF'); return out.join('\r\n') + '\r\n';
+}
 function renderSheet() {
   const sh = S.sheet, svg = $('#sheet');
   const pieces = solvedPieces(); S.pieceInfo = Object.fromEntries(pieces.map(p => [p.id, p]));
-  S.packing = Core.pack(pieces, sh.w, sh.h, sh.gap);
-  const n = S.packing.sheets, gapY = Math.max(sh.h * 0.06, 20), H = n * sh.h + (n - 1) * gapY;
+  S.packing = packSheet(pieces); const SH = S.packing.H;
+  const n = S.packing.sheets, gapY = Math.max(SH * 0.06, 20), H = n * SH + (n - 1) * gapY;
   svg.setAttribute('viewBox', `${-8} ${-8} ${sh.w + 16} ${H + 16}`);
   const step = sh.w > 2000 ? 50 : 10;
   let s = `<defs><pattern id="g1" width="${step}" height="${step}" patternUnits="userSpaceOnUse"><path d="M${step} 0H0V${step}" fill="none" style="stroke:var(--mat-grid)" stroke-width="${sh.w/900}"/></pattern><pattern id="g5" width="${step*5}" height="${step*5}" patternUnits="userSpaceOnUse"><rect width="${step*5}" height="${step*5}" fill="url(#g1)"/><path d="M${step*5} 0H0V${step*5}" fill="none" style="stroke:var(--mat-grid-strong)" stroke-width="${sh.w/500}"/></pattern></defs>`;
-  for (let i = 0; i < n; i++) s += `<rect x="0" y="${i*(sh.h+gapY)}" width="${sh.w}" height="${sh.h}" fill="url(#g5)" stroke="#CFE3DA" stroke-width="${sh.w/600}" stroke-dasharray="${sh.w/150} ${sh.w/150}"/>`;
+  for (let i = 0; i < n; i++) s += `<rect x="0" y="${i*(SH+gapY)}" width="${sh.w}" height="${SH}" fill="url(#g5)" stroke="#CFE3DA" stroke-width="${sh.w/600}" stroke-dasharray="${sh.roll ? 'none' : `${sh.w/150} ${sh.w/150}`}"/>`;
+  if (sh.reg) for (let i = 0; i < n; i++) for (const [x, y] of [[8, 8], [sh.w - 8, 8], [8, SH - 8]]) s += `<circle cx="${x}" cy="${i*(SH+gapY) + y}" r="${Math.max(2.5, sh.w/300)}" fill="#FFFFFF" fill-opacity=".9"/>`;
+  let area = 0;
+  const heatBins = Array.from({ length: 6 }, () => []);
   for (const p of S.packing.placed) {
-    const info = S.pieceInfo[p.id], d = info.decal, oy = p.sheet * (sh.h + gapY);
-    const pts = sh.mirror ? p.pts.map(([x, y]) => [2*p.x + p.w - x, y]) : p.pts;
-    const act = S.active === d;
-    const hl = (p.holes || []).map(h => sh.mirror ? h.map(([x, y]) => [2*p.x + p.w - x, y]) : h);
-    s += `<path data-id="${d.id}" fill-rule="evenodd" d="${[pts, ...hl].map(r => 'M' + r.map(([x,y]) => `${x.toFixed(1)} ${(y+oy).toFixed(1)}`).join('L') + 'Z').join(' ')}" fill="${d.color}" fill-opacity="${act ? 0.45 : 0.22}" stroke="${act ? '#FFFFFF' : 'rgba(255,255,255,.65)'}" stroke-width="${sh.w/(act ? 380 : 650)}" style="cursor:pointer"/>`;
-    if (sh.labels) { const fs = Math.max(sh.w/160, Math.min(sh.w/60, p.h/4)); s += `<text x="${p.x + p.w/2}" y="${oy + p.y + p.h/2 + fs*0.35}" font-size="${fs}" text-anchor="middle" fill="#FFFFFF" font-family="Barlow, Arial, sans-serif" pointer-events="none">${info.name.replace(/[<&>]/g, '')}</text>`; }
+    const info = S.pieceInfo[p.id], d = info.decal, oy = p.sheet * (SH + gapY);
+    const mf = sh.mirror ? ([x, y]) => [2*p.x + p.w - x, y] : q => q;
+    const pts = p.pts.map(mf), act = S.active === d, hl = (p.holes || []).map(h => h.map(mf));
+    const ringA = r => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]); return Math.abs(a) / 2; };
+    area += ringA(pts) - hl.reduce((t, h) => t + ringA(h), 0);
+    // with Stretch on, the flat pieces show where the film stretches, in the same colours as the model
+    const res = p.id[0] === 'm' ? d.twin?.res : d.res;
+    if (S.showStretch && res?.uvOf && res.faceStretch && p.tf) for (const f of res.insideFaces) {
+      const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b)); if (U.some(u => !u)) continue;
+      const st = res.faceStretch.get(f) || 0, bin = Math.min(5, Math.floor(Math.min(1, st / filmMax()) * 5.999));
+      heatBins[bin].push('M' + U.map(u => { const q = mf(p.tf([u[0], -u[1]])); return `${q[0].toFixed(1)} ${(q[1] + oy).toFixed(1)}`; }).join('L') + 'Z');
+    }
+    s += `<path data-id="${d.id}" fill-rule="evenodd" d="${[pts, ...hl].map(r => 'M' + r.map(([x,y]) => `${x.toFixed(1)} ${(y+oy).toFixed(1)}`).join('L') + 'Z').join(' ')}" fill="${d.color}" fill-opacity="${S.showStretch ? 0 : act ? 0.45 : 0.22}" stroke="${act ? '#FFFFFF' : 'rgba(255,255,255,.65)'}" stroke-width="${sh.w/(act ? 380 : 650)}" style="cursor:pointer"/>`;
+    if (sh.weed) { const g2 = Math.max(1, sh.gap) / 2; s += `<rect x="${p.x - g2}" y="${oy + p.y - g2}" width="${p.w + 2*g2}" height="${p.h + 2*g2}" fill="none" stroke="#7FB6FF" stroke-width="${sh.w/900}" pointer-events="none"/>`; }
+    if (sh.labels) { const fs = Math.max(sh.w/160, Math.min(sh.w/60, p.h/4)); s += `<text x="${p.x + p.w/2}" y="${oy + p.y + p.h/2 + fs*0.35}" font-size="${fs}" text-anchor="middle" fill="#FFFFFF" font-family="Barlow, Arial, sans-serif" pointer-events="none">${esc(info.name)}</text>`; }
   }
+  if (S.showStretch) { const hs = heatBins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="#${heat(filmMax() * (i + 0.5) / 5).getHexString()}" pointer-events="none"/>` : '').join(''); s = s.replace(/(<path data-id=)/, hs + '$1'); }
   svg.innerHTML = s;
   svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => setActive(S.decals.find(d => d.id === +el.dataset.id))));
-  $('#matSize').textContent = `${sh.w} × ${sh.h} mm${n > 1 ? `, ${n} sheets` : ''}`;
-  $('#matCount').innerHTML = `<strong>${pieces.length}</strong> piece${pieces.length === 1 ? '' : 's'}`;
-  $('#export').disabled = !pieces.length;
+  const filmM2 = sh.w * (n * SH) / 1e6, use = filmM2 ? area / 1e6 / filmM2 * 100 : 0;
+  $('#matSize').textContent = sh.roll ? `${tr('Roll')} ${sh.w} mm × ${Math.round(SH)} mm` : `${sh.w} × ${sh.h} mm${n > 1 ? `, ${n} ${tr('sheets')}` : ''}`;
+  $('#matCount').innerHTML = `<strong>${pieces.length}</strong> ${tr(pieces.length === 1 ? 'piece' : 'pieces')}` + (pieces.length ? ` · <span title="${esc(tr('Share of the film the pieces use, and the film area'))}">${use.toFixed(0)}% ${tr('used')} · ${filmM2.toFixed(2)} m²</span>` : '');
+  $('#export').disabled = $('#exportDxf').disabled = !pieces.length;
   $('#sheetWarn').textContent = S.packing.oversize ? 'A piece is larger than the sheet. Increase the sheet size or split the decal.' : '';
 }
 
 for (const [id, k] of [['#sw','w'],['#shh','h'],['#sgap','gap']]) $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (v > 0 || (k === 'gap' && v >= 0)) S.sheet[k] = v; else e.target.value = S.sheet[k]; renderSheet(); renderList(); });
+$('#filmPreset').innerHTML = FILMS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+$('#filmPreset').addEventListener('change', e => { const f = FILMS.find(x => x.id === e.target.value); setFilm({ id: f.id, max: f.id === 'custom' ? S.film.max : f.max }); });
+$('#filmMax').addEventListener('change', e => { const v = parseFloat(e.target.value); if (!(v > 0)) { e.target.value = S.film.max; return; } const f = FILMS.find(x => x.id === S.film.id); setFilm({ id: f && f.id !== 'custom' && f.max === v ? f.id : 'custom', max: v }); });
+setTimeout(() => setFilm(S.film, true)); // after the language tables are ready
 $('#stol').addEventListener('change', e => { S.sheet.tol = Math.max(0.01, +e.target.value || 0.1); e.target.value = S.sheet.tol; renderSheet(); });
-for (const [id, k] of [['#slab','labels'],['#sbor','border'],['#smir','mirror'],['#scurve','curves']]) $(id).addEventListener('change', e => { S.sheet[k] = e.target.checked; renderSheet(); });
+for (const [id, k] of [['#slab','labels'],['#sbor','border'],['#smir','mirror'],['#scurve','curves'],['#sroll','roll'],['#sreg','reg'],['#sweed','weed']]) $(id).addEventListener('change', e => { S.sheet[k] = e.target.checked; if (k === 'roll') $('#shh').disabled = e.target.checked; renderSheet(); });
 
 // ---------- cut, smooth and round tools ----------
 // insert an anchor at (seg, t) without changing the curve's shape
@@ -3362,7 +3983,7 @@ function cutClick(hit, shift) {
   const d = hit.d, os = origSample(d, hit.s);
   if (!os) { flash('Cut on your own half of a symmetric decal.'); return; }
   if (!d.closed) { // scissors: split an open line in two
-    pushHistory();
+    pushHistory('Cut line');
     const i = insertExact(d, os.seg, os.t, os.point, os.face);
     const A = d.ctrl.slice(0, i + 1).map(cloneC), B = d.ctrl.slice(i).map(cloneC);
     A[A.length - 1].hout = A[A.length - 1].p.slice(); B[0].hin = B[0].p.slice();
@@ -3373,7 +3994,7 @@ function cutClick(hit, shift) {
     S.cut = null; S.active = made[0] || null; renderHandles(); updateUI(); flash('Line cut in two.'); return;
   }
   if (shift) { // open a closed outline at this spot
-    pushHistory();
+    pushHistory('Opened outline');
     const i = insertExact(d, os.seg, os.t, os.point, os.face), n = d.ctrl.length;
     const ctrl = [...d.ctrl.slice(i), ...d.ctrl.slice(0, i + 1)].map(cloneC);
     ctrl[ctrl.length - 1].hout = ctrl[ctrl.length - 1].p.slice(); ctrl[0].hin = ctrl[0].p.slice(); void n;
@@ -3383,7 +4004,7 @@ function cutClick(hit, shift) {
   if (!S.cut || S.cut.d !== d) { S.cut = { d, os, p: hit.s.point }; renderCutMark(); flash('Now click a second spot on the same outline to cut it into two pieces.'); return; }
   const a = S.cut.os; S.cut = null; renderCutMark();
   if (a.seg === os.seg && Math.abs(a.t - os.t) < 1e-3) { flash('Pick two different spots.'); return; }
-  pushHistory();
+  pushHistory('Split decal');
   // insert the later cut first so the earlier index stays valid
   let first = a, second = os;
   if (second.seg < first.seg || (second.seg === first.seg && second.t < first.t)) [first, second] = [second, first];
@@ -3447,7 +4068,7 @@ function simplifyCurve() {
   if (d.closed && K.filter(Boolean).length < 3) { const order = d.ctrl.map((_, i) => i).filter(i => !K[i]); while (K.filter(Boolean).length < 3 && order.length) K[order.splice(Math.floor(order.length / 2), 1)[0]] = true; }
   const removed = K.filter(k => !k).length;
   if (!removed) { flash(`No points can go without moving the outline more than ${tol} mm.`); return; }
-  pushHistory();
+  pushHistory('Simplify');
   const nc = [];
   d.ctrl.forEach((c, i) => { if (!K[i]) return; const prevGone = !K[(i - 1 + n) % n], nextGone = !K[(i + 1) % n];
     if ((prevGone || nextGone) && ptype(c) !== 'corner' && ptype(c) !== 'auto') { c.type = 'auto'; delete c.hin; delete c.hout; c.broken = false; } // its neighbours changed, so fixed handles would bend wrongly
@@ -3473,7 +4094,7 @@ function mirrorNewDecal(d) {
 // even out wobbly points and give them automatic handles
 function smoothCurve() {
   const T = targetIdx(); if (!T) return; const { d, L } = T, n = d.ctrl.length;
-  pushHistory();
+  pushHistory('Smooth');
   const old = d.ctrl.map(c => c.p.slice()), piece = S.model.topo.piece[d.ctrl[0].face];
   for (const i of L) {
     const c = d.ctrl[i];
@@ -3506,7 +4127,7 @@ function roundCorners(rIn) {
   const T = targetIdx(); if (!T) return; const d = T.d;
   const L = [...T.L].sort((a, b) => b - a).filter(i => (d.closed || (i > 0 && i < d.ctrl.length - 1)) && !(d.mirror && d.ctrl[i].plane)); // points on the centre plane stay where the halves meet
   if (!L.length) { flash('Select the corner points to round.'); return; }
-  pushHistory();
+  pushHistory('Round corners');
   let done = 0;
   for (const c0 of L) {
     const n = d.ctrl.length, C = d.ctrl[c0], P0 = d.ctrl[(c0 - 1 + n) % n], N1 = d.ctrl[(c0 + 1) % n];
@@ -3546,9 +4167,14 @@ function knifeViewPoint(x, y) {
 }
 // project the screen-space line between two anchors onto whatever surface is visible under it
 function projectKnifeSeg(a, b) {
-  const A = screenOf(a.w), B = screenOf(b.w), L = Math.hypot(B.x - A.x, B.y - A.y), n = Math.max(1, Math.ceil(L / 2.5));
-  const at = t => { const h = pickAt(A.x + (B.x - A.x) * t, A.y + (B.y - A.y) * t); return h ? { point: h.p, face: h.face, t } : null; };
-  const coarse = []; for (let q = 0; q <= n; q++) coarse.push(at(q / n));
+  const A = screenOf(a.w), B = screenOf(b.w);
+  // only the part of the line inside the view can meet the model: clip it to the canvas, sample that part
+  const W = canvas.clientWidth, H = canvas.clientHeight, dx = B.x - A.x, dy = B.y - A.y; let t0 = 0, t1 = 1;
+  for (const [pp, qq] of [[-dx, A.x], [dx, W - A.x], [-dy, A.y], [dy, H - A.y]]) { if (Math.abs(pp) < 1e-9) { if (qq < 0) { t0 = 1; t1 = 0; } continue; } const r = qq / pp; if (pp < 0) t0 = Math.max(t0, r); else t1 = Math.min(t1, r); }
+  const at = t => { const h = pickAt(A.x + dx * t, A.y + dy * t); return h ? { point: h.p, face: h.face, t } : null; };
+  const coarse = [];
+  if (t1 <= t0) coarse.push(null, null); // entirely outside the view
+  else { const n = Math.max(1, Math.ceil(Math.hypot(dx, dy) * (t1 - t0) / 2.5)); if (t0 > 0) coarse.push(null); for (let q = 0; q <= n; q++) coarse.push(at(t0 + (t1 - t0) * q / n)); if (t1 < 1) coarse.push(null); }
   // refine where neighbouring samples are far apart on the surface, so the cut follows curved tubes closely
   const out = [], piece = f => S.model.topo.piece[f];
   for (let q = 0; q < coarse.length; q++) {
@@ -3912,7 +4538,7 @@ function applyKnife() {
     if (!r) { setBusy(false); flash(S.knifeThrough ? 'The knife line has to cross a decal outline twice. Draw it past the edges.' : 'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
     resymmetrize();
     setBusy(false);
-    HIST.undo.push(before); HIST.redo = []; S.dirty = true; clearKnife(); S.active = null; renderHandles(); updateUI();
+    histPush(before, 'Knife cut'); clearKnife(); S.active = null; renderHandles(); updateUI();
     flash(`Made ${r.cuts} cut${r.cuts === 1 ? '' : 's'}${r.mirrored ? ', mirrored to the other side' : ''}.`);
   }, 20);
 }
@@ -4218,7 +4844,7 @@ function runBoolean(op, A, B) {
     try {
       const r = booleanCore(op, A, B);
       if (r.error) { setBusy(false); updateUI(); flash(r.error); return; }
-      pushHistory();
+      pushHistory({ union: 'Union', difference: 'Subtract', intersection: 'Intersect' }[op]);
       for (const d of [...holesOf(A), ...holesOf(B), A, B]) removeDecal(d, true);
       for (const d of r.made) { S.decals.push(d); }
       for (const d of r.made) solveNow(d);
@@ -4231,7 +4857,7 @@ function runBoolean(op, A, B) {
 // make the mirrored copy real geometry so it can be edited freely
 function applyMirror(d) {
   if (!d.mirror) return;
-  pushHistory();
+  pushHistory('Applied mirror');
   if (d.mergedMap) {
     d.ctrl = d.mergedMap.map(m => { const c = { p: m.p.slice(), face: m.face, type: m.type || 'auto', broken: !!m.broken }; if (m.hin) c.hin = m.hin.slice(); if (m.hout) c.hout = m.hout.slice(); return c; });
     d.mirror = false; d.mergedMap = null; solveNow(d); updateUI(); flash(`${d.name} is now one full outline you can edit on both sides.`); return;
@@ -4305,14 +4931,14 @@ function splitAtPoints() {
   const L = selList(), d = S.sel?.decal; if (!d) return;
   if (d.mergedMap) { flash('Apply the mirror first (Apply in the decal list) to split a symmetric decal.'); return; }
   if (L.length === 1 && d.closed) { // open the outline at this point
-    pushHistory(); const i = L[0];
+    pushHistory('Split'); const i = L[0];
     const ctrl = [...d.ctrl.slice(i), ...d.ctrl.slice(0, i + 1)].map(cloneC);
     ctrl[ctrl.length - 1].hout = ctrl[ctrl.length - 1].p.slice(); ctrl[0].hin = ctrl[0].p.slice();
     d.ctrl = ctrl; d.closed = false; d.res = null; d.twin = null; S.sel = null; updateDecalVisual(d, true); updateUI(); flash('Outline opened at that point.'); return;
   }
   if (L.length !== 2 || !d.closed) { flash('Select two points on a closed outline to split between them, or one point to open it.'); return; }
   const [i, j] = L; if (j - i < 1 || (i === 0 && j === d.ctrl.length - 1 && d.ctrl.length < 4)) { flash('Pick two points that are not next to each other.'); return; }
-  pushHistory();
+  pushHistory('Split');
   const A = d.ctrl.slice(i, j + 1).map(cloneC), B = [...d.ctrl.slice(j), ...d.ctrl.slice(0, i + 1)].map(cloneC);
   for (const P of [A, B]) { P[0].hin = P[0].p.slice(); P[0].broken = true; P[0].type = ptype(P[0]) === 'auto' ? 'bezier' : P[0].type; P[P.length - 1].hout = P[P.length - 1].p.slice(); P[P.length - 1].broken = true; }
   for (const P of [A, B]) for (const c of [P[0], P[P.length - 1]]) if (!c.hin || !c.hout) { const H = Core.handlesFor(d.ctrl, d.ctrl.findIndex(q => q.p[0] === c.p[0] && q.p[1] === c.p[1]), true); c.hin = c.hin || H[0]; c.hout = c.hout || H[1]; }
@@ -4363,7 +4989,7 @@ function applyKnifeLoopThrough() {
     if (!r && !removed && !holes) { applySnapshot(before); setBusy(false); flash('The knife loop does not overlap any decal.'); return; }
     resymmetrize();
     setBusy(false);
-    HIST.undo.push(before); HIST.redo = []; S.dirty = true; clearKnife(); S.active = null; renderHandles(); updateUI();
+    histPush(before, 'Knife cut'); clearKnife(); S.active = null; renderHandles(); updateUI();
     flash(`Cut the loop through the model${removed ? `: removed ${removed} piece${removed === 1 ? '' : 's'}` : ''}${holes ? `${removed ? ',' : ':'} ${holes} hole${holes === 1 ? '' : 's'}` : ''}.`);
   }, 20);
 }
@@ -4395,7 +5021,7 @@ function applyKnifeLoop() {
       changed++;
     }
     setBusy(false);
-    if (changed) { HIST.undo.push(before); HIST.redo = []; S.dirty = true; clearKnife(); S.active = null; renderHandles(); updateUI(); flash(`Cut the loop out of ${changed} decal${changed === 1 ? '' : 's'}.`); }
+    if (changed) { histPush(before, 'Knife cut'); clearKnife(); S.active = null; renderHandles(); updateUI(); flash(`Cut the loop out of ${changed} decal${changed === 1 ? '' : 's'}.`); }
     else flash('Nothing was cut.');
   }, 20);
 }
@@ -4505,7 +5131,7 @@ function makeShape(p) {
     const r = outlineFromView(anchors); if (r.error) { flash(r.error); return; }
     ctrl = r.ctrl;
   }
-  pushHistory();
+  pushHistory('Added shape');
   const id = S.nextId++, name = tr({ rect: 'Rectangle', circle: 'Circle', poly: `${o.pts.length}-gon`, pill: 'Pill' }[S.drawShape]);
   const d = { id, name: `${name} ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
   mirrorNewDecal(d);
@@ -4769,7 +5395,7 @@ function previewPlacement() {
 }
 function applyPlacement() {
   if (!S.placeShapes?.length) return;
-  const im = svgImport; pushHistory();
+  const im = svgImport; pushHistory('Placed artwork');
   const made = [];
   for (const sh of S.placeShapes) {
     const id = S.nextId++;
@@ -4910,6 +5536,117 @@ function applyXform() {
   updateDecalVisual(d, true);
 }
 const ctrlSig = d => d.ctrl.map(c => c.p.map(v => v.toFixed(4)).join(',')).join(';');
+// ---------- the Decal panel: typed moves, distance to tube ends, turn and size, offset, snapping ----------
+const dpTarget = () => { const d = S.active; return S.mode === 'edit' && d && d.closed && !d.locked && d.res && !d.res.error && !S.placing ? d : null; };
+let dpKey = '';
+function updateDecalPanel() {
+  const el = $('#decalPanel'), d = dpTarget(); el.hidden = !d; if (!d) { dpKey = ''; return; }
+  $('#dpName').textContent = d.name;
+  const tb = tubeSpan(d), key = d.id + '|' + (tb ? tb.name + tb.start.toFixed(1) + tb.end.toFixed(1) : '');
+  $('#dpTube').hidden = !tb;
+  if (tb && key !== dpKey) { $('#dpTubeName').textContent = tr(tb.name) + ':'; if (document.activeElement !== $('#dpStart')) $('#dpStart').value = tb.start.toFixed(1); if (document.activeElement !== $('#dpEnd')) $('#dpEnd').value = tb.end.toFixed(1); }
+  dpKey = key;
+}
+// the decal's span along the tube it sits on (frames made from geometry only): gap to each end of the tube's centre line
+function tubeSpan(d) {
+  const tubes = S.source?.tubes; if (!tubes || !d.res?.samples?.length) return null;
+  const sm = d.res.samples, mid = [0, 1, 2].map(k => sm.reduce((a, s) => a + s.point[k], 0) / sm.length), rec = toTube(mid, tubes); if (!rec || rec.err > 25) return null;
+  const tb = tubes.find(t => t.name === rec.name), b = tubeBasis(tb); let lo = 1e30, hi = -1e30;
+  for (const s of sm) { const t = new THREE.Vector3(...s.point).sub(b.A).dot(b.u); lo = Math.min(lo, t); hi = Math.max(hi, t); }
+  return { name: tb.name, start: lo, end: b.len - hi, u: [b.u.x, b.u.y, b.u.z] };
+}
+// move a whole decal by a 3D vector, in short steps along the surface so it follows the curve
+function moveDecalBy(d, dl, label) {
+  const X = startXform(d); if (!X) { flash('This decal cannot be moved here.'); return false; }
+  if (X.sym) dl[mirrorPlane().k] = 0;
+  const L = v3.len(dl), n = Math.max(1, Math.ceil(L / 5)), st = v3.mul(dl, 1 / n);
+  for (let i = 0; i < n; i++) {
+    const mv = surfWalk(X.C, X.fc, v3.add(v3.mul(X.E1, X.du), v3.mul(X.E2, X.dv)), X.piece, [X.E1, X.E2]), [E1, E2] = mv.carry;
+    const a11 = v3.dot(E1, E1), a12 = v3.dot(E1, E2), a22 = v3.dot(E2, E2), b1 = v3.dot(st, E1), b2 = v3.dot(st, E2), det = a11*a22 - a12*a12 || 1e-12;
+    X.du += (a22*b1 - a12*b2) / det; X.dv += (a11*b2 - a12*b1) / det;
+  }
+  histPush(X.before, label || tr('Moved {0}').replace('{0}', d.name));
+  xform = X; applyXform(); xform = null; solveNow(d); for (const h of holesOf(d)) solveNow(h); renderHandles(); updateUI(); return true;
+}
+const shownToInternal = (x, y, z) => [x, z, -y]; // shown Z-up axes to the tool's own
+$('#dpMove').addEventListener('click', () => { const d = dpTarget(); if (!d) return; const v = shownToInternal(+$('#dpX').value || 0, +$('#dpY').value || 0, +$('#dpZ').value || 0); if (!v3.len(v)) { flash('Type a distance in X, Y or Z first.'); return; } if (moveDecalBy(d, v)) flash(tr('Moved {0} by {1} mm.').replace('{0}', d.name).replace('{1}', v3.len(v).toFixed(1))); });
+for (const [id, end] of [['#dpStart', false], ['#dpEnd', true]]) $(id).addEventListener('change', e => {
+  const d = dpTarget(), tb = d && tubeSpan(d), v = parseFloat(e.target.value); if (!tb || isNaN(v)) return;
+  const delta = end ? tb.end - v : v - tb.start; if (Math.abs(delta) < 0.01) return;
+  moveDecalBy(d, v3.mul(tb.u, delta), tr('Moved {0} along the tube').replace('{0}', d.name)); dpKey = ''; updateDecalPanel();
+});
+$('#dpApply').addEventListener('click', () => {
+  const d = dpTarget(); if (!d) return; const ang = +$('#dpTurn').value || 0, sc = (+$('#dpSize').value || 100) / 100;
+  if (!ang && Math.abs(sc - 1) < 1e-6) { flash('Type an angle or a size other than 100% first.'); return; }
+  const X = startXform(d); if (!X) return; X.ang = ang; X.sc = Math.max(0.01, sc);
+  histPush(X.before, tr('Turned and sized {0}').replace('{0}', d.name)); xform = X; applyXform(); xform = null; solveNow(d); for (const h of holesOf(d)) solveNow(h);
+  $('#dpTurn').value = 0; $('#dpSize').value = 100; renderHandles(); updateUI();
+});
+// grow or shrink the outline: every point walks along the surface, square to the outline; handles scale with the bend
+function offsetDecal(d, dist) {
+  if (!d?.res || d.res.error) return;
+  const C = d.ctrl, n = C.length, piece = S.model.topo.piece[C[0].face], H = C.map((_, i) => Core.handlesFor(C, i, true));
+  const tang = (v, nr) => { const t = v3.sub(v, v3.mul(nr, v3.dot(v, nr))), l = v3.len(t); return l > 1e-9 ? v3.mul(t, 1 / l) : null; };
+  const info = C.map((c, i) => {
+    const nr = fnorm(c.face), pv = C[(i - 1 + n) % n], nx = C[(i + 1) % n];
+    const tin = tang(v3.sub(c.p, H[i][0]), nr) || tang(v3.sub(c.p, H[(i - 1 + n) % n][1]), nr) || tang(v3.sub(c.p, pv.p), nr);
+    const tout = tang(v3.sub(H[i][1], c.p), nr) || tang(v3.sub(H[(i + 1) % n][0], c.p), nr) || tang(v3.sub(nx.p, c.p), nr);
+    if (!tin || !tout) return null;
+    const nin = v3cross(nr, tin), nout = v3cross(nr, tout); let b = v3.add(nin, nout), bl = v3.len(b); b = bl > 1e-6 ? v3.mul(b, 1 / bl) : nin;
+    const miter = 1 / Math.max(0.3, v3.dot(b, nin));
+    // which way is out: step a little each way and ask which side is inside the decal
+    const eps = Math.max(0.3, Math.min(2, Math.abs(dist) * 0.3)), probe = s => { const h = Core.closestPoint(S.model.mesh, S.model.grid, v3.add(c.p, v3.mul(b, s * eps)), 40, f => S.model.topo.piece[f] === piece); return h && insideDecal(d, h); };
+    const vote = probe(1) && !probe(-1) ? -1 : probe(-1) && !probe(1) ? 1 : 0;
+    return { b, miter, vote, nr };
+  });
+  const sgn = Math.sign(info.reduce((a, x) => a + (x ? x.vote : 0), 0)) || 1; // out = b * sgn
+  const curv = (P0, P1, P2, out) => { const a = v3.sub(P1, P0), l = v3.len(a); if (l < 1e-6) return 0; const k = (2 / 3) * v3.len(v3cross(a, v3.sub(P2, P1))) / (l * l * l); return v3.dot(v3.sub(P2, P1), out) < 0 ? k : -k; }; // + bends inwards
+  const nc = C.map((c, i) => {
+    const it = info[i]; if (!it) return cloneC(c);
+    const out = v3.mul(it.b, sgn), w = surfWalk(c.p, c.face, v3.mul(out, dist * Math.min(it.miter, 3)), piece);
+    let q = w.p, face = w.face; if (c.plane) { const s2 = snapToPlane(q, face); if (s2) { q = s2.p; face = s2.face; } }
+    const r = { ...cloneC(c), p: q, face }, nn = fnorm(face);
+    const carry = (hv, k) => { if (!hv) return hv; const f = Math.min(5, Math.max(0.1, 1 + dist * k)); let v = v3.mul(v3.sub(hv, c.p), f); const l = v3.len(v), t = v3.sub(v, v3.mul(nn, v3.dot(v, nn))), tl = v3.len(t); return v3.add(q, tl > 1e-9 ? v3.mul(t, l / tl) : v); };
+    if (c.hout) r.hout = carry(c.hout, curv(c.p, H[i][1], H[(i + 1) % n][0], out));
+    if (c.hin) r.hin = carry(c.hin, curv(c.p, H[i][0], H[(i - 1 + n) % n][1], out));
+    return r;
+  });
+  pushHistory(tr(dist > 0 ? 'Grew {0}' : 'Shrank {0}').replace('{0}', d.name));
+  d.ctrl = nc; solveNow(d); renderHandles(); updateUI();
+  if (d.res?.error) flash(d.res.error); else flash(tr(dist > 0 ? 'Grew {0} by {1} mm.' : 'Shrank {0} by {1} mm.').replace('{0}', d.name).replace('{1}', Math.abs(dist)));
+}
+$('#dpGrow').addEventListener('click', () => { const d = dpTarget(), v = Math.abs(+$('#dpOff').value || 0); if (d && v) offsetDecal(d, v); });
+$('#dpLib').addEventListener('click', () => { const d = dpTarget(); if (d) saveTemplate(d); });
+$('#dpShrink').addEventListener('click', () => { const d = dpTarget(), v = Math.abs(+$('#dpOff').value || 0); if (d && v) offsetDecal(d, -v); });
+// snapping while moving: the closest pair of edge points between this decal and the others is set to the gap
+S.snapDecals = false; S.snapGap = 2;
+$('#dpSnap').addEventListener('change', e => { S.snapDecals = e.target.checked; flash(S.snapDecals ? tr('Moving decals now snaps them {0} mm from their neighbours.').replace('{0}', S.snapGap) : 'Snapping to decals is off.'); });
+$('#dpGap').addEventListener('change', e => { const v = parseFloat(e.target.value); if (v >= 0) S.snapGap = v; else e.target.value = S.snapGap; });
+function snapToDecals(X, held) {
+  const d = X.d, mine = (d.samples || []).filter((_, i) => i % 2 === 0); if (!mine.length) return null;
+  const gap = S.snapGap, range = Math.max(3, gap * 1.5), cell = gap + range; // snaps only from close by
+  // the other decals' edge points in a hash grid, built once per gesture (they do not move meanwhile)
+  if (!X.snapGrid || X.snapGrid.cell !== cell) {
+    const G = new Map(), key = (i, j, k) => i + ',' + j + ',' + k;
+    for (const o of S.decals) {
+      if (o === d || !o.closed || o.holeOf === d.id || d.holeOf === o.id || !o.res || o.res.error) continue;
+      for (const sm of [o.res.samples, o.twin?.res?.samples]) { if (!sm) continue;
+        for (const b of sm) { const k = key(Math.floor(b.point[0] / cell), Math.floor(b.point[1] / cell), Math.floor(b.point[2] / cell)); let l = G.get(k); if (!l) G.set(k, l = []); l.push({ b, o }); } }
+    }
+    X.snapGrid = { cell, G, key };
+  }
+  const { G, key } = X.snapGrid; if (!G.size) return null;
+  let best = null;
+  for (const a of mine) { const ci = Math.floor(a.point[0] / cell), cj = Math.floor(a.point[1] / cell), ck = Math.floor(a.point[2] / cell);
+    for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++) for (let k = -1; k <= 1; k++) { const l = G.get(key(ci + i, cj + j, ck + k)); if (!l) continue;
+      for (const { b, o } of l) { const dd = dist3(a.point, b.point); if (dd < cell && (!best || dd < best.dd)) best = { dd, a: a.point, af: a.face, b: b.point, o }; } } }
+  if (!best || best.dd < 0.05 || Math.abs(best.dd - gap) < 0.02) return best && { done: true, best };
+  if (insideDecal(best.o, { point: best.a, face: best.af }) || (d.samples || []).some((s, i) => i % 3 === 0 && insideDecal(best.o, s))) { // overlapping
+    if (!held || !X.snapLock) return null; // a free move into another decal is left alone
+    return { v: [0, 0, 0], best, into: true }; }
+  const v = v3.mul(v3.sub(best.a, best.b), (gap - best.dd) / best.dd); // push away (or pull in) along the line between the two points
+  return { v, best };
+}
 // ---------- the on-screen gizmo: centre handle moves, ring and knob turn, corner squares size ----------
 var gizmoKey = '', gzDrag = null;
 // a coloured line through the decal along the axis moves are locked to
@@ -4986,7 +5723,7 @@ function ensureXform(d, idx) {
   if (xform && xform.d === d && xform.sig === ctrlSig(d) && xform.axis === (S.turnAxis || 'view') && xform.idxKey === key) return xform; // the same gesture goes on while nothing else changed the decal
   if (xformT) { clearTimeout(xformT); xformT = null; if (S.decals.includes(d)) solveNow(d); } // start from a fresh layout
   xform = startXform(d, idx && idx.length ? idx : null); if (!xform) return null; xform.sig = ctrlSig(d);
-  HIST.undo.push(xform.before); HIST.redo = []; S.dirty = true; return xform;
+  histPush(xform.before); return xform;
 }
 canvas.addEventListener('wheel', e => {
   const d = xformTarget(); if (!d || !realMod(e)) return;
@@ -5018,20 +5755,18 @@ canvas.addEventListener('pointerleave', () => { $('#placeGhost').hidden = true; 
 let downloadsApi = null;
 if (window.claude?.use) window.claude.use('downloads').then(d => { downloadsApi = d; }).catch(() => {});
 $('#export').addEventListener('click', async () => {
-  const sh = S.sheet, pk = S.packing; if (!pk?.placed.length) return;
-  const mx = p => ([x, y]) => [2*p.x + p.w - x, y];
-  const placed = sh.mirror ? pk.placed.map(p => ({ ...p, pts: p.pts.map(mx(p)), holes: (p.holes || []).map(h => h.map(mx(p))), curves: p.curves ? p.curves.map(r => r && r.map(sg => sg.map(mx(p)))) : null })) : pk.placed;
-  const names = Object.fromEntries(Object.values(S.pieceInfo).map(p => [p.id, p.name]));
-  const svgText = Core.buildSVG({ ...pk, placed }, sh.w, sh.h, { labels: sh.labels, border: sh.border, curves: sh.curves !== false }, names);
-  const nodes = placed.reduce((s, p) => s + (p.curves && p.curves.every(Boolean) && sh.curves !== false ? p.curves.reduce((t, r) => t + r.length, 0) : p.pts.length + (p.holes || []).reduce((t, h) => t + h.length, 0)), 0);
-  $('#exportNote').dataset.nodes = nodes;
-  if (await saveFile(baseName() + '_cut_sheet.svg', svgText, $('#exportNote'))) $('#exportNote').textContent += ` (${nodes} nodes${sh.curves !== false ? ', smooth curves' : ''})`;
+  const pieces = solvedPieces(); if (!pieces.length) return; const sh = S.sheet, r = cutSheetSVG(pieces, S.source?.name);
+  if (await saveFile(baseName() + '_cut_sheet.svg', r.svg, $('#exportNote'))) $('#exportNote').textContent += ` (${r.nodes} ${tr('nodes')}${sh.curves !== false ? ', ' + tr('smooth curves') : ''})`;
+});
+$('#exportDxf').addEventListener('click', async () => {
+  const pieces = solvedPieces(); if (!pieces.length) return; const r = cutSheetSVG(pieces);
+  await saveFile(baseName() + '_cut_sheet.dxf', cutSheetDXF(r.pk, S.sheet.w, r.names), $('#exportNote'));
 });
 
 updateUI();
 // ---------- floating panels: drag by the grip, drop near an edge to pin it there; the pin button frees or docks a panel ----------
-const PANEL_IDS = ['railPanel', 'topPanel', 'viewPanel', 'pointbar'];
-const PANEL_NAMES = { railPanel: 'Tools', topPanel: 'Options', viewPanel: 'View', pointbar: 'Points' };
+const PANEL_IDS = ['railPanel', 'topPanel', 'viewPanel', 'pointbar', 'decalPanel'];
+const PANEL_NAMES = { railPanel: 'Tools', topPanel: 'Options', viewPanel: 'View', pointbar: 'Points', decalPanel: 'Decal' };
 const floatLayer = document.createElement('div'); floatLayer.id = 'floatLayer'; stage.appendChild(floatLayer);
 const dockHint = document.createElement('div'); dockHint.id = 'dockHint'; dockHint.hidden = true; stage.appendChild(dockHint);
 const panelHome = {};
@@ -5147,6 +5882,10 @@ function relayout() {
       el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
       obstacles.push({ l: x, t: y, r: x + w, b: y + h });
     }
+    // the tips box sits bottom-left: lift it above any panel in its way
+    const hb = $('#hintBox'); if (hb) { const hw = Math.min(540, W - 24), hh = hb.offsetHeight || 40; let bottom = 12;
+      for (let k = 0; k < 4; k++) { const top = H - bottom - hh, hit = obstacles.filter(r => r.l < 12 + hw && r.r > 12 && r.t < H - bottom && r.b > top); if (!hit.length) break; bottom = H - Math.min(...hit.map(r => r.t)) + g; }
+      hb.style.bottom = Math.min(bottom, H - hh - 12) + 'px'; }
   });
 }
 const resolveOverlap = id => { if (layout[id]) layout[id].t = layout[id].t || Date.now(); saveLayout(); relayout(); };
@@ -5198,11 +5937,190 @@ for (const id of PANEL_IDS) {
 new ResizeObserver(() => relayout()).observe(stage);
 PANEL_IDS.forEach(placePanel); relayout();
 renderViews();
-$('#resetPanels').addEventListener('click', () => { layout = {}; folded = {}; saveLayout(); saveFolded(); PANEL_IDS.forEach(placePanel); relayout(); flash('Panels are back in their default places.'); });
+// panel layouts: a click puts every panel where that layout has it; Keep current stores the present arrangement in it
+const LAYOUT_DEFAULTS = {
+  draw: { layout: {}, folded: {} },
+  edit: { layout: { pointbar: { mode: 'pin', ex: null, ey: 'bottom', x: 120, y: 0, t: 3 }, decalPanel: { mode: 'pin', ex: null, ey: 'bottom', x: 560, y: 0, t: 4 } }, folded: { viewPanel: true } },
+  clean: { layout: {}, folded: { topPanel: true, viewPanel: true, pointbar: true, decalPanel: true } },
+};
+let layoutPresets = {}; try { layoutPresets = JSON.parse(localStorage.getItem('decal-studio-layouts') || '{}') || {}; } catch (e) {}
+let layoutCur = null;
+const layoutOf = k => layoutPresets[k] || LAYOUT_DEFAULTS[k];
+try { layoutCur = localStorage.getItem('decal-studio-layout-name') || 'draw'; } catch (e) { layoutCur = 'draw'; }
+$('#layoutSel').value = layoutCur;
+const layoutName = k => tr({ draw: 'Drawing', edit: 'Editing', clean: 'Clean' }[k]);
+function applyLayout(k) { const L = JSON.parse(JSON.stringify(layoutOf(k))); layout = L.layout || {}; folded = L.folded || {}; saveLayout(); saveFolded(); layoutCur = k;
+  try { localStorage.setItem('decal-studio-layout-name', k); } catch (e) {} PANEL_IDS.forEach(placePanel); relayout(); }
+$('#layoutSel').addEventListener('change', e => {
+  const v = e.target.value;
+  if (v === 'keep') { const k = layoutCur || 'draw'; layoutPresets[k] = { layout: JSON.parse(JSON.stringify(layout)), folded: { ...folded } };
+    try { localStorage.setItem('decal-studio-layouts', JSON.stringify(layoutPresets)); } catch (e) {}
+    e.target.value = k; flash(tr('Kept the current panels as the {0} layout.').replace('{0}', layoutName(k))); return; }
+  applyLayout(v); e.target.blur(); flash(tr('Panel layout: {0}.').replace('{0}', layoutName(v)));
+});
+$('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCur = 'draw'; $('#layoutSel').value = 'draw'; try { localStorage.removeItem('decal-studio-layouts'); localStorage.removeItem('decal-studio-layout-name'); } catch (e) {} layout = {}; folded = {}; saveLayout(); saveFolded(); PANEL_IDS.forEach(placePanel); relayout(); flash('Panels are back in their default places.'); });
 
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "History": "Verlauf",
+  "Click a step to go back to it. Later steps stay in the list until you change something.": "Klicke auf einen Schritt, um dorthin zurückzugehen. Spätere Schritte bleiben in der Liste, bis du etwas änderst.",
+  "Film": "Folie",
+  "Max stretch (%)": "Max. Dehnung (%)",
+  "Stretch above this is shown red, gets a warning and a relief-cut suggestion": "Dehnung darüber wird rot angezeigt, gewarnt und mit einem Entlastungsschnitt-Vorschlag versehen",
+  "Stretch colours, warnings and relief cuts use this limit. The presets are starting points; check your film's data sheet.": "Dehnungsfarben, Warnungen und Entlastungsschnitte nutzen diese Grenze. Die Vorgaben sind Startwerte; prüfe das Datenblatt deiner Folie.",
+  "PPF, gloss (TPU)": "PPF, glänzend (TPU)",
+  "PPF, matte (TPU)": "PPF, matt (TPU)",
+  "Cast vinyl": "Gegossene Vinylfolie",
+  "Calendered vinyl": "Kalandrierte Vinylfolie",
+  "Custom": "Eigene",
+  "Sizes": "Größen",
+  "The decals are drawn once on this size and moved onto the others along each tube, then unwrapped for each size.": "Die Decals werden einmal auf dieser Größe gezeichnet, entlang jedes Rohrs auf die anderen übertragen und für jede Größe abgewickelt.",
+  "Position on the tube": "Position am Rohr",
+  "How decals move along a tube when it gets longer or shorter": "Wie Decals entlang eines Rohrs wandern, wenn es länger oder kürzer wird",
+  "Keep the gap to the nearer tube end": "Abstand zum näheren Rohrende halten",
+  "Scale with the tube length": "Mit der Rohrlänge skalieren",
+  "Show size": "Größe zeigen",
+  "Show another size in the 3D view, with the decals moved onto it": "Eine andere Größe in der 3D-Ansicht zeigen, mit den übertragenen Decals",
+  "One file per size": "Eine Datei pro Größe",
+  "One SVG file per size instead of all sizes in one file": "Eine SVG-Datei pro Größe statt aller Größen in einer Datei",
+  "Download all sizes": "Alle Größen herunterladen",
+  "Unwrap the decals on every ticked size and download the cut sheets": "Die Decals auf jeder angehakten Größe abwickeln und die Schnittbögen herunterladen",
+  "The size shown now": "Die gerade gezeigte Größe",
+  "Tick at least one size.": "Hake mindestens eine Größe an.",
+  "Roll": "Rolle",
+  "Cut from a roll: the sheet is as long as the pieces need, Height is ignored": "Von der Rolle schneiden: der Bogen ist so lang wie nötig, die Höhe wird ignoriert",
+  "Registration marks": "Passermarken",
+  "Add three print-and-cut registration marks and keep pieces clear of them": "Drei Passermarken für Print-and-Cut hinzufügen und die Teile davon freihalten",
+  "Weeding boxes": "Entgitterrahmen",
+  "Cut a box around each piece and the sheet, so the waste film comes off in strips": "Einen Rahmen um jedes Teil und den Bogen schneiden, damit sich der Abfall in Streifen abziehen lässt",
+  "DXF": "DXF",
+  "Download the cut sheet as DXF (millimetres), for cutter software that prefers it": "Den Schnittbogen als DXF (Millimeter) herunterladen, für Plotter-Software, die das bevorzugt",
+  "Download SVG": "SVG herunterladen",
+  "sheets": "Bögen",
+  "piece": "Teil",
+  "pieces": "Teile",
+  "used": "genutzt",
+  "Share of the film the pieces use, and the film area": "Anteil der Folie, den die Teile nutzen, und die Folienfläche",
+  "nodes": "Knoten",
+  "smooth curves": "glatte Kurven",
+  "Projects": "Projekte",
+  "Your saved projects and decal templates, kept in this browser": "Deine gespeicherten Projekte und Decal-Vorlagen, in diesem Browser abgelegt",
+  "Save the project in this browser, under Projects (Ctrl+S)": "Das Projekt in diesem Browser unter Projekte speichern (Strg+S)",
+  "Projects and templates": "Projekte und Vorlagen",
+  "Kept in this browser on this computer. Download a project or your templates to back them up or move them to another computer.": "In diesem Browser auf diesem Computer abgelegt. Lade ein Projekt oder deine Vorlagen herunter, um sie zu sichern oder auf einen anderen Computer zu bringen.",
+  "Templates": "Vorlagen",
+  "Save current as new": "Aktuelles als neu speichern",
+  "Save the current frame and decals as a new project": "Den aktuellen Rahmen und die Decals als neues Projekt speichern",
+  "Download current": "Aktuelles herunterladen",
+  "Download the current project as a .json file": "Das aktuelle Projekt als .json-Datei herunterladen",
+  "Open file…": "Datei öffnen…",
+  "Download templates": "Vorlagen herunterladen",
+  "Download all templates as one file": "Alle Vorlagen als eine Datei herunterladen",
+  "Add from file…": "Aus Datei hinzufügen…",
+  "Add templates from a downloaded templates file": "Vorlagen aus einer heruntergeladenen Vorlagendatei hinzufügen",
+  "Save a decal as a template with": "Speichere ein Decal als Vorlage mit",
+  "Save to library": "In Bibliothek speichern",
+  "in the Decal panel (Edit mode). Placing a template works like placing artwork: move over the model, click, adjust, Apply.": "im Decal-Panel (Bearbeiten). Eine Vorlage platzierst du wie Artwork: über das Modell fahren, klicken, anpassen, Anwenden.",
+  "Close": "Schließen",
+  "Open": "Öffnen",
+  "Rename": "Umbenennen",
+  "Download": "Herunterladen",
+  "Last session (autosaved)": "Letzte Sitzung (automatisch gespeichert)",
+  "decal": "Decal",
+  "decals": "Decals",
+  "No saved projects yet. Click Save in the top bar to keep this one.": "Noch keine gespeicherten Projekte. Klicke oben auf Speichern, um dieses zu behalten.",
+  "Place on the model": "Auf das Modell setzen",
+  "Place": "Platzieren",
+  "mirrored": "gespiegelt",
+  "No templates yet. Select a decal in Edit mode and click Save to library in the Decal panel.": "Noch keine Vorlagen. Wähle ein Decal im Bearbeiten-Modus und klicke im Decal-Panel auf In Bibliothek speichern.",
+  "Name for this project:": "Name für dieses Projekt:",
+  "Untitled": "Ohne Titel",
+  "New name:": "Neuer Name:",
+  "Name for this template:": "Name für diese Vorlage:",
+  "This browser does not allow saving here (private window?).": "Dieser Browser erlaubt hier kein Speichern (privates Fenster?).",
+  "No templates to download yet.": "Noch keine Vorlagen zum Herunterladen.",
+  "not a templates file": "keine Vorlagendatei",
+  "Decal": "Decal",
+  "Move": "Verschieben",
+  "Front to back, following the surface": "Von vorne nach hinten, entlang der Fläche",
+  "Side to side, following the surface": "Seitlich, entlang der Fläche",
+  "Up and down, following the surface": "Auf und ab, entlang der Fläche",
+  "Move the decal by these distances along the surface": "Das Decal um diese Strecken entlang der Fläche verschieben",
+  "Gap from the decal to the start of the tube (its centre line end). Type a new value to move the decal along the tube": "Abstand vom Decal zum Rohranfang (Ende der Mittellinie). Gib einen neuen Wert ein, um das Decal entlang des Rohrs zu verschieben",
+  "Gap from the decal to the end of the tube (its centre line end). Type a new value to move the decal along the tube": "Abstand vom Decal zum Rohrende (Ende der Mittellinie). Gib einen neuen Wert ein, um das Decal entlang des Rohrs zu verschieben",
+  "start": "Anfang",
+  "end": "Ende",
+  "Turn": "Drehen",
+  "Turn by this angle around the axis chosen in Turn around (Points panel)": "Um diesen Winkel um die Achse aus „Drehen um“ (Punkte-Panel) drehen",
+  "Size": "Größe",
+  "New size in percent of the current size": "Neue Größe in Prozent der aktuellen",
+  "Turn and size the decal by these values": "Das Decal um diese Werte drehen und skalieren",
+  "Offset": "Versatz",
+  "Distance to grow or shrink the outline, measured along the surface": "Strecke zum Vergrößern oder Verkleinern der Kontur, entlang der Fläche gemessen",
+  "Grow": "Vergrößern",
+  "Shrink": "Verkleinern",
+  "Move the whole outline outwards by this distance": "Die ganze Kontur um diese Strecke nach außen versetzen",
+  "Move the whole outline inwards by this distance": "Die ganze Kontur um diese Strecke nach innen versetzen",
+  "Snap to decals": "An Decals einrasten",
+  "While moving a decal, its edge snaps to other decals at this gap": "Beim Verschieben rastet die Kante an anderen Decals mit diesem Abstand ein",
+  "gap": "Abstand",
+  "Gap kept between snapped decals": "Abstand zwischen eingerasteten Decals",
+  "Keep this decal in your library to place it again on any frame": "Dieses Decal in deiner Bibliothek behalten, um es auf jedem Rahmen wieder zu platzieren",
+  "Reference image": "Referenzbild",
+  "Load…": "Laden…",
+  "Load a photo of the real frame to trace paint lines, logos and cable ports": "Ein Foto des echten Rahmens laden, um Lackkanten, Logos und Kabeleingänge nachzuzeichnen",
+  "Stick to model": "Aufs Modell kleben",
+  "Unstick": "Lösen",
+  "Stick the image onto the model as seen from this view. Line the view up with the photo first": "Das Bild so aufs Modell kleben, wie es aus dieser Ansicht erscheint. Richte die Ansicht vorher am Foto aus",
+  "Remove": "Entfernen",
+  "Remove the reference image": "Referenzbild entfernen",
+  "Reference image opacity": "Deckkraft des Referenzbilds",
+  "Drag to move the image": "Ziehen, um das Bild zu verschieben",
+  "Drag to size the image; hold Alt to turn it": "Ziehen, um das Bild zu skalieren; mit Alt drehen",
+  "Line the model up with the photo (turn and zoom the view, move and size the photo by its corners), then click Stick to model.": "Richte das Modell am Foto aus (Ansicht drehen und zoomen, Foto an den Ecken verschieben und skalieren), dann klicke Aufs Modell kleben.",
+  "The photo is on the model now. Turn the view to check it; Unstick to line it up again.": "Das Foto liegt jetzt auf dem Modell. Dreh die Ansicht zum Prüfen; mit Lösen kannst du es neu ausrichten.",
+  "Keep current…": "Aktuelle behalten…", "Keep the current arrangement as the layout shown": "Die aktuelle Anordnung als gezeigtes Layout behalten",
+  "Layout: Drawing": "Layout: Zeichnen",
+  "Layout: Editing": "Layout: Bearbeiten",
+  "Layout: Clean": "Layout: Aufgeräumt",
+  "Keep current as this layout": "Aktuelle Anordnung als dieses Layout behalten",
+  "Panel layout: where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown": "Panel-Layout: wo die Panels sitzen und welche eingeklappt sind. Wähle „Aktuelle Anordnung behalten“, um deine eigene Anordnung im gezeigten Layout zu speichern",
+  "Drawing": "Zeichnen",
+  "Editing": "Bearbeiten",
+  "Clean": "Aufgeräumt",
+  "Put all panels back in their default places and the layouts back to their defaults": "Alle Panels an ihre Standardplätze und die Layouts auf ihre Standards zurücksetzen",
+  "Step": "Schritt",
+  "Start": "Anfang",
+  "Added a point": "Punkt hinzugefügt",
+  "Relief cuts": "Entlastungsschnitte",
+  "Knife cut": "Messerschnitt",
+  "Deleted points": "Punkte gelöscht",
+  "Merged points": "Punkte zusammengeführt",
+  "Changed point type": "Punkttyp geändert",
+  "Duplicate": "Duplizieren",
+  "Cut line": "Linie geschnitten",
+  "Opened outline": "Kontur geöffnet",
+  "Split decal": "Decal geteilt",
+  "Simplify": "Vereinfachen",
+  "Smooth": "Glätten",
+  "Round corners": "Ecken runden",
+  "Applied mirror": "Spiegelung angewendet",
+  "Split": "Teilen",
+  "Added shape": "Form hinzugefügt",
+  "Locked": "Gesperrt",
+  "Unlocked": "Entsperrt",
+  "Invert": "Umkehren",
+  "Placed artwork": "Artwork platziert",
+  "Union": "Vereinigen",
+  "Subtract": "Abziehen",
+  "Intersect": "Schnittmenge",
+  "Mirror": "Spiegeln",
+  "Type a distance in X, Y or Z first.": "Gib zuerst eine Strecke in X, Y oder Z ein.",
+  "Type an angle or a size other than 100% first.": "Gib zuerst einen Winkel oder eine Größe ungleich 100 % ein.",
+  "Snapping to decals is off.": "Einrasten an Decals ist aus.",
+  "Snapped": "Eingerastet",
+  "Close the shape first, then duplicate it.": "Schließe zuerst die Form, dann dupliziere sie.",
   // top bar and toolbar
   'Frame': 'Rahmen', 'Build a frame from geometry numbers or change its size': 'Rahmen aus Geometriedaten bauen oder Größe ändern', 'Frame from geometry': 'Rahmen aus Geometrie',
   'Model units': 'Modelleinheit', 'Auto': 'Auto', 'inch': 'Zoll', 'File': 'Datei', 'Start over with the start frame': 'Mit dem Startrahmen neu beginnen', 'New': 'Neu',
@@ -5393,6 +6311,43 @@ const DE = {
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
 const DE_PAT = [ // {0}, {1}… stand for the parts that change
+  ["Undone: {0*}", "Rückgängig: {0*}"],
+  ["Redone: {0*}", "Wiederhergestellt: {0*}"],
+  ["Changed {0}", "{0} geändert"],
+  ["Added {0}", "{0} hinzugefügt"],
+  ["Deleted {0}", "{0} gelöscht"],
+  ["Added points to {0}", "Punkte zu {0} hinzugefügt"],
+  ["Removed points from {0}", "Punkte aus {0} entfernt"],
+  ["Renamed {0}", "{0} umbenannt"],
+  ["Edited {0}", "{0} bearbeitet"],
+  ["{0} steps", "{0} Schritte"],
+  ["Moved {0} by {1} mm.", "{0} um {1} mm verschoben."],
+  ["Moved {0} along the tube", "{0} entlang des Rohrs verschoben"],
+  ["Moved {0}", "{0} verschoben"],
+  ["Turned and sized {0}", "{0} gedreht und skaliert"],
+  ["Grew {0} by {1} mm.", "{0} um {1} mm vergrößert."],
+  ["Shrank {0} by {1} mm.", "{0} um {1} mm verkleinert."],
+  ["Grew {0}", "{0} vergrößert"],
+  ["Shrank {0}", "{0} verkleinert"],
+  ["Moving decals now snaps them {0} mm from their neighbours.", "Beim Verschieben rasten Decals jetzt {0} mm neben ihren Nachbarn ein."],
+  ["{0}%+ stretch", "{0} %+ Dehnung"],
+  ["Could not save in this browser: {0}", "Konnte in diesem Browser nicht speichern: {0}"],
+  ["Saved \"{0}\" in Projects.", "„{0}“ unter Projekte gespeichert."],
+  ["Open \"{0}\"? Changes that are not saved will be lost.", "„{0}“ öffnen? Nicht gespeicherte Änderungen gehen verloren."],
+  ["Delete \"{0}\" from this browser? This cannot be undone.", "„{0}“ aus diesem Browser löschen? Das lässt sich nicht rückgängig machen."],
+  ["Delete the template \"{0}\"?", "Vorlage „{0}“ löschen?"],
+  ["Added {0} templates.", "{0} Vorlagen hinzugefügt."],
+  ["That file could not be read: {0}", "Diese Datei konnte nicht gelesen werden: {0}"],
+  ["Saved \"{0}\" to your templates. Find it under Projects → Templates.", "„{0}“ in deinen Vorlagen gespeichert. Du findest sie unter Projekte → Vorlagen."],
+  ["Move over the model and click to place \"{0}\".", "Über das Modell fahren und klicken, um „{0}“ zu platzieren."],
+  ["Your last session was saved automatically ({0}). Open it from Projects.", "Deine letzte Sitzung wurde automatisch gespeichert ({0}). Öffne sie über Projekte."],
+  ["Show size {0}? The decals move with it; the undo history starts over.", "Größe {0} zeigen? Die Decals wandern mit; der Rückgängig-Verlauf beginnt neu."],
+  ["Size {0} ({1} of {2})…", "Größe {0} ({1} von {2})…"],
+  ["Exported {0} sizes.", "{0} Größen exportiert."],
+  ["Could not unwrap: {0}", "Nicht abwickelbar: {0}"],
+  ["Roll {0} mm × {1} mm", "Rolle {0} mm × {1} mm"],
+  ["Kept the current panels as the {0} layout.", "Die aktuellen Panels als Layout {0} behalten."],
+  ["Panel layout: {0}.", "Panel-Layout: {0}."],
   ['This model could not be prepared: {0}', 'Dieses Modell konnte nicht vorbereitet werden: {0}'], ['This project file could not be read: {0}', 'Diese Projektdatei konnte nicht gelesen werden: {0}'],
   ['This glTF could not be read. Export it as a single .glb file. {0}', 'Diese glTF-Datei konnte nicht gelesen werden. Exportiere sie als einzelne .glb-Datei. {0}'], ['This file could not be read: {0}', 'Diese Datei konnte nicht gelesen werden: {0}'],
   ['The file could not be saved here: {0}', 'Die Datei konnte hier nicht gespeichert werden: {0}'], ['Saved {0}', 'Gespeichert: {0}'], ['Unwrapping failed: {0}', 'Abwickeln fehlgeschlagen: {0}'], ['That combination failed: {0}', 'Diese Kombination ist fehlgeschlagen: {0}'],
@@ -5446,7 +6401,8 @@ function trCore(s) {
 }
 // translate one text; long messages are tried whole, then sentence by sentence
 function tr(s) {
-  if (LANG !== 'de' || typeof s !== 'string') return s;
+  let lang; try { lang = LANG; } catch (e) { return s; } // early calls, before the language is set up, stay in English; the page is translated once it is
+  if (lang !== 'de' || typeof s !== 'string') return s;
   const lead = s.match(/^\s*/)[0], tail = s.match(/\s*$/)[0], core = s.trim(); if (!core) return s;
   let out = trCore(core);
   if (out == null) {
@@ -5467,7 +6423,7 @@ function tr(s) {
 const I18N_ATTRS = ['title', 'aria-label', 'placeholder', 'label'];
 function i18nNode(n) {
   if (n.nodeType === 3) {
-    const p = n.parentNode; if (!p || p.closest?.('svg, script, style, textarea')) return;
+    const p = n.parentNode; if (!p || p.closest?.('svg, script, style, textarea, [translate="no"]')) return;
     const cur = n.nodeValue, en = cur === n.__de ? n.__en : cur, want = LANG === 'de' ? tr(en) : en;
     if (want !== en) { n.__en = en; n.__de = want; } else { n.__en = n.__de = undefined; }
     if (cur !== want) n.nodeValue = want;
