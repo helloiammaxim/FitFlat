@@ -17,13 +17,21 @@ It is one self-contained `index.html` — no build step, no install. Open it in 
 
 Projects save and load as `.json` (frame + decals + views).
 
+## Projects, templates and sizes
+
+Projects are saved in the browser (with autosave), with search, duplicate and download. **Starting points** keep a frame with its usual decals for new projects; **decal templates** place a saved decal on any frame. Frames built from a geometry chart with several sizes can be **graded**: draw once, export cut sheets for every size.
+
+## Film and cutting
+
+Film presets set the stretch limit used for warnings and relief cuts. The cut sheet can be a fixed sheet or a roll, with registration marks for print-and-cut, weeding boxes, and export as SVG or DXF.
+
 ## Views
 
 Z is the vertical axis. Named views: Front, Back, Left, Right, Top, Bottom (keys 1, 3, 7, Ctrl for the opposite side), perspective / orthographic, 45° turns, saved views, grid with 2.5D snapping, and adjustable frame opacity (Alt+Z).
 
 ## Moving, turning and sizing decals
 
-In Edit mode the selected decal shows a gizmo: drag the centre handle to move it, the knob or ring to turn it, a corner square to size it (Shift for 15° / 5% steps). Ctrl + scroll turns and Alt + scroll sizes too. Decals follow the surface, so they keep their true size on a tube. While dragging, a label shows the distance moved, the angle, the size and the segment lengths. **Duplicate** (or Ctrl+D) puts a copy right next to a decal. Lock a decal in the list to draw over it without picking it.
+In Edit mode the selected decal shows a gizmo: drag the centre handle to move it, the knob or ring to turn it, a corner square to size it (Shift for 15° / 5% steps). Ctrl + scroll turns and Alt + scroll sizes too. Decals follow the surface, so they keep their true size on a tube. While dragging, a label shows the distance moved, the angle, the size and the segment lengths. **Duplicate** (or Ctrl+D) puts a copy right next to a decal. Lock a decal in the list to draw over it without picking it. The **Decal** panel takes typed values: move by X/Y/Z, gap to the tube ends, turn, size, grow or shrink the outline, and snapping to neighbouring decals at a set gap. A reference photo can be projected onto the frame to trace from.
 
 ## Panels
 

@@ -583,7 +583,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <button class="btn" id="dpMove" title="Move the decal by these distances along the surface">Move</button>
           </div>
           <div class="dpgrp" id="dpTube" role="group" aria-label="Distance to tube ends" hidden>
-            <span class="count" id="dpTubeName"></span>
+            <span class="count"><span id="dpTubeName"></span>:</span>
             <label class="inline num" title="Gap from the decal to the start of the tube (its centre line end). Type a new value to move the decal along the tube">start <input type="number" id="dpStart" step="1"></label>
             <label class="inline num" title="Gap from the decal to the end of the tube (its centre line end). Type a new value to move the decal along the tube">end <input type="number" id="dpEnd" step="1"></label>
             <span class="count">mm</span>
@@ -2238,7 +2238,7 @@ function viewThumb() {
 async function saveProject(asNew, quietName) {
   if (!S.source) return false;
   let name = S.project.name;
-  if (asNew || !S.project.id) { name = quietName || prompt(tr('Name for this project:'), name || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return false; name = name.trim() || tr('Untitled'); }
+  if (asNew || !S.project.id) { name = quietName || prompt(tr('Name for this project:'), name || S.project.suggest || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return false; name = name.trim() || tr('Untitled'); }
   const id = asNew || !S.project.id ? uid() : S.project.id, old = asNew ? null : await DB.get('projects', id).catch(() => null);
   const data = projectJSON(), rec = { id, name, created: old?.created || Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data };
   try { await DB.put('projects', rec); } catch (e) { flash(tr('Could not save in this browser: {0}').replace('{0}', e?.message || e)); return false; }
@@ -2303,7 +2303,7 @@ $('#startSave').addEventListener('click', async () => {
 $('#startList').addEventListener('click', async e => {
   const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const rec = await DB.get('projects', li.dataset.id); if (!rec) return;
   if (b.dataset.a === 'new') { if (S.decals.length && S.dirty && !confirm(tr('Start a new project from "{0}"? Changes that are not saved will be lost.').replace('{0}', rec.name))) return;
-    S.dirty = false; $('#libDlg').close(); loadProject(rec.data, rec.name); S.project = { id: null, name: rec.name }; updateProjName(); }
+    S.dirty = false; $('#libDlg').close(); loadProject(rec.data, rec.name); S.project = { id: null, name: '', suggest: rec.name }; updateProjName(); }
   if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), rec.name); if (n && n.trim()) { rec.name = n.trim(); await DB.put('projects', rec); renderLib(); } }
   if (b.dataset.a === 'dl') saveFile(rec.name.replace(/[^\w-]+/g, '_') + '.decals.json', rec.data, $('#libMsg'));
   if (b.dataset.a === 'del' && confirm(tr('Delete the starting point "{0}"? Projects made from it stay.').replace('{0}', rec.name))) { await DB.del('projects', rec.id); renderLib(); }
@@ -5544,7 +5544,7 @@ function updateDecalPanel() {
   $('#dpName').textContent = d.name;
   const tb = tubeSpan(d), key = d.id + '|' + (tb ? tb.name + tb.start.toFixed(1) + tb.end.toFixed(1) : '');
   $('#dpTube').hidden = !tb;
-  if (tb && key !== dpKey) { $('#dpTubeName').textContent = tr(tb.name) + ':'; if (document.activeElement !== $('#dpStart')) $('#dpStart').value = tb.start.toFixed(1); if (document.activeElement !== $('#dpEnd')) $('#dpEnd').value = tb.end.toFixed(1); }
+  if (tb && key !== dpKey) { $('#dpTubeName').textContent = tb.name; if (document.activeElement !== $('#dpStart')) $('#dpStart').value = tb.start.toFixed(1); if (document.activeElement !== $('#dpEnd')) $('#dpEnd').value = tb.end.toFixed(1); }
   dpKey = key;
 }
 // the decal's span along the tube it sits on (frames made from geometry only): gap to each end of the tube's centre line
@@ -5963,6 +5963,35 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "A starting point is a frame with the decals you always use on it (for example one bike model).": "Eine Vorlage ist ein Rahmen mit den Decals, die du darauf immer verwendest (zum Beispiel für ein Radmodell).",
+  "opens a copy as a new, unsaved project, so the starting point itself never changes.": "öffnet eine Kopie als neues, ungespeichertes Projekt, die Vorlage selbst bleibt also unverändert.",
+  "By frame": "Nach Rahmen",
+  "By name": "Nach Name",
+  "Newest first": "Neueste zuerst",
+  "Sort": "Sortieren",
+  "Combine": "Kombinieren",
+  "Decal templates": "Decal-Vorlagen",
+  "Distance to tube ends": "Abstand zu den Rohrenden",
+  "Move by": "Verschieben um",
+  "Turn and size": "Drehen und Größe",
+  "Offset outline": "Kontur versetzen",
+  "Snap to other decals": "An anderen Decals einrasten",
+  "Sizes to export": "Größen für den Export",
+  "Keep the current frame and decals as a starting point for new projects": "Aktuellen Rahmen mit Decals als Vorlage für neue Projekte behalten",
+  "New from it": "Neu daraus",
+  "Not saved yet": "Noch nicht gespeichert",
+  "Save current as starting point": "Aktuelles als Vorlage speichern",
+  "Search by name or frame": "Nach Name oder Rahmen suchen",
+  "Search projects": "Projekte suchen",
+  "Starting points": "Vorlagen",
+  "Undo history": "Rückgängig-Verlauf",
+  "Untitled project": "Unbenanntes Projekt",
+  "Panel layout": "Panel-Anordnung",
+  "Your projects: open, rename, duplicate or start from a template": "Deine Projekte: öffnen, umbenennen, duplizieren oder aus einer Vorlage beginnen",
+  "New project from this starting point": "Neues Projekt aus dieser Vorlage",
+  "No starting points yet. Set up a frame with the decals you always use, then click Save current as starting point.": "Noch keine Vorlagen. Richte einen Rahmen mit den Decals ein, die du immer verwendest, und klicke dann auf Aktuelles als Vorlage speichern.",
+  "No project matches the search.": "Kein Projekt passt zur Suche.",
+  "Name for this starting point:": "Name für diese Vorlage:",
   "History": "Verlauf",
   "Click a step to go back to it. Later steps stay in the list until you change something.": "Klicke auf einen Schritt, um dorthin zurückzugehen. Spätere Schritte bleiben in der Liste, bis du etwas änderst.",
   "Film": "Folie",
@@ -6311,6 +6340,12 @@ const DE = {
   'ground (XY)': 'Boden (XY)', 'side (XZ)': 'Seite (XZ)', 'front (YZ)': 'vorne (YZ)',
 };
 const DE_PAT = [ // {0}, {1}… stand for the parts that change
+  ["{0} point", "{0} Punkt"],
+  ["{0} points", "{0} Punkte"],
+  ["Saved \"{0}\" as a starting point.", "„{0}“ als Vorlage gespeichert."],
+  ["Start a new project from \"{0}\"? Changes that are not saved will be lost.", "Neues Projekt aus „{0}“ beginnen? Nicht gespeicherte Änderungen gehen verloren."],
+  ["Delete the starting point \"{0}\"? Projects made from it stay.", "Vorlage „{0}“ löschen? Projekte daraus bleiben erhalten."],
+  ["{0} · {1}%", "{0*} · {1} %"],
   ["Undone: {0*}", "Rückgängig: {0*}"],
   ["Redone: {0*}", "Wiederhergestellt: {0*}"],
   ["Changed {0}", "{0} geändert"],

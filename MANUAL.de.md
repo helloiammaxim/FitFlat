@@ -76,6 +76,9 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 
 Z ist die senkrechte Achse. X verläuft von vorne nach hinten entlang des Rads, Y seitlich.
 
+### Referenzbild
+Im Ansicht-Panel legt **Referenzbild → Laden…** ein Foto des echten Rahmens über die Ansicht. Zieh es an der Mitte, ändere die Größe an der Ecke (mit Alt drehst du es) und stell die Deckkraft ein. Richte die 3D-Ansicht am Foto aus und klicke **Aufs Modell kleben**: Das Foto wird aus dieser Ansicht auf den Rahmen projiziert und bleibt beim Drehen auf den Rohren, so kannst du Lackkanten, Logos und Zugdurchführungen nachzeichnen. **Lösen** holt das Overlay zurück, **Entfernen** löscht es.
+
 ---
 
 ## 4. Decals zeichnen
@@ -156,6 +159,16 @@ Mit **zwei oder mehr ausgewählten Punkten** wirken Gizmo und Scroll-Kürzel nur
 
 Verschieben und Drehen um die *Fläche* behalten die echte Größe des Decals auf einem Rohr. *Ansicht*, *X*, *Y* und *Z* projizieren das Decal zurück auf die Fläche, was seine echte Größe auf einem gewölbten Rohr verändern kann — prüfe das Dehnungs-Etikett.
 
+### Das Decal-Panel
+Im Bearbeiten-Modus, mit einem geschlossenen Decal ausgewählt, gibst du im Panel **Decal** genaue Werte ein:
+
+- **Verschieben X / Y / Z** — verschiebt das Decal um diese Strecken in mm, entlang der Fläche.
+- **Start / Ende** (Rahmen aus Geometrie) — der Abstand vom Decal zu jedem Ende des Rohrs, auf dem es sitzt (gemessen entlang der Rohrmittellinie). Gib einen neuen Wert ein, um das Decal entlang des Rohrs zu schieben.
+- **Drehen ° / Größe %** — dreht (um die Achse aus *Drehen um*) und skaliert das Decal um die eingegebenen Werte.
+- **Versatz → Vergrößern / Verkleinern** — schiebt die ganze Kontur um den Abstand nach außen oder innen, entlang der Fläche. Kurven bleiben glatt, Ecken bleiben spitz.
+- **An Decals einrasten** mit **Abstand** — beim Ziehen rastet die Kante eines Decals genau mit diesem Abstand an einem Nachbar-Decal ein und gleitet daran entlang. Weiter drücken löst es wieder.
+- **In Bibliothek speichern** — behält das Decal als Vorlage, die du auf jedem Rahmen wieder platzieren kannst (siehe *Projekte speichern*).
+
 ---
 
 ## 7. Spiegelmodus
@@ -226,6 +239,9 @@ Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Umkehren
 
 **Sperren** macht ein Decal auf dem Modell nicht mehr auswählbar und bearbeitbar, damit du darüber zeichnen kannst. Das Messer lässt gesperrte Decals in Ruhe.
 
+### Verlauf
+**Verlauf** in der Seitenleiste listet jeden Schritt mit Namen und Uhrzeit. Klick auf einen Schritt, um dorthin zurück- oder wieder vorzugehen; Strg+Z / Strg+Umschalt+Z funktionieren wie gewohnt.
+
 ---
 
 ## 12. Bogen und Export
@@ -233,15 +249,35 @@ Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Umkehren
 - **Breite, Höhe, Abstand** des Bogens in mm. Die Vorschau zeigt, wie die Teile angeordnet sind und wie viele es sind.
 - **Namen beschriften**, **Bogenumriss**, **Teile spiegeln** (zum Schneiden von der Rückseite).
 - **Saubere Kurven** exportiert glatte Bézierkurven mit wenigen Knoten. **±** legt fest, wie weit exportierte Kurven von der abgewickelten Kontur abweichen dürfen (Standard 0,1 mm); höher ergibt weniger, glattere Knoten.
-- **SVG herunterladen**. Schnittlinien sind schwarze Pfade in Millimetern auf der Ebene `cut`; Beschriftungen und Bogenumriss liegen auf eigenen Ebenen, damit du sie in der Plotter-Software ausblenden kannst.
+- **Rolle** — von der Rolle schneiden: der Bogen wird so lang, wie die Teile es brauchen; die Höhe wird ignoriert.
+- **Passermarken** — drei Print-and-Cut-Marken in den Ecken; die Teile halten Abstand davon.
+- **Entgitterrahmen** — ein Schnittrahmen um jedes Teil und den Bogen, damit sich die Restfolie in Streifen abziehen lässt.
+- **SVG** oder **DXF herunterladen**. Schnittlinien liegen in Millimetern auf der Ebene `cut`; Beschriftungen, Bogenumriss, Passermarken und Entgitterrahmen liegen auf eigenen Ebenen, damit du sie in der Plotter-Software ausblenden oder nutzen kannst.
+
+Die Vorschau zeigt Bogengröße, Anzahl der Teile, wie viel Folie genutzt wird und die Fläche. Mit **Dehnung** an sind auch die flachen Teile nach Dehnung eingefärbt.
 
 Ist ein Teil größer als der Bogen, vergrößere den Bogen oder teile das Decal.
+
+### Folie
+Wähle unter **Folie** deine Folie (PPF glänzend oder matt, gegossene oder kalandrierte Folie, oder Eigene) und stell die **Max. Dehnung** ein. Die Dehnungsfarben, die Etiketten in der Liste und die Vorschläge für Entlastungsschnitte nutzen diese Grenze. Die Voreinstellungen sind Startwerte; prüfe das Datenblatt deiner Folie.
+
+### Größen (Gradierung)
+Bei Rahmen aus einer Geometrie-Voreinstellung oder Tabelle mit mehreren Größen listet **Größen** sie auf. Zeichne die Decals einmal auf einer Größe; sie werden entlang jedes Rohrs auf die anderen Größen übertragen — **mit gleichem Abstand zum näheren Rohrende** (an den Verbindungen bleiben sie, wo sie sind) oder **mit der Rohrlänge skaliert**. **Größe zeigen** lädt eine andere Größe mit den übertragenen Decals. **Alle Größen herunterladen** wickelt die Decals für jede angehakte Größe ab und speichert ein SVG mit einem beschrifteten Block je Größe, oder **eine Datei je Größe**.
 
 ---
 
 ## 13. Projekte speichern
 
-**Speichern** schreibt eine `.json`-Projektdatei mit Rahmen und allen Decals, Ansichten und Einstellungen. **Öffne** ein `.json`-Projekt, um weiterzuarbeiten. Ein Projekt mit erzeugtem Rahmen enthält den Rahmen; bei deinem eigenen Modell öffne, falls verlangt, zuerst das Modell und dann das Projekt.
+Deine Arbeit wird **in diesem Browser** (auf diesem Computer) gespeichert. Der Projektname in der oberen Leiste zeigt einen Punkt, solange es ungespeicherte Änderungen gibt; ein Klick darauf öffnet **Projekte**.
+
+- **Speichern** (Strg+S) speichert das Projekt unter Projekte; beim ersten Mal fragt es nach einem Namen. **Aktuelles als neu speichern** in Projekte behält eine eigene Kopie.
+- **Projekte** listet deine gespeicherten Projekte mit Bild, Rahmen und Anzahl der Decals. Suchen und sortieren; **Öffnen**, **Umbenennen**, **Duplizieren**, **Herunterladen** (eine `.json`-Datei) oder **Löschen**.
+- **Automatisch speichern**: während du arbeitest, wird alle halbe Minute eine Kopie als *Letzte Sitzung* gespeichert, damit nichts verloren geht, wenn der Browser schließt.
+- **Vorlagen** sind ein Rahmen mit den Decals, die du darauf immer verwendest (zum Beispiel für ein Radmodell). **Aktuelles als Vorlage speichern**, dann öffnet **Neu daraus** eine Kopie als neues Projekt; die Vorlage selbst bleibt unverändert.
+- **Decal-Vorlagen** sind einzelne Decals, gespeichert mit *In Bibliothek speichern* im Decal-Panel. **Platziere** eine auf jedem Rahmen wie SVG-Grafik: über das Modell fahren, klicken, anpassen, Anwenden. Lade alle Decal-Vorlagen als eine Datei herunter oder füge Vorlagen aus so einer Datei hinzu.
+- **Öffnen** in der oberen Leiste öffnet weiterhin Dateien: Modelle (.glb, .obj, .stl), Projekte (.json) und SVG-Grafik.
+
+Der Browserspeicher gehört zu diesem Browser auf diesem Computer. Um Arbeit auf einen anderen Computer zu bringen oder als Sicherung, nutze **Herunterladen** und öffne die Datei dort.
 
 ---
 
@@ -251,6 +287,7 @@ Ist ein Teil größer als der Bogen, vergrößere den Bogen oder teile das Decal
 - Panels überlappen sich nie: ein Panel im Weg weicht aus. Leg ein Panel neben ein anderes, und es rastet daran ein, so kannst du Panels stapeln.
 - Jedes Panel hat eine **Dreh**-Taste, um zwischen Zeile und Spalte zu wechseln, und eine **Einklapp**-Taste (⌄), die es auf seinen Namen zusammenklappt; ein weiterer Klick öffnet es wieder.
 - Am linken oder rechten Rand angeheftet steht ein Panel als Spalte, oben oder unten liegt es als Zeile (außer du hast es selbst gedreht).
+- **Layout** in der oberen Leiste wechselt zwischen Panel-Anordnungen: *Zeichnen*, *Bearbeiten* und *Aufgeräumt*. Ordne die Panels nach Wunsch an und wähle *Aktuelle behalten…*, um diese Anordnung in der gezeigten zu speichern.
 - **Panels zurücksetzen** (im Ansicht-Panel) stellt alles wieder her. Dein Layout wird gespeichert.
 - **EN | DE** wechselt die Sprache. Deutschsprachige Browser starten auf Deutsch.
 

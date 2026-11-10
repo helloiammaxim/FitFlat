@@ -76,6 +76,9 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 
 Z is the vertical axis. X runs front to back along the bike, Y side to side.
 
+### Reference image
+In the View panel, **Reference image → Load…** puts a photo of the real frame over the view. Drag it by its middle, size it by the corner (Alt turns it) and set its opacity. Line the 3D view up with the photo, then click **Stick to model**: the photo is projected onto the frame from that view and stays on the tubes when you turn the model, so you can trace paint lines, logos and cable ports. **Unstick** brings the overlay back, **Remove** clears it.
+
 ---
 
 ## 4. Drawing decals
@@ -156,6 +159,16 @@ With **two or more points selected**, the gizmo and the scroll shortcuts act on 
 
 Moving and *Surface* turning keep the decal's real size on a tube. *View*, *X*, *Y* and *Z* project the decal back onto the surface, which can change its real size on a curved tube — check the stretch badge.
 
+### The Decal panel
+In Edit mode, with a closed decal selected, the **Decal** panel lets you type exact values:
+
+- **Move X / Y / Z** — moves the decal by these distances in mm, following the surface.
+- **Start / end** (frames made from geometry) — the gap from the decal to each end of the tube it sits on (measured along the tube's centre line). Type a new value to slide the decal along the tube.
+- **Turn ° / Size %** — turns (around the axis chosen in *Turn around*) and sizes the decal by the typed amounts.
+- **Offset → Grow / Shrink** — moves the whole outline outwards or inwards by the distance, along the surface. Curves stay smooth; corners stay sharp.
+- **Snap to decals** with a **gap** — while you drag a decal, its edge snaps to a neighbouring decal at exactly that gap and slides along it. Push on through to let go.
+- **Save to library** — keeps the decal as a template you can place again on any frame (see *Saving projects*).
+
 ---
 
 ## 7. Mirror mode
@@ -226,6 +239,9 @@ Row buttons: **Mirror**, **Apply** (mirror), **Invert** (the film covers the are
 
 **Lock** makes a decal unselectable and uneditable on the model, so you can draw over it. The Knife leaves locked decals alone.
 
+### History
+**History** in the sidebar lists every step with its name and time. Click a step to go back to it, or forward again; Ctrl+Z / Ctrl+Shift+Z still work as usual.
+
 ---
 
 ## 12. Sheet and export
@@ -233,15 +249,35 @@ Row buttons: **Mirror**, **Apply** (mirror), **Invert** (the film covers the are
 - **Width, Height, Gap** of the sheet in mm. The preview shows how the pieces are packed and how many there are.
 - **Name labels**, **Sheet outline**, **Mirror pieces** (for cutting from the back).
 - **Clean curves** exports smooth Bézier curves with few nodes. **±** sets how far exported curves may stray from the unwrapped outline (default 0.1 mm); higher gives fewer, smoother nodes.
-- **Download SVG**. Cut lines are black paths in millimetres on a `cut` layer; labels and the sheet outline are on their own layers so you can hide them in the cutter software.
+- **Roll** — cut from a roll: the sheet gets as long as the pieces need; Height is ignored.
+- **Registration marks** — three print-and-cut marks in the corners; pieces keep clear of them.
+- **Weeding boxes** — a cut box around each piece and the sheet, so the waste film comes off in strips.
+- **Download SVG** or **DXF**. Cut lines are on a `cut` layer in millimetres; labels, the sheet outline, registration marks and weeding boxes are on their own layers so you can hide or use them in the cutter software.
+
+The preview shows the sheet size, the number of pieces, how much of the film is used and the area. With **Stretch** on, the flat pieces are coloured by stretch too.
 
 If a piece is larger than the sheet, increase the sheet or split the decal.
+
+### Film
+Pick your film in **Film** (PPF gloss or matte, cast or calendered vinyl, or Custom) and set its **Max stretch**. The stretch colours, the badges in the list and the relief-cut suggestions all use this limit. The presets are starting points; check your film's data sheet.
+
+### Sizes (grading)
+For frames built from a geometry preset or chart with several sizes, **Sizes** lists them. Draw the decals once on one size; they are moved onto the other sizes along each tube — **keeping the gap to the nearer tube end** (decals stay put at the joints) or **scaling with the tube length**. **Show size** loads another size with the decals moved onto it. **Download all sizes** unwraps the decals on every ticked size and saves one SVG with a labelled block per size, or **one file per size**.
 
 ---
 
 ## 13. Saving projects
 
-**Save** writes a `.json` project file with the frame and all decals, views and settings. **Open** a `.json` project to continue. A project saved with a generated frame contains the frame; for your own model, open the model first and then the project if asked.
+Your work is kept **in this browser** (on this computer). The project name in the top bar shows a dot while there are unsaved changes; click it to open **Projects**.
+
+- **Save** (Ctrl+S) saves the project under Projects; the first time it asks for a name. **Save current as new** in Projects keeps a separate copy.
+- **Projects** lists your saved projects with a picture, the frame and the number of decals. Search and sort them; **Open**, **Rename**, **Duplicate**, **Download** (a `.json` file) or **Delete**.
+- **Autosave**: while you work, a copy is saved every half minute as *Last session*, so nothing is lost if the browser closes.
+- **Starting points** are a frame with the decals you always use on it (for example one bike model). **Save current as starting point**, then **New from it** opens a copy as a new project; the starting point itself never changes.
+- **Decal templates** are single decals saved with *Save to library* in the Decal panel. **Place** one on any frame like SVG artwork: move over the model, click, adjust, Apply. Download all templates as one file, or add templates from such a file.
+- **Open** in the top bar still opens files: models (.glb, .obj, .stl), projects (.json) and SVG artwork.
+
+Browser storage belongs to this browser on this computer. To move work to another computer, or as a backup, use **Download** and open the file there.
 
 ---
 
@@ -251,6 +287,7 @@ If a piece is larger than the sheet, increase the sheet or split the decal.
 - Panels never overlap: a panel that is in the way moves aside. Drop a panel next to another one and it snaps to it, so you can stack panels.
 - Every panel has a **turn** button to switch between a row and a column, and a **collapse** button (⌄) that folds it down to its name; click it again to open the panel.
 - Pinned to the left or right edge, a panel stands as a column; pinned to the top or bottom, it lies along a row (unless you turned it yourself).
+- **Layout** in the top bar switches between panel arrangements: *Drawing*, *Editing* and *Clean*. Arrange the panels as you like and choose *Keep current…* to store that arrangement in the layout shown.
 - **Reset panels** (in the View panel) puts everything back. Your layout is remembered.
 - **EN | DE** switches the language. German browsers start in German.
 
