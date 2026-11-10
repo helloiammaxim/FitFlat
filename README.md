@@ -1,7 +1,5 @@
 # FitFlat
 
-**Fits the frame. Comes out flat.** · *Passt auf den Rahmen. Kommt flach raus.*
-
 A browser tool for making bicycle frame protection film decals. Load a frame model (or build one from geometry), draw the decals right on the 3D tubes, and FitFlat unwraps them flat without distortion, packs them on a sheet and exports a clean SVG for the plotter/cutter.
 
 **Manual:** [English](MANUAL.md) · [Deutsch](MANUAL.de.md)
