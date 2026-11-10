@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<!-- Decal Studio. Copyright 2026 Max Soldatkin. Licensed under PolyForm Noncommercial 1.0.0: free for personal use, commercial use needs written permission. See LICENSE.md. -->
+<!-- FitFlat. Copyright 2026 Max Soldatkin. Licensed under PolyForm Noncommercial 1.0.0: free for personal use, commercial use needs written permission. See LICENSE.md. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Decal Studio</title>
+<title>FitFlat</title>
 <style>
 :root{
   --paper:#F2F2F7; --surface:#FFFFFF; --glass:rgba(255,255,255,.78); --stage:#E7E8EC; --ink:#1C1C1E; --muted:#6E6E73;
@@ -411,7 +411,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><span class="knife" aria-hidden="true"></span>Decal Studio</div>
+    <div class="brand"><span class="knife" aria-hidden="true"></span>FitFlat</div>
     <button class="projname" id="projName" title="Your projects: open, rename, duplicate or start from a template"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span></button>
     <span class="modelinfo" id="modelinfo"></span>
     <span class="spacer"></span>
@@ -2491,7 +2491,7 @@ function restoreDecals(list, msg, fname) {
 function loadProject(text, fname) {
   let pj;
   try { pj = JSON.parse(text); } catch (e) { alert('This is not a valid project file.'); return; }
-  if (pj.app !== 'decal-unwrap') { alert('This JSON file is not a Decal Studio project.'); return; }
+  if (pj.app !== 'decal-unwrap') { alert('This JSON file is not a FitFlat project.'); return; }
   if (S.decals.length && S.dirty && !confirm('Opening a project replaces the current frame and decals. Continue?')) return;
   const restore = () => {
     if (pj.sheet) { Object.assign(S.sheet, pj.sheet); $('#sw').value = S.sheet.w; $('#shh').value = S.sheet.h; $('#sgap').value = S.sheet.gap; $('#slab').checked = S.sheet.labels; $('#sbor').checked = S.sheet.border; $('#smir').checked = S.sheet.mirror; $('#scurve').checked = S.sheet.curves !== false; $('#stol').value = S.sheet.tol || 0.1; $('#sroll').checked = !!S.sheet.roll; $('#sreg').checked = !!S.sheet.reg; $('#sweed').checked = !!S.sheet.weed; $('#shh').disabled = !!S.sheet.roll; }
@@ -6232,7 +6232,7 @@ const DE = {
   'Preparing model…': 'Modell wird vorbereitet…', 'Use a .glb, .obj or .stl model, or a saved .json project.': 'Nutze ein .glb-, .obj- oder .stl-Modell oder ein gespeichertes .json-Projekt.',
   'Opening a new model clears the current decals. Save the project first if you want to keep them. Continue?': 'Ein neues Modell löscht die aktuellen Decals. Speichere vorher das Projekt, wenn du sie behalten willst. Fortfahren?',
   'Start a new file? Decals that are not saved will be lost.': 'Neue Datei beginnen? Nicht gespeicherte Decals gehen verloren.', 'Project saved with the frame and all decals.': 'Projekt mit Rahmen und allen Decals gespeichert.',
-  'Restoring decals…': 'Decals werden wiederhergestellt…', 'This is not a valid project file.': 'Das ist keine gültige Projektdatei.', 'This JSON file is not a Decal Studio project.': 'Diese JSON-Datei ist kein Decal-Studio-Projekt.',
+  'Restoring decals…': 'Decals werden wiederhergestellt…', 'This is not a valid project file.': 'Das ist keine gültige Projektdatei.', 'This JSON file is not a FitFlat project.': 'Diese JSON-Datei ist kein Decal-Studio-Projekt.',
   'Opening a project replaces the current frame and decals. Continue?': 'Ein Projekt zu öffnen ersetzt den aktuellen Rahmen und die Decals. Fortfahren?', 'This project has no frame model. Open the frame first, then the project.': 'Dieses Projekt enthält kein Rahmenmodell. Öffne zuerst den Rahmen, dann das Projekt.',
   'Changing units clears the decals you have drawn. Continue?': 'Eine andere Einheit löscht die gezeichneten Decals. Fortfahren?',
   // drawing and editing

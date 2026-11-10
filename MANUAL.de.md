@@ -1,8 +1,8 @@
-# Decal Studio — Anleitung
+# FitFlat — Anleitung
 
 **[English version](MANUAL.md)**
 
-Decal Studio ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeichnest die Decals direkt auf einen 3D-Rahmen; das Werkzeug wickelt jedes davon verzerrungsfrei ab, ordnet die Teile auf einem Bogen an und exportiert eine SVG für deinen Plotter oder Schneideplotter.
+FitFlat ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeichnest die Decals direkt auf einen 3D-Rahmen; das Werkzeug wickelt jedes davon verzerrungsfrei ab, ordnet die Teile auf einem Bogen an und exportiert eine SVG für deinen Plotter oder Schneideplotter.
 
 Öffne `index.html` in einem aktuellen Browser (Chrome, Edge, Safari, Firefox). Keine Installation nötig. Deine Arbeit bleibt auf deinem Rechner.
 

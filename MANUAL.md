@@ -1,8 +1,8 @@
-# Decal Studio — Manual
+# FitFlat — Manual
 
 **[Deutsche Version](MANUAL.de.md)**
 
-Decal Studio is a browser tool for making bicycle frame protection film. You draw the decals directly on a 3D frame; the tool unwraps each one flat without distortion, packs the pieces on a sheet and exports an SVG for your plotter or cutter.
+FitFlat is a browser tool for making bicycle frame protection film. You draw the decals directly on a 3D frame; the tool unwraps each one flat without distortion, packs the pieces on a sheet and exports an SVG for your plotter or cutter.
 
 Open `index.html` in a current browser (Chrome, Edge, Safari, Firefox). Nothing to install. Your work stays on your computer.
 

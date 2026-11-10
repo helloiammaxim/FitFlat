@@ -1,6 +1,8 @@
-# Decal Studio
+# FitFlat
 
-A browser tool for making bicycle frame protection film decals. Load a frame model (or build one from geometry), draw the decals right on the 3D tubes, and Decal Studio unwraps them flat without distortion, packs them on a sheet and exports a clean SVG for the plotter/cutter.
+**Fits the frame. Comes out flat.** · *Passt auf den Rahmen. Kommt flach raus.*
+
+A browser tool for making bicycle frame protection film decals. Load a frame model (or build one from geometry), draw the decals right on the 3D tubes, and FitFlat unwraps them flat without distortion, packs them on a sheet and exports a clean SVG for the plotter/cutter.
 
 **Manual:** [English](MANUAL.md) · [Deutsch](MANUAL.de.md)
 
@@ -50,4 +52,4 @@ English and German (Deutsch). Switch with **EN | DE** in the top bar; the choice
 Copyright 2026 Max Soldatkin. Released under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
 
 - **Personal and other noncommercial use is free.**
-- **Any commercial use needs my written permission.** That includes using Decal Studio in a business to make decals for customers, selling it, or building it into another product. Get in touch through GitHub ([@helloiammaxim](https://github.com/helloiammaxim)) to arrange a commercial license.
+- **Any commercial use needs my written permission.** That includes using FitFlat in a business to make decals for customers, selling it, or building it into another product. Get in touch through GitHub ([@helloiammaxim](https://github.com/helloiammaxim)) to arrange a commercial license.
