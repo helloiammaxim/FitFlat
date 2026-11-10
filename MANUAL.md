@@ -34,10 +34,11 @@ Open `index.html` in a current browser (Chrome, Edge, Safari, Firefox). Nothing 
 - **Top bar** — language (EN | DE), *Frame from geometry*, model units, and the file buttons *New*, *Open*, *Import SVG*, *Save*.
 - **Tools panel** (left) — *Draw*, *Edit*, *Knife*.
 - **Tool options** (top) — undo/redo and the options of the current tool, plus *Mirror*.
-- **View panel** — everything about the view in one place: *Look from*, *Turn*, *Ortho*, *Fit*, *Stretch*, frame opacity, *Grid* settings and *Saved views*.
-- **Point bar** — appears in Edit mode: point types and point tools, *Move along*, *Turn around*.
 - **Tips** (bottom left) — tells you what the next click does. Fold it away with the ⓘ button.
-- **Right side** — the cut sheet preview, the decal list, sheet settings and *Download SVG*.
+- **Sidebar** (right), with three tabs, so the 3D view stays clear:
+  - **Decals** — the decal list; in Edit mode also **Selected decal** (typed move, tube-end gaps, turn, size, offset, snapping, Save to library) and **Points** (point types and point tools, *Move along*, *Turn around*); and **History**.
+  - **View** — *Look from*, *Turn*, *Ortho*, *Fit*, *Stretch*, frame opacity, *Grid*, *Reference image* and *Saved views*.
+  - **Sheet** — the cut sheet preview, *Sizes*, *Film*, sheet settings and *Download SVG / DXF*.
 
 ---
 

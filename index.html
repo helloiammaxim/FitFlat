@@ -5,6 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>FitFlat</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22236 112 594 860%22%3E%3Cdefs%3E%3ClinearGradient id=%22ffgback%22 gradientUnits=%22userSpaceOnUse%22 x1=%22250%22 x2=%22561%22 y1=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23edeefc%22/%3E%3Cstop offset=%221%22 stop-color=%22%23a0a4fa%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22ffgarcFar1%22 gradientUnits=%22userSpaceOnUse%22 x1=%22561%22 x2=%22814%22 y1=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23a8abf8%22/%3E%3Cstop offset=%221%22 stop-color=%22%237680ec%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22ffgarcFar0%22 gradientUnits=%22userSpaceOnUse%22 x1=%22561%22 x2=%22814%22 y1=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%23a8abf8%22/%3E%3Cstop offset=%221%22 stop-color=%22%237680ec%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22ffgarcNear1%22 gradientUnits=%22userSpaceOnUse%22 x1=%22719%22 x2=%22814%22 y1=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%234056fa%22/%3E%3Cstop offset=%221%22 stop-color=%22%23707cf0%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22ffgarcNear0%22 gradientUnits=%22userSpaceOnUse%22 x1=%22719%22 x2=%22814%22 y1=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%234056fa%22/%3E%3Cstop offset=%221%22 stop-color=%22%23707cf0%22/%3E%3C/linearGradient%3E%3ClinearGradient id=%22ffgfront%22 gradientUnits=%22userSpaceOnUse%22 x1=%22564%22 x2=%22719%22 y1=%220%22 y2=%220%22%3E%3Cstop offset=%220%22 stop-color=%22%230033f8%22/%3E%3Cstop offset=%221%22 stop-color=%22%234258fb%22/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d=%22M250.6,194.4 L561.0,130.0 L561.0,289.1 L410.4,320.3 L410.4,479.4 L561.0,448.2 L561.0,607.3 L410.4,638.6 L410.4,797.7 L250.6,830.9 Z%22 fill=%22url(%23ffgback)%22/%3E%3Cpath d=%22M561.0,448.2 C596.5,440.8 637.2,438.6 676.3,442.0 C715.3,445.4 750.3,454.1 775.4,466.7 C800.5,479.4 814.2,495.1 814.2,511.3 L814.2,670.5 C814.2,654.2 800.5,638.5 775.4,625.9 C750.3,613.2 715.3,604.5 676.3,601.1 C637.2,597.8 596.5,600.0 561.0,607.3 Z%22 fill=%22url(%23ffgarcFar1)%22/%3E%3Cpath d=%22M561.0,130.0 C596.5,122.6 637.2,120.4 676.3,123.8 C715.3,127.1 750.3,135.9 775.4,148.5 C800.5,161.1 814.2,176.9 814.2,193.1 L814.2,352.2 C814.2,336.0 800.5,320.2 775.4,307.6 C750.3,295.0 715.3,286.3 676.3,282.9 C637.2,279.5 596.5,281.7 561.0,289.1 Z%22 fill=%22url(%23ffgarcFar0)%22/%3E%3Cpath d=%22M814.2,511.3 C814.2,524.4 805.4,537.2 788.6,548.4 C771.8,559.5 747.8,568.6 719.2,574.5 L719.2,733.6 C747.8,727.7 771.8,718.7 788.6,707.5 C805.4,696.4 814.2,683.5 814.2,670.5 Z%22 fill=%22url(%23ffgarcNear1)%22/%3E%3Cpath d=%22M814.2,193.1 C814.2,206.2 805.4,219.0 788.6,230.1 C771.8,241.3 747.8,250.3 719.2,256.3 L719.2,415.4 C747.8,409.4 771.8,400.4 788.6,389.3 C805.4,378.1 814.2,365.3 814.2,352.2 Z%22 fill=%22url(%23ffgarcNear0)%22/%3E%3Cpath d=%22M408.8,320.7 L719.2,256.3 L719.2,415.4 L564.0,447.6 L564.0,606.7 L719.2,574.5 L719.2,733.6 L564.0,765.8 L564.0,925.0 L408.8,957.2 Z%22 fill=%22url(%23ffgfront)%22/%3E%3C/svg%3E">
 <style>
 :root{
   --paper:#F2F2F7; --surface:#FFFFFF; --glass:rgba(255,255,255,.78); --stage:#E7E8EC; --ink:#1C1C1E; --muted:#6E6E73;
@@ -29,7 +30,7 @@ button,input,select{ font:inherit; color:inherit; }
 .app{ display:grid; grid-template-rows:auto 1fr; height:100%; }
 .top{ display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--glass); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--line); flex-wrap:wrap; position:relative; z-index:3; }
 .brand{ font-weight:650; font-size:16px; letter-spacing:-.01em; display:flex; align-items:center; gap:9px; }
-.brand .knife{ width:16px; height:3px; background:var(--cut); border-radius:2px; }
+.brand .mark{ width:auto; height:24px; flex:none; }
 .modelinfo{ color:var(--muted); font-size:12.5px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:360px; }
 .spacer{ flex:1; }
 
@@ -234,6 +235,34 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .viewmenu .keys{ font-size:11.5px; color:var(--muted); margin:8px 0 0; }
 
 /* side panel */
+.stabs{ position:sticky; top:12px; z-index:3; margin:12px 12px 10px; box-shadow:0 0 0 12px var(--paper); display:grid; grid-template-columns:repeat(3,1fr); background:var(--fill); }
+.stabs button{ padding:7px 0; font-weight:600; font-size:13px; }
+.stabs button[aria-selected="true"]{ background:var(--paper); box-shadow:0 1px 2px rgba(0,0,0,.08); }
+.tabpane[hidden]{ display:none !important; }
+.paneslot{ display:contents; }
+.isec h2{ margin:0 0 8px; }
+.isec:has(> .pointbar[hidden]), .isec:has(> .decalbar[hidden]){ display:none; }
+/* docked bars: plain content of a sidebar card */
+.panel .pointbar, .panel .viewbar{ position:static; margin:0; padding:0 !important; background:none; box-shadow:none; border:0; backdrop-filter:none; -webkit-backdrop-filter:none; width:auto; max-width:none; min-height:0; border-radius:0; }
+.panel .pointbar{ display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+.panel .pointbar > .count:first-child{ flex-basis:100%; }
+.panel .pointbar .sep{ display:none; }
+.panel .pointbar{ row-gap:8px; }
+.panel .decalbar .num input{ width:50px; }
+.panel .decalbar #dpX, .panel .decalbar #dpY, .panel .decalbar #dpZ{ width:42px; }
+.panel .decalbar #dpStart, .panel .decalbar #dpEnd{ width:60px; }
+.axrow{ display:flex; align-items:center; gap:6px; }
+.panel .axrow{ flex-basis:100%; }
+.panel .axrow .count{ width:84px; flex:none; }
+.panel .decalbar .dpgrp{ gap:5px; }
+.panel .decalbar .dpgrp{ flex-basis:100%; }
+.panel .decalbar > .count:first-child, .panel .decalbar > .sep:nth-child(2){ display:none; }
+.panel .viewbar{ display:flex; flex-direction:column; align-items:stretch; gap:12px; }
+.panel .viewbar .vsec + .vsec{ border-left:0; padding-left:0; border-top:1px solid var(--line); padding-top:10px; }
+.panel .viewbar .vlook{ grid-template-columns:repeat(6, 1fr); }
+.panel .viewbar .vturn{ grid-template-columns:repeat(4, 1fr); }
+.panel .viewbar .opac input[type=range]{ flex:1; width:auto; }
+.panel .viewbar .vgrid select{ max-width:none; flex:1; padding-right:26px; }
 .panel{ border-left:1px solid var(--line); background:var(--paper); display:flex; flex-direction:column; min-height:0; overflow:auto; }
 .mat{ background:var(--mat); padding:12px; margin:12px; border-radius:14px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
 .mat svg{ display:block; width:100%; height:auto; max-height:280px; }
@@ -411,7 +440,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><span class="knife" aria-hidden="true"></span>FitFlat</div>
+    <div class="brand"><svg class="mark" aria-hidden="true" viewBox="236 112 594 860"><defs><linearGradient id="ffgback" gradientUnits="userSpaceOnUse" x1="250" x2="561" y1="0" y2="0"><stop offset="0" stop-color="#edeefc"/><stop offset="1" stop-color="#a0a4fa"/></linearGradient><linearGradient id="ffgarcFar1" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcFar0" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcNear1" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgarcNear0" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgfront" gradientUnits="userSpaceOnUse" x1="564" x2="719" y1="0" y2="0"><stop offset="0" stop-color="#0033f8"/><stop offset="1" stop-color="#4258fb"/></linearGradient></defs><path d="M250.6,194.4 L561.0,130.0 L561.0,289.1 L410.4,320.3 L410.4,479.4 L561.0,448.2 L561.0,607.3 L410.4,638.6 L410.4,797.7 L250.6,830.9 Z" fill="url(#ffgback)"/><path d="M561.0,448.2 C596.5,440.8 637.2,438.6 676.3,442.0 C715.3,445.4 750.3,454.1 775.4,466.7 C800.5,479.4 814.2,495.1 814.2,511.3 L814.2,670.5 C814.2,654.2 800.5,638.5 775.4,625.9 C750.3,613.2 715.3,604.5 676.3,601.1 C637.2,597.8 596.5,600.0 561.0,607.3 Z" fill="url(#ffgarcFar1)"/><path d="M561.0,130.0 C596.5,122.6 637.2,120.4 676.3,123.8 C715.3,127.1 750.3,135.9 775.4,148.5 C800.5,161.1 814.2,176.9 814.2,193.1 L814.2,352.2 C814.2,336.0 800.5,320.2 775.4,307.6 C750.3,295.0 715.3,286.3 676.3,282.9 C637.2,279.5 596.5,281.7 561.0,289.1 Z" fill="url(#ffgarcFar0)"/><path d="M814.2,511.3 C814.2,524.4 805.4,537.2 788.6,548.4 C771.8,559.5 747.8,568.6 719.2,574.5 L719.2,733.6 C747.8,727.7 771.8,718.7 788.6,707.5 C805.4,696.4 814.2,683.5 814.2,670.5 Z" fill="url(#ffgarcNear1)"/><path d="M814.2,193.1 C814.2,206.2 805.4,219.0 788.6,230.1 C771.8,241.3 747.8,250.3 719.2,256.3 L719.2,415.4 C747.8,409.4 771.8,400.4 788.6,389.3 C805.4,378.1 814.2,365.3 814.2,352.2 Z" fill="url(#ffgarcNear0)"/><path d="M408.8,320.7 L719.2,256.3 L719.2,415.4 L564.0,447.6 L564.0,606.7 L719.2,574.5 L719.2,733.6 L564.0,765.8 L564.0,925.0 L408.8,957.2 Z" fill="url(#ffgfront)"/></svg>FitFlat</div>
     <button class="projname" id="projName" title="Your projects: open, rename, duplicate or start from a template"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span></button>
     <span class="modelinfo" id="modelinfo"></span>
     <span class="spacer"></span>
@@ -566,10 +595,10 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <button class="btn" id="simpBtn" title="Remove points the shape does not need (decimate). Works on the selected points, or the whole decal">Simplify</button>
           <button class="btn" id="zoomSel" title="Zoom in on the selection (F)">Zoom to</button>
           <span class="sep"></span>
-          <span class="count">Move along</span>
-          <div class="seg" id="moveAxis" role="group" aria-label="Move along"><button data-mx="" aria-pressed="true" title="Move freely over the surface">Free</button><button data-mx="x" class="axx" aria-pressed="false" title="Move only along the X axis (front to back). X while dragging">X</button><button data-mx="y" class="axy" aria-pressed="false" title="Move only along the Y axis (side to side). Y while dragging">Y</button><button data-mx="z" class="axz" aria-pressed="false" title="Move only along the Z axis (up and down). Z while dragging">Z</button></div>
-          <span class="count">Turn around</span>
-          <div class="seg" id="turnAxis" role="group" aria-label="Turn around"><button data-ax="view" aria-pressed="true" title="Turn the decal as you see it, around the line of sight, and lay it back on the surface">View</button><button data-ax="surface" aria-pressed="false" title="Turn the decal on the surface, around the surface normal at its centre">Surface</button><button data-ax="x" class="axx" aria-pressed="false" title="Turn around the X axis (front to back), through the middle of the tube">X</button><button data-ax="y" class="axy" aria-pressed="false" title="Turn around the Y axis (side to side), through the middle of the tube">Y</button><button data-ax="z" class="axz" aria-pressed="false" title="Turn around the Z axis (vertical), through the middle of the tube">Z</button></div>
+          <div class="axrow"><span class="count">Move along</span>
+          <div class="seg" id="moveAxis" role="group" aria-label="Move along"><button data-mx="" aria-pressed="true" title="Move freely over the surface">Free</button><button data-mx="x" class="axx" aria-pressed="false" title="Move only along the X axis (front to back). X while dragging">X</button><button data-mx="y" class="axy" aria-pressed="false" title="Move only along the Y axis (side to side). Y while dragging">Y</button><button data-mx="z" class="axz" aria-pressed="false" title="Move only along the Z axis (up and down). Z while dragging">Z</button></div></div>
+          <div class="axrow"><span class="count">Turn around</span>
+          <div class="seg" id="turnAxis" role="group" aria-label="Turn around"><button data-ax="view" aria-pressed="true" title="Turn the decal as you see it, around the line of sight, and lay it back on the surface">View</button><button data-ax="surface" aria-pressed="false" title="Turn the decal on the surface, around the surface normal at its centre">Surface</button><button data-ax="x" class="axx" aria-pressed="false" title="Turn around the X axis (front to back), through the middle of the tube">X</button><button data-ax="y" class="axy" aria-pressed="false" title="Turn around the Y axis (side to side), through the middle of the tube">Y</button><button data-ax="z" class="axz" aria-pressed="false" title="Turn around the Z axis (vertical), through the middle of the tube">Z</button></div></div>
         </div>
         <div class="pointbar decalbar" id="decalPanel" hidden aria-label="Decal">
           <span class="count"><b id="dpName" translate="no"></b></span>
@@ -636,6 +665,21 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div class="drop">Drop a .glb, .obj, .stl, project .json or .svg artwork</div>
     </section>
     <aside class="panel">
+      <div class="stabs seg" role="tablist" aria-label="Sidebar">
+        <button role="tab" data-tab="decals" aria-selected="true">Decals</button>
+        <button role="tab" data-tab="view" aria-selected="false">View</button>
+        <button role="tab" data-tab="sheet" aria-selected="false">Sheet</button>
+      </div>
+      <div class="tabpane" data-pane="view" hidden>
+        <section class="sec isec" id="secView"></section>
+      </div>
+      <div class="tabpane" data-pane="decals">
+        <div class="paneslot" id="slotDecals"></div>
+        <section class="sec isec" id="secDecal"><h2>Selected decal</h2></section>
+        <section class="sec isec" id="secPoints"><h2>Points</h2></section>
+        <div class="paneslot" id="slotHist"></div>
+      </div>
+      <div class="tabpane" data-pane="sheet">
       <div class="mat">
         <svg id="sheet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut sheet preview"></svg>
         <div class="matmeta"><span id="matSize"></span><span id="matCount"></span></div>
@@ -698,6 +742,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div class="export">
         <div class="exprow"><button class="btn primary" id="export" disabled>Download SVG</button><button class="btn" id="exportDxf" disabled title="Download the cut sheet as DXF (millimetres), for cutter software that prefers it">DXF</button></div>
         <p class="note" id="exportNote">Cut lines are black paths in millimetres on a "cut" layer. Labels and the sheet outline sit on their own layers so you can hide them in the cutter software.</p>
+      </div>
       </div>
     </aside>
   </main>
@@ -5765,7 +5810,18 @@ $('#exportDxf').addEventListener('click', async () => {
 
 updateUI();
 // ---------- floating panels: drag by the grip, drop near an edge to pin it there; the pin button frees or docks a panel ----------
-const PANEL_IDS = ['railPanel', 'topPanel', 'viewPanel', 'pointbar', 'decalPanel'];
+const PANEL_IDS = ['railPanel', 'topPanel']; // the View, Points and Decal panels live in the sidebar tabs
+(function dockToSidebar() {
+  $('#secView').appendChild($('#viewPanel')); $('#secPoints').appendChild($('#pointbar')); $('#secDecal').appendChild($('#decalPanel'));
+  // the decal list and history go into the Decals tab, the rest of the old sidebar stays under Sheet
+  $('#slotDecals').appendChild($('#list').closest('.sec')); $('#slotHist').appendChild($('#secHist'));
+  const tabs = [...document.querySelectorAll('.stabs [data-tab]')], panes = [...document.querySelectorAll('.tabpane')];
+  const show = t => { tabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t))); panes.forEach(p => p.hidden = p.dataset.pane !== t); try { localStorage.setItem('decal-studio-tab', t); } catch (e) {} if (t === 'sheet') renderSheet?.(); };
+  tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
+  let t0 = 'decals'; try { t0 = localStorage.getItem('decal-studio-tab') || 'decals'; } catch (e) {}
+  show(['decals', 'view', 'sheet'].includes(t0) ? t0 : 'decals');
+  window.__showTab = show;
+})();
 const PANEL_NAMES = { railPanel: 'Tools', topPanel: 'Options', viewPanel: 'View', pointbar: 'Points', decalPanel: 'Decal' };
 const floatLayer = document.createElement('div'); floatLayer.id = 'floatLayer'; stage.appendChild(floatLayer);
 const dockHint = document.createElement('div'); dockHint.id = 'dockHint'; dockHint.hidden = true; stage.appendChild(dockHint);
@@ -5776,7 +5832,7 @@ const GRIP_SVG = '<svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="t
 const ORIENT_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="9" width="10" height="4" rx="1"/><rect x="15" y="3" width="4" height="10" rx="1"/><path d="M7 17a6 6 0 0 0 10 0"/><path d="M17 14v3h-3"/></svg>';
 const PIN_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/><path d="M12 14v7"/></svg>';
 // layout[id]: { mode: 'float', x, y } or { mode: 'pin', ex: 'left'|'right'|null, ey: 'top'|'bottom'|null, x, y } (a corner pins both), plus orient 'h'|'v' for the tool panel
-delete layout.viewMenu; // the Views popup is part of the View panel now
+for (const k of ['viewMenu', 'viewPanel', 'pointbar', 'decalPanel']) delete layout[k]; // these live in the sidebar now
 var folded = {}; try { folded = JSON.parse(localStorage.getItem('decal-studio-folded') || '{}') || {}; } catch (e) { folded = {}; }
 const saveFolded = () => { try { localStorage.setItem('decal-studio-folded', JSON.stringify(folded)); } catch (e) {} };
 const FOLD_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
@@ -5963,6 +6019,7 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "Selected decal": "Ausgewähltes Decal", "Sheet": "Bogen", "Points": "Punkte", "Sidebar": "Seitenleiste",
   "A starting point is a frame with the decals you always use on it (for example one bike model).": "Eine Vorlage ist ein Rahmen mit den Decals, die du darauf immer verwendest (zum Beispiel für ein Radmodell).",
   "opens a copy as a new, unsaved project, so the starting point itself never changes.": "öffnet eine Kopie als neues, ungespeichertes Projekt, die Vorlage selbst bleibt also unverändert.",
   "By frame": "Nach Rahmen",

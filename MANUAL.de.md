@@ -34,10 +34,11 @@ FitFlat ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeichnest
 - **Obere Leiste** — Sprache (EN | DE), *Rahmen aus Geometrie*, Modelleinheit und die Dateischaltflächen *Neu*, *Öffnen*, *SVG importieren*, *Speichern*.
 - **Werkzeuge** (links) — *Zeichnen*, *Bearbeiten*, *Messer*.
 - **Werkzeugoptionen** (oben) — Rückgängig/Wiederholen und die Optionen des aktuellen Werkzeugs, dazu *Spiegeln*.
-- **Ansicht-Panel** — alles zur Ansicht an einem Ort: *Ansicht von*, *Drehen*, *Ortho*, *Einpassen*, *Dehnung*, Rahmendeckkraft, *Raster*-Einstellungen und *Gespeicherte Ansichten*.
-- **Punktleiste** — erscheint beim Bearbeiten: Punkttypen und Punktwerkzeuge, *Verschieben entlang*, *Drehen um*.
 - **Tipps** (unten links) — zeigen, was der nächste Klick bewirkt. Mit der ⓘ-Taste einklappen.
-- **Rechts** — Vorschau des Schneidebogens, die Decal-Liste, Bogeneinstellungen und *SVG herunterladen*.
+- **Seitenleiste** (rechts) mit drei Reitern, damit die 3D-Ansicht frei bleibt:
+  - **Decals** — die Decal-Liste; beim Bearbeiten auch **Ausgewähltes Decal** (Verschieben per Zahl, Abstand zu den Rohrenden, Drehen, Größe, Versatz, Einrasten, In Bibliothek speichern) und **Punkte** (Punkttypen und Punktwerkzeuge, *Verschieben entlang*, *Drehen um*); dazu **Verlauf**.
+  - **Ansicht** — *Ansicht von*, *Drehen*, *Ortho*, *Einpassen*, *Dehnung*, Rahmendeckkraft, *Raster*, *Referenzbild* und *Gespeicherte Ansichten*.
+  - **Bogen** — Vorschau des Schneidebogens, *Größen*, *Folie*, Bogeneinstellungen und *SVG / DXF herunterladen*.
 
 ---
 
