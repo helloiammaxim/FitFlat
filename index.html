@@ -278,7 +278,8 @@ details.sec.fold > summary h2{ margin:0; }
 details.sec.fold[open] > summary{ margin-bottom:8px; }
 details.sec.fold > summary .sum{ margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%; }
 details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
-.field.span2{ grid-column:span 2; } .field.span3{ grid-column:1 / -1; }
+.field.span2{ grid-column:span 2; }
+#clipWrap.off{ opacity:.45; } .field.span3{ grid-column:1 / -1; }
 .sizechips{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 10px; }
 .sizechips label{ display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:999px; background:var(--fill); font-size:12.5px; cursor:pointer; }
 .sizechips label.cur{ box-shadow:inset 0 0 0 1.5px var(--accent); }
@@ -515,6 +516,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <select class="btn" id="mirrorAxis" aria-label="Mirror plane" hidden>
               <option value="auto">Plane: auto</option><option value="z">Plane: left | right</option><option value="x">Plane: front | back</option><option value="y">Plane: top | bottom</option>
             </select>
+            <button class="btn tog" id="seamSnap" aria-pressed="true" title="Points near the centre plane snap onto it and join their mirror there (Q). Turn off to place points freely near the seam">Seam snap</button>
             <label class="clip" id="clipWrap" title="How close a point must be to the centre plane to snap onto it. 0 snaps only when you drag across the plane.">Snap <input type="number" id="clipDist" value="2" min="0" step="0.5"> mm</label>
           </div>
 
@@ -1202,7 +1204,14 @@ const Core = (() => {
     // rough enclosed area (vector area of the outline)
     let ax = 0, ay = 0, az = 0;
     for (let i = 0; i < samples.length; i++) { const p = samples[i].point, q = samples[(i+1) % samples.length].point; ax += p[1]*q[2] - p[2]*q[1]; ay += p[2]*q[0] - p[0]*q[2]; az += p[0]*q[1] - p[1]*q[0]; }
-    const areaEst = Math.max(Math.hypot(ax, ay, az) / 2, 1e-6);
+    let areaEst = Math.max(Math.hypot(ax, ay, az) / 2, 1e-6);
+    { // an outline that wraps around a tube encloses almost no "flat" area: size it by the fan around its centre instead
+      const c = [0, 0, 0]; for (const s of samples) for (let d = 0; d < 3; d++) c[d] += s.point[d] / samples.length;
+      let fan = 0;
+      for (let i = 0; i < samples.length; i++) { const p = samples[i].point, q = samples[(i+1) % samples.length].point, u = [p[0]-c[0], p[1]-c[1], p[2]-c[2]], v = [q[0]-c[0], q[1]-c[1], q[2]-c[2]];
+        fan += Math.hypot(u[1]*v[2] - u[2]*v[1], u[2]*v[0] - u[0]*v[2], u[0]*v[1] - u[1]*v[0]) / 2; }
+      if (areaEst < fan * 0.15) areaEst = fan * 0.3;
+    }
     const off = Math.min(Math.max(Math.min(grid.L * 3, diag * 0.12), topo.medianEdge * 2.5), Math.sqrt(areaEst) * 0.35);
     const vL = new Float64Array(nc), vR = new Float64Array(nc);
     const n = samples.length;
@@ -1275,17 +1284,70 @@ const Core = (() => {
     return it;
   }
 
-  function flatten(mesh, faces) {
+  // A region that wraps all the way around a tube (a band) cannot lie flat. Open it along a seam: the shortest way
+  // from one edge loop to the next, following the hint line where there is one, otherwise along the underside.
+  // The mesh is cut along those edges (their vertices are doubled), which leaves one flat-able sheet.
+  function seamCut(P, gv, lf, bnd, hint) {
+    const n = gv.length, nxt = new Map(); for (const [a, b] of bnd) nxt.set(a, b);
+    const loopOf = new Int32Array(n).fill(-1); let nl = 0;
+    for (const [a] of bnd) { if (loopOf[a] >= 0) continue; let v = a, g = 0; while (v !== undefined && loopOf[v] < 0 && g++ < 1e7) { loopOf[v] = nl; v = nxt.get(v); } nl++; }
+    if (nl < 2 || nl > 12) return false;
+    const adj = Array.from({ length: n }, () => []), seen = new Set();
+    for (const t of lf) for (let k = 0; k < 3; k++) { const a = t[k], b = t[(k+1)%3], key = a < b ? a*n+b : b*n+a; if (seen.has(key)) continue; seen.add(key); adj[a].push(b); adj[b].push(a); }
+    const X = i => gv[i]*3, len = (i, j) => Math.hypot(P[X(i)]-P[X(j)], P[X(i)+1]-P[X(j)+1], P[X(i)+2]-P[X(j)+2]);
+    let y0 = 1e30, y1 = -1e30, el = 0, ec = 0;
+    for (let i = 0; i < n; i++) { const y = P[X(i)+1]; if (y < y0) y0 = y; if (y > y1) y1 = y; if (adj[i].length) { el += len(i, adj[i][0]); ec++; } }
+    el = el / Math.max(ec, 1) || 1;
+    const pen = new Float64Array(n);
+    if (hint && hint.length) {
+      const st = Math.max(1, Math.ceil(hint.length * n / 4e6));
+      for (let i = 0; i < n; i++) { let md = 1e30; const x = P[X(i)], y = P[X(i)+1], z = P[X(i)+2];
+        for (let q = 0; q < hint.length; q += st) { const h = hint[q], dd = (h[0]-x)**2 + (h[1]-y)**2 + (h[2]-z)**2; if (dd < md) md = dd; }
+        pen[i] = 12 * md / (el * el); }
+    } else for (let i = 0; i < n; i++) pen[i] = 3 * (P[X(i)+1] - y0) / Math.max(y1 - y0, 1e-9);
+    const inT = new Uint8Array(n), done = new Uint8Array(nl); done[0] = 1;
+    for (let i = 0; i < n; i++) if (loopOf[i] === 0) inT[i] = 1;
+    const cutE = new Set(), cutV = new Set();
+    for (let round = 1; round < nl; round++) {
+      const dist = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1), heap = [];
+      const push = (d, v) => { heap.push([d, v]); let i = heap.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (heap[p][0] <= heap[i][0]) break; [heap[p], heap[i]] = [heap[i], heap[p]]; i = p; } };
+      const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = 2*i+1, r = l+1; let s = i; if (l < heap.length && heap[l][0] < heap[s][0]) s = l; if (r < heap.length && heap[r][0] < heap[s][0]) s = r; if (s === i) break; [heap[s], heap[i]] = [heap[i], heap[s]]; i = s; } } return top; };
+      for (let i = 0; i < n; i++) if (inT[i]) { dist[i] = 0; push(0, i); }
+      let end = -1;
+      while (heap.length) { const [d, v] = pop(); if (d > dist[v]) continue;
+        if (loopOf[v] >= 0 && !done[loopOf[v]]) { end = v; break; }
+        for (const w of adj[v]) { const nd = d + len(v, w) * (1 + (pen[v] + pen[w]) / 2); if (nd < dist[w]) { dist[w] = nd; prev[w] = v; push(nd, w); } } }
+      if (end < 0) return false;
+      done[loopOf[end]] = 1; for (let i = 0; i < n; i++) if (loopOf[i] === loopOf[end]) inT[i] = 1;
+      for (let v = end; prev[v] >= 0; v = prev[v]) { const w = prev[v]; cutE.add(v < w ? v*n+w : w*n+v); cutV.add(v); cutV.add(w); inT[v] = 1; }
+    }
+    // double the vertices along the cut: the faces around each one fall into groups that the cut edges separate
+    const vf = new Map(); for (const v of cutV) vf.set(v, []);
+    lf.forEach((t, f) => { for (let k = 0; k < 3; k++) if (vf.has(t[k])) vf.get(t[k]).push(f); });
+    const seam = [];
+    for (const [v, fs] of vf) {
+      const par = fs.map((_, i) => i), find = i => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; }, byW = new Map();
+      fs.forEach((f, i) => { for (const w of lf[f]) if (w !== v) { const o = byW.get(w); if (o === undefined) byW.set(w, i); else if (!cutE.has(v < w ? v*n+w : w*n+v)) par[find(i)] = find(o); } });
+      const copy = new Map(); seam.push(gv[v]);
+      fs.forEach((f, i) => { const g = find(i); if (!copy.has(g)) copy.set(g, copy.size === 0 ? v : (gv.push(gv[v]), gv.length - 1)); const c = copy.get(g); if (c !== v) lf[f] = lf[f].map(x => x === v ? c : x); });
+    }
+    return seam;
+  }
+  function flatten(mesh, faces, hintFn) {
     const P = mesh.pos, T = mesh.tri;
     const lv = new Map(), gv = [], lf = [];
     for (const f of faces) { const t = []; for (let k=0;k<3;k++){ const v=T[3*f+k]; let l=lv.get(v); if(l===undefined){ l=gv.length; lv.set(v,l); gv.push(v);} t.push(l);} lf.push(t); }
-    const n = gv.length, m = lf.length;
+    let n = gv.length, bnd, chi, seam = null; const m = lf.length;
     // topology checks
-    const dir = new Map(), K = (a,b)=>a*n+b;
-    for (const t of lf) for (let k=0;k<3;k++){ const key=K(t[k],t[(k+1)%3]); dir.set(key,(dir.get(key)||0)+1); }
-    const bnd = []; const und = new Set();
-    for (const t of lf) for (let k=0;k<3;k++){ const a=t[k], b=t[(k+1)%3]; und.add(a<b?K(a,b):K(b,a)); if (!dir.has(K(b,a))) bnd.push([a,b]); }
-    const chi = n - und.size + m;
+    const K = (a,b)=>a*n+b;
+    const check = () => {
+      const dir = new Map(), und = new Set(); bnd = [];
+      for (const t of lf) for (let k=0;k<3;k++){ const key=K(t[k],t[(k+1)%3]); dir.set(key,(dir.get(key)||0)+1); }
+      for (const t of lf) for (let k=0;k<3;k++){ const a=t[k], b=t[(k+1)%3]; und.add(a<b?K(a,b):K(b,a)); if (!dir.has(K(b,a))) bnd.push([a,b]); }
+      chi = n - und.size + m;
+    };
+    check();
+    if (chi < 1 && bnd.length) { seam = seamCut(P, gv, lf, bnd, hintFn ? hintFn() : null); if (seam) { n = gv.length; check(); } }
     if (chi !== 1 || bnd.length === 0) return { error: chi <= 0 ? 'This shape wraps all the way around a tube. Leave a small gap so the decal can lie flat.' : 'This area could not be flattened. Try a simpler outline.' };
     // local 2D coords per triangle
     const X = new Float64Array(m*6), cot = new Float64Array(m*3);
@@ -1394,7 +1456,7 @@ const Core = (() => {
       void det;
     }
     const localFace = new Map(); faces.forEach((f, i) => localFace.set(f, i));
-    return { u, v, lf, gv, faces, localFace, stretch, flips };
+    return { u, v, lf, gv, faces, localFace, stretch, flips, seam };
   }
 
   // ---------- full decal solve ----------
@@ -1406,13 +1468,50 @@ const Core = (() => {
     if (samples.length < 6) return { error: 'The outline is too small.' };
     const reg = computeRegion(mesh, topo, grid, samples, flip);
     if (reg.error) return { error: reg.error, samples };
-    const fl = flatten(mesh, reg.faces);
+    // where the outline runs back along itself (a slit, like the open seam of a band), that line is where a wrapped shape opens
+    const slit = () => {
+      const cs = step * 1.5, g = new Map(), key = p => Math.floor(p[0]/cs) + ',' + Math.floor(p[1]/cs) + ',' + Math.floor(p[2]/cs), N = samples.length, out = [];
+      samples.forEach((s, i) => { const k = key(s.point); let a = g.get(k); if (!a) g.set(k, a = []); a.push(i); });
+      for (let i = 0; i < N; i++) { const p = samples[i].point, c = [Math.floor(p[0]/cs), Math.floor(p[1]/cs), Math.floor(p[2]/cs)]; let hit = false;
+        for (let dx = -1; dx <= 1 && !hit; dx++) for (let dy = -1; dy <= 1 && !hit; dy++) for (let dz = -1; dz <= 1 && !hit; dz++) for (const j of (g.get((c[0]+dx) + ',' + (c[1]+dy) + ',' + (c[2]+dz)) || [])) {
+          const gap = Math.min(Math.abs(i - j), N - Math.abs(i - j)); if (gap < 8) continue;
+          const q = samples[j].point; if (Math.hypot(p[0]-q[0], p[1]-q[1], p[2]-q[2]) < step * 0.6) { hit = true; break; } }
+        if (hit) out.push(p); }
+      return out.length >= 2 ? out : null;
+    };
+    let hint = null;
+    const fl = flatten(mesh, reg.faces, () => (hint = slit()));
     if (fl.error) return { error: fl.error, samples };
-    const outline = samples.map(s => {
-      const lfi = fl.localFace.get(s.face), t = fl.lf[lfi];
-      let x = 0, y = 0; for (let k = 0; k < 3; k++) { x += s.bary[k]*fl.u[t[k]]; y += s.bary[k]*fl.v[t[k]]; }
-      return [x, y];
-    });
+    const uvFace = (f, b) => { const t = fl.lf[fl.localFace.get(f)]; return [b[0]*fl.u[t[0]] + b[1]*fl.u[t[1]] + b[2]*fl.u[t[2]], b[0]*fl.v[t[0]] + b[1]*fl.v[t[1]] + b[2]*fl.v[t[2]]]; };
+    let outline = samples.map(s => uvFace(s.face, s.bary));
+    if (fl.seam && fl.seam.length) {
+      // next to the seam the two sides of the cut lie far apart on the flat sheet: follow the outline and keep each sample on the side it came along
+      const Pp = mesh.pos, Tt = mesh.tri, sv = fl.seam.map(v => [Pp[3*v], Pp[3*v+1], Pp[3*v+2]]), rr = Math.max(topo.medianEdge, step) * 3;
+      const nearSeam = p => { for (const q of sv) if (Math.abs(p[0]-q[0]) < rr && Math.abs(p[1]-q[1]) < rr && Math.abs(p[2]-q[2]) < rr) return true; return false; };
+      const aff = (p, f) => { const a = Tt[3*f]*3, b = Tt[3*f+1]*3, c = Tt[3*f+2]*3, e1 = [Pp[b]-Pp[a], Pp[b+1]-Pp[a+1], Pp[b+2]-Pp[a+2]], e2 = [Pp[c]-Pp[a], Pp[c+1]-Pp[a+1], Pp[c+2]-Pp[a+2]], r = [p[0]-Pp[a], p[1]-Pp[a+1], p[2]-Pp[a+2]];
+        const a11 = e1[0]*e1[0]+e1[1]*e1[1]+e1[2]*e1[2], a12 = e1[0]*e2[0]+e1[1]*e2[1]+e1[2]*e2[2], a22 = e2[0]*e2[0]+e2[1]*e2[1]+e2[2]*e2[2], b1 = r[0]*e1[0]+r[1]*e1[1]+r[2]*e1[2], b2 = r[0]*e2[0]+r[1]*e2[1]+r[2]*e2[2], det = a11*a22 - a12*a12 || 1e-12;
+        const u = (a22*b1 - a12*b2) / det, v = (a11*b2 - a12*b1) / det; return [1 - u - v, u, v]; };
+      const near = samples.map(s => nearSeam(s.point)), N = samples.length;
+      let i0 = near.indexOf(false); if (i0 < 0) i0 = 0;
+      let prev = outline[i0];
+      for (let q = 1; q < N; q++) {
+        const i = (i0 + q) % N, s = samples[i];
+        if (near[i]) {
+          const cand = new Set([s.face]);
+          for (let ring = 0; ring < 2; ring++) for (const f of [...cand]) for (let k = 0; k < 3; k++) { const v = Tt[3*f+k]; for (let z = topo.vfStart[v]; z < topo.vfStart[v+1]; z++) if (fl.localFace.has(topo.vf[z])) cand.add(topo.vf[z]); }
+          let best = null, bc = 1e30;
+          for (const f of cand) {
+            const a = Tt[3*f]*3, b = Tt[3*f+1]*3, c = Tt[3*f+2]*3, cb = closestOnTri(s.point[0], s.point[1], s.point[2], Pp[a], Pp[a+1], Pp[a+2], Pp[b], Pp[b+1], Pp[b+2], Pp[c], Pp[c+1], Pp[c+2]);
+            const d3 = Math.hypot(cb[0]*Pp[a] + cb[1]*Pp[b] + cb[2]*Pp[c] - s.point[0], cb[0]*Pp[a+1] + cb[1]*Pp[b+1] + cb[2]*Pp[c+1] - s.point[1], cb[0]*Pp[a+2] + cb[1]*Pp[b+2] + cb[2]*Pp[c+2] - s.point[2]);
+            if (d3 > topo.medianEdge * 2.5 + step) continue;
+            const uv = uvFace(f, f === s.face ? s.bary : aff(s.point, f)), cost = Math.hypot(uv[0]-prev[0], uv[1]-prev[1]) + 4 * d3;
+            if (cost < bc) { bc = cost; best = uv; }
+          }
+          if (best) outline[i] = best;
+        }
+        prev = outline[i];
+      }
+    }
     // stats over inside + outline faces
     // every face the decal touches: inside, under the outline, and the ones the outline only clips between samples (long thin triangles)
     const set = new Set(reg.faces); for (const s of samples) set.add(s.face);
@@ -2022,7 +2121,7 @@ function buildFromGeometry(geo, tubesIn, name, carryDecals, meta) {
   if (carryDecals && S.source?.tubes && S.decals.length) {
     const old = S.source.tubes;
     carry = S.decals.filter(d => d.ctrl.length).map(d => ({
-      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side, locked: !!d.locked,
+      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip,
       ctrl: d.ctrl.map(c => ({ p: toTube(c.p, old), hin: c.hin && toTube(c.hin, old), hout: c.hout && toTube(c.hout, old), type: c.type, plane: c.plane })),
     }));
   }
@@ -2249,7 +2348,7 @@ function projectJSON() {
     frame: src.tubes ? { tubes: src.tubes, geo: src.geo, tubeSizes: src.tubeSizes, presetName: src.presetName, sizeIndex: src.sizeIndex } : null,
     presets: userPresets,
     decals: S.decals.filter(d => d.ctrl.length).map(d => ({
-      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked,
+      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip,
       ctrl: d.ctrl.map(c => ({ p: r3(c.p), type: c.type || 'auto', hin: r3(c.hin), hout: r3(c.hout), plane: !!c.plane })),
     })),
   });
@@ -2524,7 +2623,7 @@ function restoreDecals(list, msg, fname) {
       const id = S.nextId++; if (dd.id != null) idMap.set(dd.id, id);
       const ctrl = dd.ctrl.map(c => { const h = c.p && Core.closestPoint(mesh, grid, c.p, 120); return h && { p: h.point, face: h.face, type: c.type, hin: c.hin || undefined, hout: c.hout || undefined, plane: !!c.plane }; }).filter(Boolean);
       if (!ctrl.length) continue;
-      const d = { id, name: safeName(dd.name) || `Decal ${id}`, color: safeColor(dd.color) || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, res: null, twin: null, obj: [], _hole: dd.holeOf };
+      const d = { id, name: safeName(dd.name) || `Decal ${id}`, color: safeColor(dd.color) || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, seamOpen: !!dd.seamOpen, seamFlip: !!dd.seamFlip, res: null, twin: null, obj: [], _hole: dd.holeOf };
       S.decals.push(d); made.push(d);
     }
     for (const d of made) { if (d._hole != null && idMap.has(d._hole)) d.holeOf = idMap.get(d._hole); delete d._hole; }
@@ -2673,7 +2772,7 @@ function hitLine(x, y) {
 
 // ---------- history ----------
 const HIST = { undo: [], redo: [] };
-const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked,
+const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip,
   ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken })) });
 const snapshot = () => JSON.stringify({ decals: S.decals.map(decalState), drawing: S.drawing?.id ?? null });
 // each entry is the state before a step, with the step's name and time
@@ -2778,11 +2877,15 @@ function snapToPlane(p, face) {
   if (Math.abs(q[pl.k] - pl.c) > Math.max(S.model.L, 2)) return null;
   return { p: q, face: h.face };
 }
-// Blender-style clipping: points near or across the centre plane stick to it
+// Blender-style clipping: points near or across the centre plane stick to it.
+// With Seam snap off, points only stop at the plane when they would cross it; a point on the seam
+// can always be pulled off it again by dragging it further than the snap distance (or 3 mm).
+S.seamSnap = true;
 function clipHit(d, hit, wasPlane) {
   if (!d.mirror) return { p: hit.p, face: hit.face, plane: false };
-  const pl = mirrorPlane(), dist = hit.p[pl.k] - pl.c, tol = clipTol();
-  if (wasPlane || (tol > 0 && Math.abs(dist) < tol) || (d.side && Math.sign(dist) !== d.side)) {
+  const pl = mirrorPlane(), dist = hit.p[pl.k] - pl.c, tol = S.seamSnap ? clipTol() : 0, release = Math.max(clipTol() * 2, 3);
+  const keep = wasPlane && S.seamSnap && Math.abs(dist) < release;
+  if (keep || (tol > 0 && Math.abs(dist) < tol) || (d.side && Math.sign(dist) !== d.side)) {
     const sn = snapToPlane(hit.p, hit.face);
     if (sn) return { ...sn, plane: true };
   }
@@ -2790,28 +2893,43 @@ function clipHit(d, hit, wasPlane) {
   return { p: hit.p, face: hit.face, plane: false };
 }
 // half outline between two plane points + its mirror = one symmetric outline
+// The two sides join along one stretch of the centre line only. Where the outline touches the centre line a second time
+// (a shape that goes all the way around a tube), that stretch stays open as the seam, so the piece can always be unwrapped.
+// d.seamOpen: never join (two separate mirrored pieces). d.seamFlip: join at the lower stretch and open the upper one.
 function mergedCtrl(d) {
-  if (!d.mirror || !S.model) return null;
+  if (!d.mirror || !S.model || d.seamOpen) return null;
   const n = d.ctrl.length, pi = [];
   d.ctrl.forEach((c, i) => { if (c.plane) pi.push(i); });
   if (pi.length < 2) return null;
-  let best = null;
+  let best = null, band = false;
   const pairs = pi.slice(0, -1).map((a, q) => [a, pi[q + 1]]);
   if (d.closed) pairs.push([pi[pi.length - 1], pi[0]]);
-  for (const [a, b] of pairs) { const cnt = (b - a - 1 + n) % n; if (cnt >= 1 && (!best || cnt > best.cnt)) best = { a, b, cnt }; }
+  const cntOf = ([a, b]) => (b - a - 1 + n) % n, zero = d.closed ? pairs.filter(pr => cntOf(pr) === 0) : [], full = pairs.filter(pr => cntOf(pr) >= 1);
+  if (zero.length && full.length) {
+    const ht = ([a, b]) => d.ctrl[a].p[1] + d.ctrl[b].p[1];
+    zero.sort((x, y) => ht(y) - ht(x)); // highest first: by default the seam is underneath
+    const g = zero[d.seamFlip ? zero.length - 1 : 0];
+    best = { a: g[1], b: g[0] }; band = zero.length > 1;
+  } else for (const pr of pairs) { const cnt = cntOf(pr); if (cnt >= 1 && (!best || cnt > best.cnt)) best = { a: pr[0], b: pr[1], cnt }; }
   if (!best) return null;
   const half = []; for (let i = best.a; ; i = (i + 1) % n) { half.push(i); if (i === best.b) break; }
   const { mesh, grid } = S.model, out = [];
+  out.band = band;
+  const third = (a, b) => a.map((v, k) => v + (b[k] - v) / 3);
   half.forEach((i, q) => {
     const c = d.ctrl[i], m = { ...c, map: { o: i, m: false } };
     if (ptype(c) === 'bezier' && c.hin && c.hout) {
       if (q === 0) m.hin = reflect(c.hout);
       if (q === half.length - 1) m.hout = reflect(c.hin);
     }
+    // an open seam runs straight along the centre line from one touch point to the next
+    const nx = q < half.length - 1 && c.plane && d.ctrl[half[q + 1]].plane, pv = q > 0 && c.plane && d.ctrl[half[q - 1]].plane;
+    if (nx || pv) { const H = Core.handlesFor(d.ctrl, i, d.closed); m.type = 'bezier'; m.broken = true;
+      m.hin = pv ? third(c.p, d.ctrl[half[q - 1]].p) : (q === 0 ? c.p.slice() : H[0]); m.hout = nx ? third(c.p, d.ctrl[half[q + 1]].p) : (q === half.length - 1 ? c.p.slice() : H[1]); }
     out.push(m);
   });
   for (let q = half.length - 2; q >= 1; q--) {
-    const c = d.ctrl[half[q]], h = Core.closestPoint(mesh, grid, reflect(c.p), 80);
+    const c = out[q], h = Core.closestPoint(mesh, grid, reflect(c.p), 80);
     out.push({ p: h.point, face: h.face, type: c.type, hin: c.hout && reflect(c.hout), hout: c.hin && reflect(c.hin), map: { o: half[q], m: true } });
   }
   return out;
@@ -3217,6 +3335,7 @@ window.addEventListener('keydown', e => {
   if (num && S.model) { axisView(num[0], mod ? -num[1] : num[1]); e.preventDefault(); }
   if ((e.key === '0' || e.code === 'Numpad0' || e.key === 'Home') && S.model) { fitView(); e.preventDefault(); }
   if (e.altKey && e.key.toLowerCase() === 'z' || e.code === 'KeyZ' && e.altKey) { setModelOpacity(S.modelOpacity < 1 ? 1 : S.lastXray); e.preventDefault(); return; }
+  if (!mod && e.key.toLowerCase() === 'q' && S.model) { setSeamSnap(!S.seamSnap); e.preventDefault(); return; }
   if (!mod && e.key.toLowerCase() === 'g' && S.model) { S.grid.show = !S.grid.show; gridKey = ''; renderGrid(); updateGridUI(); e.preventDefault(); return; }
   if ((e.key === '5' || e.code === 'Numpad5') && S.model) { setOrtho(!camera.isOrthographicCamera); e.preventDefault(); }
   const orb = { '4': ['yaw', -45], '6': ['yaw', 45], '8': ['pitch', -45], '2': ['pitch', 45] }[e.key];
@@ -3659,6 +3778,8 @@ $('#mirror').addEventListener('click', () => {
   else S.mirrorDefault = !S.mirrorDefault;
   renderHandles(); updateUI();
 });
+function setSeamSnap(on) { S.seamSnap = on; $('#seamSnap').setAttribute('aria-pressed', String(on)); $('#clipWrap').classList.toggle('off', !on); flash(on ? 'Seam snap on: points near the centre plane snap onto it.' : 'Seam snap off: points stay where you put them; they only stop at the plane instead of crossing it.'); }
+$('#seamSnap').addEventListener('click', () => setSeamSnap(!S.seamSnap));
 $('#clipDist').addEventListener('change', e => { const v = parseFloat(e.target.value); S.clipDist = v >= 0 ? v : 2; e.target.value = S.clipDist; S.dirty = true; flash(S.clipDist ? `Points within ${S.clipDist} mm of the centre plane snap to it.` : 'Points only snap to the centre plane when dragged across it.'); });
 $('#mirrorAxis').addEventListener('change', e => {
   S.mirrorAxis = e.target.value; renderHandles();
@@ -3699,7 +3820,7 @@ function duplicateDecal(d) {
   if (d.holeOf) d = S.decals.find(x => x.id === d.holeOf) || d;
   pushHistory('Duplicate');
   const copyOf = (src, holeOf) => { const id = S.nextId++;
-    const n = { id, name: holeOf ? src.name : copyName(src.name), color: holeOf ? src.color : PALETTE[(id - 1) % PALETTE.length], ctrl: src.ctrl.map(cloneC), closed: true, flip: !!src.flip, mirror: !!src.mirror, side: src.side || 0, res: null, twin: null, obj: [] };
+    const n = { id, name: holeOf ? src.name : copyName(src.name), color: holeOf ? src.color : PALETTE[(id - 1) % PALETTE.length], ctrl: src.ctrl.map(cloneC), closed: true, flip: !!src.flip, mirror: !!src.mirror, seamOpen: !!src.seamOpen, seamFlip: !!src.seamFlip, side: src.side || 0, res: null, twin: null, obj: [] };
     if (holeOf) n.holeOf = holeOf; S.decals.push(n); return n; };
   const nd = copyOf(d); for (const h of holesOf(d)) copyOf(h, nd.id);
   solveNow(nd); for (const h of holesOf(nd)) solveNow(h);
@@ -3812,7 +3933,7 @@ function updateUI() {
   for (const id of ['#modeDraw','#modeEdit','#stretch','#fit','#mirror','#mirrorAxis','#ortho','#gridBtn']) $(id).disabled = !has;
   $('#stretch').setAttribute('aria-pressed', S.showStretch);
   $('#mirror').setAttribute('aria-pressed', mirrorOn());
-  $('#mirrorAxis').hidden = !mirrorOn(); $('#clipWrap').hidden = !mirrorOn();
+  $('#mirrorAxis').hidden = !mirrorOn(); $('#clipWrap').hidden = !mirrorOn(); $('#seamSnap').hidden = !mirrorOn();
   $('#legend').classList.toggle('on', S.showStretch);
   $('#save').disabled = !has; updateProjName();
   const canBool = has && S.active && S.active.closed && !S.active.holeOf && S.decals.filter(d => d.closed && !d.holeOf).length > 1;
@@ -3854,7 +3975,7 @@ function renderList() {
     else if (d.res) info = `<div class="info">${dims('d' + d.id, d.res)}</div>`;
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
-    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !d.seamOpen + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${d.mergedMap?.band ? '<button data-a="seam" title="This piece goes all the way around, so it is left open along one seam. Move the seam to the other side">Move seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button></span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, d); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
@@ -3866,6 +3987,8 @@ function renderList() {
       if (b.dataset.a === 'applymir') applyMirror(d);
       if (b.dataset.a === 'unhole') { pushHistory(); delete d.holeOf; updateDecalVisual(d, false); updateUI(); }
       if (b.dataset.a === 'flip') { pushHistory('Invert'); d.flip = !d.flip; solve(d); }
+      if (b.dataset.a === 'join') { pushHistory(d.seamOpen ? 'Join at seam' : 'Open seam'); d.seamOpen = !d.seamOpen; solve(d); }
+      if (b.dataset.a === 'seam') { pushHistory('Move seam'); d.seamFlip = !d.seamFlip; solve(d); }
       if (b.dataset.a === 'mir') { pushHistory('Mirror'); d.mirror = !d.mirror; S.active = d; if (d.closed) solve(d); else updateDecalVisual(d, true); updateUI(); }
     }));
     ul.appendChild(li);
@@ -4553,7 +4676,11 @@ function resymmetrize() {
     const side = d._symSide; delete d._symSide;
     const sg = d.ctrl.map(c => { const v = c.p[pl.k] - pl.c; return Math.abs(v) < eps ? 0 : Math.sign(v); });
     if (sg.every(v => v !== side)) { removeDecal(d, true); continue; }
-    if (sg.every(v => v !== -side)) { d.mirror = true; d.side = side; solveNow(d); continue; }
+    if (sg.every(v => v !== -side)) { d.mirror = true; d.side = side;
+      // a piece with an edge on the centre line was cut along the seam: it stays a separate piece next to its mirror (Join puts them back together)
+      const on = d.ctrl.filter((c, i) => sg[i] === 0);
+      if (on.length >= 2) { for (const c of on) { const sn = snapToPlane(c.p, c.face); if (sn) { c.p = sn.p; c.face = sn.face; c.plane = true; } } d.seamOpen = true; }
+      solveNow(d); continue; }
     if (halveSymmetric(d, { side, ctrl: d.ctrl })) { d.mirror = true; d.side = side; }
     solveNow(d);
   }
@@ -6019,6 +6146,13 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "Join": "Verbinden", "Move seam": "Naht verlegen", "Join at seam": "An Naht verbinden", "Open seam": "Naht öffnen",
+  "Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there": "Beide Seiten an der Mittellinie zu einem Teil verbinden. Aus: zwei getrennte gespiegelte Teile, die sich dort nur berühren",
+  "This piece goes all the way around, so it is left open along one seam. Move the seam to the other side": "Dieses Teil läuft ganz herum und bleibt deshalb an einer Naht offen. Naht auf die andere Seite verlegen",
+  "Seam snap": "Naht-Fang",
+  "Points near the centre plane snap onto it and join their mirror there (Q). Turn off to place points freely near the seam": "Punkte nahe der Mittelebene rasten darauf ein und verbinden sich dort mit ihrem Spiegelbild (Q). Ausschalten, um Punkte frei nahe der Naht zu setzen",
+  "Seam snap on: points near the centre plane snap onto it.": "Naht-Fang an: Punkte nahe der Mittelebene rasten darauf ein.",
+  "Seam snap off: points stay where you put them; they only stop at the plane instead of crossing it.": "Naht-Fang aus: Punkte bleiben, wo du sie setzt; an der Ebene halten sie nur an, statt sie zu überqueren.",
   "Selected decal": "Ausgewähltes Decal", "Sheet": "Bogen", "Points": "Punkte", "Sidebar": "Seitenleiste",
   "A starting point is a frame with the decals you always use on it (for example one bike model).": "Eine Vorlage ist ein Rahmen mit den Decals, die du darauf immer verwendest (zum Beispiel für ein Radmodell).",
   "opens a copy as a new, unsaved project, so the starting point itself never changes.": "öffnet eine Kopie als neues, ungespeichertes Projekt, die Vorlage selbst bleibt also unverändert.",

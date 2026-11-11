@@ -177,7 +177,11 @@ Im Bearbeiten-Modus, mit einem geschlossenen Decal ausgewählt, gibst du im Pane
 **Spiegeln** ist standardmäßig an. Decals bekommen eine gespiegelte Kopie auf der anderen Rahmenseite.
 
 - **Ebene** wählt die Spiegelebene (auto, links | rechts, vorne | hinten, oben | unten).
-- Punkte nahe der pinken Mittelebene rasten dort ein. **Fangen** stellt den Abstand in mm ein (bei 0 rasten sie nur ein, wenn du sie über die Ebene ziehst).
+- Punkte nahe der pinken Mittelebene rasten dort ein und verbinden sich mit ihrem Spiegelbild. **Fangen** stellt den Abstand in mm ein.
+- **Naht-Fang** (Taste **Q**) schaltet das ab: Punkte bleiben nahe der Naht genau dort, wo du sie setzt; an der Ebene halten sie nur an, statt sie zu überqueren. Ein Punkt auf der Ebene löst sich, wenn du ihn weiter als den Fangabstand (mindestens 3 mm) ziehst.
+- **Verbinden** (in der Zeile des Decals) legt fest, ob beide Seiten über die Mittellinie ein Teil sind oder zwei getrennte gespiegelte Teile, die sich dort nur berühren.
+- Eine Form, die ganz um ein Rohr läuft, wird nie zu einem Ring geschlossen: Sie verbindet sich an einer Strecke der Mittellinie und bleibt an der anderen offen, lässt sich also immer zu einem flachen Teil abwickeln. Die Naht liegt standardmäßig unten; **Naht verlegen** setzt sie auf die andere Seite.
+- Das Messer schneidet auch Nähte: Ein Schnitt entlang der Mittellinie teilt ein verbundenes Decal in seine zwei Seiten, und sie bleiben getrennt, bis du **Verbinden** drückst.
 - Ein Decal, das auf der Mittelebene beginnt und endet, wird **ein symmetrisches Decal** über die Mitte — du bearbeitest eine Hälfte, die andere folgt.
 - Eine Form oder Stift-Kontur, die die Mittelebene kreuzt, wird dort geschnitten und zu einem symmetrischen Decal (keine überlappenden Kopien).
 - **Anwenden** (in der Decal-Liste) macht aus dem gespiegelten Teil eine echte, eigenständig bearbeitbare Kontur.
@@ -310,6 +314,7 @@ Der Browserspeicher gehört zu diesem Browser auf diesem Computer. Um Arbeit auf
 | X / Y / Z (beim Ziehen) | Bewegung auf eine Achse sperren |
 | Strg + Scrollen / Alt + Scrollen | Decal oder Auswahl drehen / skalieren (Umschalt: größere Schritte) |
 | T | Messer: Durchschneiden an/aus |
+| Q | Spiegel: Naht-Fang an/aus |
 | 1 / 3 / 7 | Ansicht rechts / vorne / oben (Strg: links / hinten / unten) |
 | 4 / 6, 8 / 2 | Ansicht um 45° drehen / kippen |
 | 5 | Perspektive / Ortho |

@@ -177,7 +177,11 @@ In Edit mode, with a closed decal selected, the **Decal** panel lets you type ex
 **Mirror** is on by default. Decals get a mirrored copy on the other side of the frame.
 
 - **Plane** chooses the mirror plane (auto, left | right, front | back, top | bottom).
-- Points near the pink centre plane snap to it. **Snap** sets the distance in mm (0 snaps only when you drag across the plane).
+- Points near the pink centre plane snap to it and join their mirror there. **Snap** sets the distance in mm.
+- **Seam snap** (key **Q**) turns that off: points stay exactly where you put them near the seam; they only stop at the plane instead of crossing it. A point already on the plane comes off when you drag it further than the snap distance (at least 3 mm).
+- **Join** (in the decal's row) decides whether the two sides are one piece across the centre line or two separate mirrored pieces that only meet there.
+- A shape that goes all the way around a tube is never closed into a ring: it joins along one stretch of the centre line and stays open along the other, so it always unwraps into one flat piece. The seam is underneath by default; **Move seam** puts it on the other side.
+- The Knife cuts seams too: a cut along the centre line splits a joined decal into its two sides, and they stay apart until you press **Join**.
 - A decal that starts and ends on the centre plane becomes **one symmetric decal** across the middle — you edit one half, the other follows.
 - A shape or pen outline that crosses the centre plane is cut there and becomes a symmetric decal (no overlapping copies).
 - **Apply** (in the decal list) turns the mirrored part into a real outline you can edit separately.
@@ -310,6 +314,7 @@ Browser storage belongs to this browser on this computer. To move work to anothe
 | X / Y / Z (while dragging) | Lock the move to an axis |
 | Ctrl + scroll / Alt + scroll | Turn / size the decal or selection (Shift: bigger steps) |
 | T | Knife: cut through on/off |
+| Q | Mirror: seam snap on/off |
 | 1 / 3 / 7 | Right / front / top view (Ctrl: left / back / bottom) |
 | 4 / 6, 8 / 2 | Turn / tilt the view by 45° |
 | 5 | Perspective / ortho |
