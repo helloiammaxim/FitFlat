@@ -347,9 +347,11 @@ dialog.unitdlg{ width:min(480px, calc(100vw - 24px)); }
 .intro{ list-style:none; margin:0; padding:0; }
 .intro li{ display:none; }
 .intro li.on{ display:grid; gap:5px; }
-dialog.splash{ border:0; padding:0; margin:0; width:100vw; height:100vh; height:100dvh; max-width:none; max-height:none; color:var(--ink);
-  background:var(--surface); }
-dialog.splash::backdrop{ background:var(--surface); }
+/* the splash is a white sheet in both themes: the logo is cut out of it, and its inner side keeps that white */
+dialog.splash{ --surface:#FFFFFF; --ink:#1C1C1E; --muted:#6E6E73; --line:rgba(60,60,67,.13); --fill:rgba(118,118,128,.12); --fill2:rgba(118,118,128,.2); --accent:#007AFF;
+  border:0; padding:0; margin:0; width:100vw; height:100vh; height:100dvh; max-width:none; max-height:none; color:var(--ink);
+  background:#FFFFFF; }
+dialog.splash::backdrop{ background:#FFFFFF; }
 dialog.splash form{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 20px; box-sizing:border-box; text-align:center; }
 .slogo{ width:min(44vh, 78vw, 400px); height:auto; aspect-ratio:1; display:block; margin-bottom:-6px; }
 .sword{ margin:0; font-size:clamp(34px, 6vw, 52px); font-weight:700; letter-spacing:-.03em; line-height:1; display:flex; }
@@ -6833,7 +6835,7 @@ setLang(LANG);
     quads.push([0, 0.5, 0, 2], [1.5 + L, U, 0, 2]);
     for (const [z0, z1] of [[1.5, 2], [0.5, 1]]) { quads.push([0.5, 1, z0, z1], [1 + L, 1.5 + L, z0, z1]); for (let i = 0; i < NA; i++) quads.push([1 + L * i / NA, 1 + L * (i + 1) / NA, z0, z1]); }
     const ramp = stops => u => { const x = u / U; let i = 0; while (i < stops.length - 2 && x > stops[i + 1][0]) i++; const a = stops[i], b = stops[i + 1], f = Math.max(0, Math.min(1, (x - a[0]) / (b[0] - a[0]))); return [1, 2, 3].map(q => (a[q] + (b[q] - a[q]) * f) / 255); };
-    const pale = ramp([[0, 0xed, 0xee, 0xfc], [0.3, 0xb4, 0xb8, 0xfa], [0.55, 0x8e, 0x96, 0xf0], [1, 0x9a, 0xa0, 0xf4]]);  // the white side, as the logo shows it
+    const pale = ramp([[0, 0xff, 0xff, 0xff], [0.14, 0xe6, 0xe8, 0xfd], [0.3, 0xb4, 0xb8, 0xfa], [0.55, 0x8e, 0x96, 0xf0], [1, 0x9a, 0xa0, 0xf4]]);  // the white side, as the logo shows it
     const blue = ramp([[0, 0x5a, 0x66, 0xf6], [0.3, 0x70, 0x7c, 0xf0], [0.62, 0x40, 0x56, 0xfa], [0.75, 0x22, 0x44, 0xf9], [1, 0x00, 0x33, 0xf8]]); // the blue side
     const cols = quads.map(([u0, u1]) => ({ p: [pale(u0), pale(u1)], b: [blue(u0), blue(u1)] }));
     const flat = (u, z, h) => [0.5 - u, -0.5 - z, h]; // the uncut piece lying in the sheet
@@ -6883,7 +6885,7 @@ setLang(LANG);
         for (const [p, z, w] of [[a, z0, 0], [b, z0, 1], [b, z1, 1], [a, z0, 0], [b, z1, 1], [a, z1, 0]]) {
           const X = p[0], Y = -0.5 + (p[1] + 0.5) * ct - z * st, Z = (p[1] + 0.5) * st + z * ct;
           if (under) { const c = cols[qi].b[w]; C[o] = c[0] * sh; C[o + 1] = c[1] * sh; C[o + 2] = Math.min(1, c[2] * (0.88 + 0.12 * face)); }
-          else { const c = cols[qi].p[w]; for (let j = 0; j < 3; j++) C[o + j] = sheet[j] + (c[j] * (0.86 + 0.14 * face) - sheet[j]) * stand; }
+          else { const c = cols[qi].p[w]; for (let j = 0; j < 3; j++) C[o + j] = sheet[j] + (c[j] * (0.95 + 0.05 * face) - sheet[j]) * stand; }
           P[o++] = X; P[o++] = Y; P[o++] = Z;
           if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; if (Z < zl) zl = Z; if (Z > zh) zh = Z; } });
       geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
