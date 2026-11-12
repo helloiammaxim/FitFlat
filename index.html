@@ -354,13 +354,14 @@ dialog.splash{ --surface:#FFFFFF; --ink:#1C1C1E; --muted:#6E6E73; --line:rgba(60
 dialog.splash::backdrop{ background:#FFFFFF; }
 dialog.splash form{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 20px; box-sizing:border-box; text-align:center; }
 .slogo{ width:min(44vh, 78vw, 400px); height:auto; aspect-ratio:1; display:block; margin-bottom:-6px; }
-.sword{ margin:0; font-size:clamp(34px, 6vw, 52px); font-weight:700; letter-spacing:-.03em; line-height:1; display:flex; }
+.sword{ color:#FFFFFF; margin:0; font-size:clamp(34px, 6vw, 52px); font-weight:700; letter-spacing:-.03em; line-height:1; display:flex; }
 .sword i{ font-style:normal; display:inline-block; opacity:0; transform:translateY(.5em); animation:sup .5s cubic-bezier(.2,.9,.3,1.2) forwards; }
 .sword i:nth-child(1){ animation-delay:4.1s } .sword i:nth-child(2){ animation-delay:4.15s } .sword i:nth-child(3){ animation-delay:4.2s } .sword i:nth-child(4){ animation-delay:4.25s }
 .sword i:nth-child(5){ animation-delay:4.3s } .sword i:nth-child(6){ animation-delay:4.35s } .sword i:nth-child(7){ animation-delay:4.4s }
-.sline{ margin:4px 0 0; max-width:36ch; color:var(--muted); font-size:15px; line-height:1.45; opacity:0; animation:sup .5s ease 4.7s forwards; }
+.sline{ margin:4px 0 0; max-width:36ch; color:rgba(255,255,255,.66); font-size:15px; line-height:1.45; opacity:0; animation:sup .5s ease 4.7s forwards; }
 .sbtns{ display:flex; gap:10px; margin-top:14px; opacity:0; animation:sup .5s ease 1.2s forwards; }
 .sbtns .btn{ padding:9px 16px; font-size:14.5px; }
+.sbtns #introSkip{ background:rgba(128,134,146,.16); color:#8A909B; }
 dialog.splash.out{ animation:sout .28s ease forwards; }
 @keyframes sup{ to{ opacity:1; transform:none; } }
 @keyframes sout{ to{ opacity:0; transform:scale(1.03); } }
@@ -6847,87 +6848,89 @@ setLang(LANG);
     $('#tour li[data-t="model"] svg').innerHTML = frameArt('Road race', 'ibike').replace('<g class="ibike">', '<g class="ibike" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.34;.5;.95;1" dur="6s" repeatCount="indefinite"/>').replace(/<text.*?<\/text>/, '') + (file ? file.outerHTML : '');
   } catch (e) {}
   // The logo in 3D: two Fs joined by arms that wrap half around a tube; one side of the sheet is white, the other blue.
-  // On the splash: a blank sheet, the shape is cut into it from the right, its right half peels up and rolls over to the left
-  // showing the blue side, the finished piece stands up, makes one full turn and stays as the logo.
+  // On the splash: a blank white sheet. The piece peels out of it from the right, rolling back over itself to the left and
+  // showing its blue side; the cut only shows where the piece has already come away. Then the background turns dark, the piece
+  // stands up, makes one full turn and stays as the logo.
   const logo = (() => {
-    const L = Math.PI / 2, U = 2 + L, NA = 32;
-    let rdr = null, scene, cam, geo, ghostMat, line, lineMat, raf = 0, t0 = 0, sheet = [1, 1, 1], qTop, qEnd, nSeg = 0;
-    const path = (u, k) => { // plan position of the strip at length u for bend k (1 folded, 0 flat); the still half sits at y = -0.5
-      if (u <= 1) return [0.5 - u, -0.5];
-      const th = k * Math.PI, a = Math.min(u - 1, L), rest = u - 1 - a;
-      if (th < 1e-4) return [-0.5 - a - rest, -0.5];
-      const R = L / th, ph = th * a / L;
-      return [-0.5 - R * Math.sin(ph) - rest * Math.cos(ph), -0.5 + R - R * Math.cos(ph) + rest * Math.sin(ph)];
+    const L = Math.PI / 2, U = 2 + L, NA = 30, RR = 0.5, DARK = [0x1f, 0x24, 0x2b];
+    let rdr = null, scene, cam, geo, shadows = [], line, lineMat, segU = [], raf = 0, t0 = 0, qTop, qEnd;
+    // plan position of the strip at length u when everything past uf has been rolled back over (radius RR); the still part sits at y = -0.5
+    const path = (u, uf) => {
+      if (u <= uf) return [0.5 - u, -0.5];
+      const a = u - uf, xf = 0.5 - uf;
+      if (a <= L) { const ph = a / RR; return [xf - RR * Math.sin(ph), -0.5 + RR * (1 - Math.cos(ph))]; }
+      return [xf + (a - L), 0.5];
     };
-    const quads = []; // [u0, u1, z0, z1]
-    quads.push([0, 0.5, 0, 2], [1.5 + L, U, 0, 2]);
-    for (const [z0, z1] of [[1.5, 2], [0.5, 1]]) { quads.push([0.5, 1, z0, z1], [1 + L, 1.5 + L, z0, z1]); for (let i = 0; i < NA; i++) quads.push([1 + L * i / NA, 1 + L * (i + 1) / NA, z0, z1]); }
+    const quads = [], NS = 64; // [u0, u1, z0, z1]: fine slices along the strip, so the roll can pass anywhere
+    for (let i = 0; i < NS; i++) { const u0 = U * i / NS, u1 = U * (i + 1) / NS, um = (u0 + u1) / 2;
+      if (um < 0.5 || um > U - 0.5) quads.push([u0, u1, 0, 2]); else quads.push([u0, u1, 1.5, 2], [u0, u1, 0.5, 1]); }
+    { const cutAt = [0.5, U - 0.5]; for (const q of quads) for (const c of cutAt) { if (Math.abs(q[0] - c) < U / NS / 2) q[0] = c; if (Math.abs(q[1] - c) < U / NS / 2) q[1] = c; } }
     const ramp = stops => u => { const x = u / U; let i = 0; while (i < stops.length - 2 && x > stops[i + 1][0]) i++; const a = stops[i], b = stops[i + 1], f = Math.max(0, Math.min(1, (x - a[0]) / (b[0] - a[0]))); return [1, 2, 3].map(q => (a[q] + (b[q] - a[q]) * f) / 255); };
-    const pale = ramp([[0, 0xff, 0xff, 0xff], [0.14, 0xe6, 0xe8, 0xfd], [0.3, 0xb4, 0xb8, 0xfa], [0.55, 0x8e, 0x96, 0xf0], [1, 0x9a, 0xa0, 0xf4]]);  // the white side, as the logo shows it
+    const pale = ramp([[0, 0xf6, 0xf7, 0xff], [0.14, 0xd4, 0xd8, 0xfc], [0.3, 0xa6, 0xac, 0xf8], [0.55, 0x86, 0x8f, 0xee], [1, 0x94, 0x9b, 0xf2]]);  // the white side, as the logo shows it
     const blue = ramp([[0, 0x5a, 0x66, 0xf6], [0.3, 0x70, 0x7c, 0xf0], [0.62, 0x40, 0x56, 0xfa], [0.75, 0x22, 0x44, 0xf9], [1, 0x00, 0x33, 0xf8]]); // the blue side
     const cols = quads.map(([u0, u1]) => ({ p: [pale(u0), pale(u1)], b: [blue(u0), blue(u1)] }));
-    const flat = (u, z, h) => [0.5 - u, -0.5 - z, h]; // the uncut piece lying in the sheet
     const init = () => {
       const cv = $('#introLogo'), px = Math.round(Math.min(2, devicePixelRatio || 1) * (cv.clientWidth || 360));
-      const m = getComputedStyle(dlg).backgroundColor.match(/[\d.]+/g); if (m) sheet = m.slice(0, 3).map(v => v / 255);
       rdr = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true }); rdr.setPixelRatio(1); rdr.setSize(px, px, false);
       scene = new THREE.Scene(); cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 80);
       const N = quads.length * 18;
       geo = new THREE.BufferGeometry();
       geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N), 3));
       geo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(N), 3));
-      // the hole the piece leaves in the sheet
-      const gh = new THREE.BufferGeometry(), gp = [];
-      for (const [u0, u1, z0, z1] of quads) for (const [u, z] of [[u0, z0], [u1, z0], [u1, z1], [u0, z0], [u1, z1], [u0, z1]]) gp.push(...flat(u, z, -0.03));
-      gh.setAttribute('position', new THREE.Float32BufferAttribute(gp, 3));
-      ghostMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.09, side: THREE.DoubleSide, depthWrite: false });
-      const ghost = new THREE.Mesh(gh, ghostMat); ghost.renderOrder = -2; scene.add(ghost);
-      // the cut line, drawn from the right
+      // the piece's own shadow on the sheet: a few offset copies, so its edge is soft
+      for (const k of [0.16, 0.24, 0.32, 0.4]) { const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N), 3));
+        const m = new THREE.MeshBasicMaterial({ color: 0x0a1030, transparent: true, opacity: 0.055, side: THREE.DoubleSide, depthWrite: false });
+        const mesh = new THREE.Mesh(g, m); mesh.renderOrder = -2; scene.add(mesh); shadows.push({ g, m, k }); }
+      // the cut in the sheet, shown only where the piece has come away
       const loops = [[[0, 0], [0, 2], [U, 2], [U, 0], [U - 0.5, 0], [U - 0.5, 0.5], [0.5, 0.5], [0.5, 0]], [[0.5, 1], [U - 0.5, 1], [U - 0.5, 1.5], [0.5, 1.5]]], segs = [];
-      for (const lp of loops) lp.forEach((a, i) => { const b = lp[(i + 1) % lp.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.08));
+      for (const lp of loops) lp.forEach((a, i) => { const b = lp[(i + 1) % lp.length], n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.06));
         for (let q = 0; q < n; q++) segs.push([[a[0] + (b[0] - a[0]) * q / n, a[1] + (b[1] - a[1]) * q / n], [a[0] + (b[0] - a[0]) * (q + 1) / n, a[1] + (b[1] - a[1]) * (q + 1) / n]]); });
-      segs.sort((p, q) => (q[0][0] + q[1][0]) - (p[0][0] + p[1][0])); nSeg = segs.length;
-      const lg = new THREE.BufferGeometry(), lp = []; for (const [a, b] of segs) lp.push(...flat(a[0], a[1], 0.012), ...flat(b[0], b[1], 0.012));
+      segs.sort((p, q) => Math.min(q[0][0], q[1][0]) - Math.min(p[0][0], p[1][0])); segU = segs.map(sg => Math.min(sg[0][0], sg[1][0]));
+      const lg = new THREE.BufferGeometry(), lp = []; for (const [a, b] of segs) lp.push(0.5 - a[0], -0.5 - a[1], 0.004, 0.5 - b[0], -0.5 - b[1], 0.004);
       lg.setAttribute('position', new THREE.Float32BufferAttribute(lp, 3));
-      const dark = sheet[0] + sheet[1] + sheet[2] < 1.5;
-      lineMat = new THREE.LineBasicMaterial({ color: dark ? 0xffffff : 0x000000, transparent: true, opacity: 0.4 });
-      line = new THREE.LineSegments(lg, lineMat); line.renderOrder = 2; scene.add(line);
+      lineMat = new THREE.LineBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.38 });
+      line = new THREE.LineSegments(lg, lineMat); line.renderOrder = -1; scene.add(line);
       scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })));
       const look = (dir, up) => { const c = new THREE.PerspectiveCamera(); c.up.set(...up); c.position.set(...dir); c.lookAt(0, 0, 0); return c.quaternion.clone(); };
       qTop = look([0, 0, 1], [0, -1, 0]); qEnd = look([0.415, 0.814, 0.407], [0, 0, 1]);
     };
     const c01 = x => Math.max(0, Math.min(1, x)), inOut = x => { x = c01(x); return x * x * (3 - 2 * x); };
-    const outBack = x => { x = c01(x); const c = 1.2; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
     const draw = t => {
-      const cut = inOut((t - 0.5) / 0.8);                                     // the cut line runs in from the right
-      const k = Math.min(1.03, outBack((t - 1.3) / 1.9));                     // the right half peels up and rolls over
-      const stand = inOut((t - 3.0) / 1.0), tilt = (1 - stand) * Math.PI / 2, ct = Math.cos(tilt), st = Math.sin(tilt);
-      const e = 0.4 * inOut((t - 1.3) / 1.7) + 0.6 * stand;                   // camera: straight down, then round to the logo view
-      const spin = Math.PI * 2 * inOut((t - 4.0) / 1.7) + Math.sin(Math.max(0, t - 5.8) * 0.8) * 0.2; // one full turn, then a slow sway
-      const zoom = 2.3 - 0.85 * inOut((t - 2.8) / 1.3);
+      const uf = U - (U - 1) * inOut((t - 0.5) / 2.4);                          // the roll travels from the right end to the middle
+      const stand = inOut((t - 3.05) / 1.0), tilt = (1 - stand) * Math.PI / 2, ct = Math.cos(tilt), st = Math.sin(tilt);
+      const night = inOut((t - 2.9) / 0.9);                                      // the white sheet gives way to a dark background
+      const e = 0.4 * inOut((t - 0.6) / 2.2) + 0.6 * stand;                      // camera: straight down, then round to the logo view
+      const spin = Math.PI * 2 * inOut((t - 4.05) / 1.7) + Math.sin(Math.max(0, t - 5.9) * 0.8) * 0.2; // one full turn, then a slow sway
+      const zoom = 2.3 - 0.85 * inOut((t - 2.9) / 1.3);
       const q = qTop.clone().slerp(qEnd, e).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), spin));
-      const v = new THREE.Vector3(0, 0, 1).applyQuaternion(q);                // from the piece towards the camera
+      const v = new THREE.Vector3(0, 0, 1).applyQuaternion(q);                   // from the piece towards the camera
       const P = geo.attributes.position.array, C = geo.attributes.color.array; let o = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, zl = 1e9, zh = -1e9;
-      quads.forEach(([u0, u1, z0, z1], qi) => { const a = path(u0, k), b = path(u1, k), tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
-        const nx = -ty / tl, ny = tx / tl, d = nx * v.x + ny * ct * v.y + ny * st * v.z, face = Math.abs(d), under = d > 0, sh = 0.74 + 0.26 * face;
+      quads.forEach(([u0, u1, z0, z1], qi) => { const a = path(u0, uf), b = path(u1, uf), tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
+        const nx = -ty / tl, ny = tx / tl, d = nx * v.x + ny * ct * v.y + ny * st * v.z, under = d > 0;
+        const face = Math.abs(ny * st) * (1 - stand) + Math.abs(d) * stand;     // lit from above while it lies in the sheet, from the viewer once it stands
         for (const [p, z, w] of [[a, z0, 0], [b, z0, 1], [b, z1, 1], [a, z0, 0], [b, z1, 1], [a, z1, 0]]) {
           const X = p[0], Y = -0.5 + (p[1] + 0.5) * ct - z * st, Z = (p[1] + 0.5) * st + z * ct;
-          if (under) { const c = cols[qi].b[w]; C[o] = c[0] * sh; C[o + 1] = c[1] * sh; C[o + 2] = Math.min(1, c[2] * (0.88 + 0.12 * face)); }
-          else { const c = cols[qi].p[w]; for (let j = 0; j < 3; j++) C[o + j] = sheet[j] + (c[j] * (0.95 + 0.05 * face) - sheet[j]) * stand; }
+          if (under) { const c = cols[qi].b[w], sh = 0.7 + 0.3 * face; C[o] = c[0] * sh; C[o + 1] = c[1] * sh; C[o + 2] = Math.min(1, c[2] * (0.86 + 0.14 * face)); }
+          else { const c = cols[qi].p[w], sh = 0.78 + 0.22 * face; for (let j = 0; j < 3; j++) C[o + j] = (1 + (c[j] - 1) * stand) * sh; }
           P[o++] = X; P[o++] = Y; P[o++] = Z;
           if (X < x0) x0 = X; if (X > x1) x1 = X; if (Y < y0) y0 = Y; if (Y > y1) y1 = Y; if (Z < zl) zl = Z; if (Z > zh) zh = Z; } });
       geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
-      const gone = 1 - inOut((t - 3.0) / 0.7);
-      line.geometry.setDrawRange(0, Math.round(nSeg * cut) * 2); lineMat.opacity = 0.4 * gone; ghostMat.opacity = 0.09 * gone * inOut((t - 1.3) / 0.4);
+      for (const s of shadows) { const SP = s.g.attributes.position.array;
+        for (let i = 0; i < P.length; i += 9) { const up = P[i + 2] > 0.004 || P[i + 5] > 0.004 || P[i + 8] > 0.004; // only what has left the sheet casts a shadow
+          for (let j = i; j < i + 9; j += 3) { const h = Math.max(0, P[j + 2]); SP[j] = up ? P[j] - h * s.k : P[i]; SP[j + 1] = up ? P[j + 1] + h * s.k : P[i + 1]; SP[j + 2] = -0.012; } }
+        s.g.attributes.position.needsUpdate = true; s.m.opacity = 0.055 * (1 - 0.45 * stand); }
+      let shown = 0; while (shown < segU.length && segU[shown] > uf + 0.02) shown++;
+      line.geometry.setDrawRange(0, shown * 2); lineMat.opacity = 0.38 * (1 - night);
+      dlg.style.backgroundColor = `rgb(${DARK.map(c => Math.round(255 + (c - 255) * night)).join(',')})`;
       // while it lies in the sheet the view stays on the whole cut-out; once it stands the view follows the piece
-      const cx = (0.5 - U / 2) * (1 - stand) + (x0 + x1) / 2 * stand, cy = -1.5 * (1 - stand) + (y0 + y1) / 2 * stand, cz = (zl + zh) / 2 * stand + Math.sin(Math.max(0, t - 5.8) * 1.1) * 0.03;
+      const cx = (0.5 - U / 2) * (1 - stand) + (x0 + x1) / 2 * stand, cy = -1.5 * (1 - stand) + (y0 + y1) / 2 * stand, cz = (zl + zh) / 2 * stand + Math.sin(Math.max(0, t - 5.9) * 1.1) * 0.03;
       cam.left = -zoom; cam.right = zoom; cam.top = zoom; cam.bottom = -zoom; cam.updateProjectionMatrix();
       cam.quaternion.copy(q); cam.position.set(cx + v.x * 20, cy + v.y * 20, cz + v.z * 20);
       rdr.render(scene, cam);
     };
     const tick = now => { raf = requestAnimationFrame(tick); draw((now - t0) / 1000); };
     return {
-      start() { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); t0 = performance.now(); if (still) draw(30); else raf = requestAnimationFrame(tick); },
+      start() { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); t0 = performance.now(); if (still) draw(30); else { draw(0); raf = requestAnimationFrame(tick); } },
       stop() { cancelAnimationFrame(raf); raf = 0; },
       at(t) { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); draw(t); },
     };
