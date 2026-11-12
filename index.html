@@ -356,12 +356,13 @@ dialog.splash{ --surface:#FFFFFF; --ink:#1C1C1E; --muted:#6E6E73; --line:rgba(60
   background:#FFFFFF; }
 dialog.splash::backdrop{ background:#FFFFFF; }
 dialog.splash form{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 20px; box-sizing:border-box; text-align:center; }
-.slogo{ width:min(44vh, 78vw, 400px); height:auto; aspect-ratio:1; display:block; margin-bottom:-6px; }
+.slogo{ width:min(54vh, 88vw, 520px); height:auto; aspect-ratio:1; display:block; margin-bottom:-6px; }
 .sword{ color:#FFFFFF; margin:6px 0 2px; font-family:'FitFlat Mark', -apple-system, 'Segoe UI', sans-serif; font-size:clamp(30px, 5.4vw, 46px); font-weight:400; letter-spacing:0; line-height:1; display:flex; }
 .sword i{ font-style:normal; display:inline-block; opacity:0; transform:translateY(.5em); animation:sup .5s cubic-bezier(.2,.9,.3,1.2) forwards; }
 .sword i:nth-child(1){ animation-delay:4.7s } .sword i:nth-child(2){ animation-delay:4.75s } .sword i:nth-child(3){ animation-delay:4.8s } .sword i:nth-child(4){ animation-delay:4.85s }
 .sword i:nth-child(5){ animation-delay:4.9s } .sword i:nth-child(6){ animation-delay:4.95s } .sword i:nth-child(7){ animation-delay:5s }
-.sline{ margin:4px 0 0; max-width:36ch; color:rgba(255,255,255,.66); font-size:15px; line-height:1.45; opacity:0; animation:sup .5s ease 5.3s forwards; }
+.sline span{ display:block; }
+.sline{ text-wrap:balance; margin:6px 0 0; max-width:44ch; color:rgba(255,255,255,.72); font-size:17px; line-height:1.45; opacity:0; animation:sup .5s ease 5.3s forwards; }
 .sbtns{ display:flex; gap:10px; margin-top:14px; opacity:0; animation:sup .5s ease 1.2s forwards; }
 .sbtns .btn{ padding:9px 16px; font-size:14.5px; }
 .sbtns #introSkip{ background:rgba(128,134,146,.16); color:#8A909B; }
@@ -841,7 +842,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
   <form method="dialog" onsubmit="return false">
     <canvas class="slogo" id="introLogo" width="720" height="720" aria-hidden="true"></canvas>
     <h1 class="sword" translate="no" aria-label="FitFlat"><i>F</i><i>i</i><i>t</i><i>F</i><i>l</i><i>a</i><i>t</i></h1>
-    <p class="sline">You draw shapes on a bike frame. FitFlat turns them into flat pieces your cutter can cut.</p>
+    <p class="sline"><span>Draw straight on the 3D frame.</span> <span>Watch it unwrap flat, live.</span></p>
     <div class="sbtns">
       <button type="button" class="btn" id="introSkip">Skip</button>
       <button type="button" class="btn primary" id="introGo" autofocus>Show me around</button>
@@ -6229,6 +6230,10 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "Draw straight on the 3D frame.": "Zeichne direkt auf den 3D-Rahmen.",
+  "Watch it unwrap flat, live.": "Sieh live zu, wie es flach wird.",
+  "You draw shapes on a bike frame.": "Du zeichnest Formen auf einen Fahrradrahmen.",
+  "FitFlat turns them into flat pieces your cutter can cut.": "FitFlat macht daraus flache Teile, die dein Plotter schneiden kann.",
   "Frame from geometry has ready frames for road, gravel and mountain bikes in several sizes. Or paste the geometry chart from a brand's website and it builds that frame.": "Unter Rahmen aus Geometrie gibt es fertige Rahmen für Rennrad, Gravel und MTB in mehreren Größen. Oder füg die Geometrietabelle von der Hersteller-Website ein, dann wird genau dieser Rahmen gebaut.",
   "Or load your own 3D model": "Oder lade dein eigenes 3D-Modell",
   "Got a 3D scan or a CAD file of the frame? Open loads .glb, .obj and .stl models. Decals drawn on the real shape fit the real tubes.": "Hast du einen 3D-Scan oder eine CAD-Datei vom Rahmen? Öffnen lädt .glb-, .obj- und .stl-Modelle. Decals, die auf der echten Form gezeichnet sind, passen auf die echten Rohre.",
@@ -6907,7 +6912,7 @@ setLang(LANG);
       const e = 0.4 * inOut((t - 0.6) / 2.2) + 0.6 * stand;                      // camera: straight down, then round to the logo view
       // one full turn that eases in and out; the slow sway grows out of its last part, so it never comes to a dead stop
       const settle = inOut((t - 5.4) / 2.6), spin = Math.PI * 2 * smoother((t - 3.0) / 3.1) + Math.sin(Math.max(0, t - 5.4) * 0.75) * 0.2 * settle;
-      const zoom = 2.3 - 0.85 * smoother((t - 2.4) / 2.0);
+      const zoom = 2.3 - 1.02 * smoother((t - 2.4) / 2.4);  // it ends larger than it started
       const q = qTop.clone().slerp(qEnd, e).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), spin));
       const v = new THREE.Vector3(0, 0, 1).applyQuaternion(q);                   // from the piece towards the camera
       const P = geo.attributes.position.array, C = geo.attributes.color.array; let o = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, zl = 1e9, zh = -1e9;
