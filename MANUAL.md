@@ -182,7 +182,8 @@ In Edit mode, with a closed decal selected, the **Decal** panel lets you type ex
 - Points near the pink centre plane snap to it and join their mirror there. **Snap** sets the distance in mm.
 - **Seam snap** (key **Q**) turns that off: points stay exactly where you put them near the seam; they only stop at the plane instead of crossing it. A point already on the plane comes off when you drag it further than the snap distance (at least 3 mm).
 - **Join** (in the decal's row) decides whether the two sides are one piece across the centre line or two separate mirrored pieces that only meet there.
-- A shape that goes all the way around a tube is never closed into a ring: it joins along one stretch of the centre line and stays open along the other, so it always unwraps into one flat piece. The seam is underneath by default; **Move seam** puts it on the other side.
+- A shape that goes all the way around a tube is never closed into a ring: it joins along one stretch of the centre line and stays open along the other, so it always unwraps into one flat piece.
+- Whenever a piece closes around a tube, FitFlat asks where the seam should go (underneath, on top, the far side or the near side) and marks it on the model as a dashed line. **Seam** in the decal's row changes it later.
 - The Knife cuts seams too: a cut along the centre line splits a joined decal into its two sides, and they stay apart until you press **Join**.
 - A decal that starts and ends on the centre plane becomes **one symmetric decal** across the middle — you edit one half, the other follows.
 - A shape or pen outline that crosses the centre plane is cut there and becomes a symmetric decal (no overlapping copies).
@@ -205,13 +206,18 @@ Choose **Knife** and click points in the view — on or off the model.
 
 ## 9. Combining decals
 
-Select a decal, then **Shift-click** a second one (on the model or in the list). The second shows in blue, and the **Options** panel shows both names with the buttons below.
+Select a decal, then **Shift-click** more decals (on the model or in the list). The extra ones show in blue, and the **Options** panel shows the first name and how many others, with the buttons below.
 
-- **Union** joins both shapes.
-- **Subtract** cuts the blue shape out of the first one (**Swap** switches which is cut out of which).
-- **Intersect** keeps only the overlap.
+- **Union** joins all of them into one shape.
+- **Subtract** cuts all the blue shapes out of the first one (**Swap** switches which one is cut).
+- **Intersect** keeps only the area all of them share.
 
-New points are added only where the outlines cross. Shapes with holes (like a donut) are kept as a decal with a hole. Booleans also work in mirror mode.
+After each combination FitFlat asks:
+
+- **Keep editable**: the originals stay inside the result. Select the combined piece and its parts appear under it in the list (and as thin lines on the model); change one and the result follows. **Apply** on the row fixes it, **Separate** gives you the originals back. Editing the combined piece's own points also fixes it.
+- **Apply**: the result becomes one ordinary outline straight away.
+
+Tick **Don't ask again** to keep your choice. New points are added only where the outlines cross. Shapes with holes (like a donut) are kept as a decal with a hole. In mirror mode the drawn halves are combined and the result stays mirrored, so both sides match.
 
 ---
 

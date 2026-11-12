@@ -182,7 +182,8 @@ Im Bearbeiten-Modus, mit einem geschlossenen Decal ausgewählt, gibst du im Pane
 - Punkte nahe der pinken Mittelebene rasten dort ein und verbinden sich mit ihrem Spiegelbild. **Fangen** stellt den Abstand in mm ein.
 - **Naht-Fang** (Taste **Q**) schaltet das ab: Punkte bleiben nahe der Naht genau dort, wo du sie setzt; an der Ebene halten sie nur an, statt sie zu überqueren. Ein Punkt auf der Ebene löst sich, wenn du ihn weiter als den Fangabstand (mindestens 3 mm) ziehst.
 - **Verbinden** (in der Zeile des Decals) legt fest, ob beide Seiten über die Mittellinie ein Teil sind oder zwei getrennte gespiegelte Teile, die sich dort nur berühren.
-- Eine Form, die ganz um ein Rohr läuft, wird nie zu einem Ring geschlossen: Sie verbindet sich an einer Strecke der Mittellinie und bleibt an der anderen offen, lässt sich also immer zu einem flachen Teil abwickeln. Die Naht liegt standardmäßig unten; **Naht verlegen** setzt sie auf die andere Seite.
+- Eine Form, die ganz um ein Rohr läuft, wird nie zu einem Ring geschlossen: Sie verbindet sich an einer Strecke der Mittellinie und bleibt an der anderen offen, lässt sich also immer zu einem flachen Teil abwickeln.
+- Sobald sich ein Teil um ein Rohr schließt, fragt FitFlat, wo die Naht hin soll (unten, oben, hinten oder vorne), und zeigt sie am Modell als gestrichelte Linie. **Naht** in der Zeile des Decals ändert sie später.
 - Das Messer schneidet auch Nähte: Ein Schnitt entlang der Mittellinie teilt ein verbundenes Decal in seine zwei Seiten, und sie bleiben getrennt, bis du **Verbinden** drückst.
 - Ein Decal, das auf der Mittelebene beginnt und endet, wird **ein symmetrisches Decal** über die Mitte — du bearbeitest eine Hälfte, die andere folgt.
 - Eine Form oder Stift-Kontur, die die Mittelebene kreuzt, wird dort geschnitten und zu einem symmetrischen Decal (keine überlappenden Kopien).
@@ -205,13 +206,18 @@ Wähle **Messer** und klicke Punkte in der Ansicht — auf oder neben dem Modell
 
 ## 9. Decals kombinieren
 
-Wähle ein Decal und **Umschalt-Klick** auf ein zweites (auf dem Modell oder in der Liste). Das zweite erscheint blau, und das Panel **Optionen** zeigt beide Namen mit den Tasten unten.
+Wähl ein Decal und klick dann mit **Shift** weitere an (am Modell oder in der Liste). Die zusätzlichen werden blau, und das **Optionen**-Feld zeigt den ersten Namen und wie viele andere, darunter die Knöpfe.
 
-- **Vereinigen** verbindet beide Formen.
-- **Abziehen** schneidet die blaue Form aus der ersten (**Tauschen** wechselt, welche aus welcher geschnitten wird).
-- **Schnittmenge** behält nur die Überlappung.
+- **Vereinigen** verbindet alle zu einer Form.
+- **Abziehen** schneidet alle blauen Formen aus der ersten aus (**Tauschen** wechselt, welche ausgeschnitten wird).
+- **Schnittmenge** behält nur die Fläche, die alle gemeinsam haben.
 
-Neue Punkte entstehen nur dort, wo sich die Konturen kreuzen. Formen mit Löchern (wie ein Donut) bleiben ein Decal mit Loch. Kombinieren funktioniert auch im Spiegelmodus.
+Nach jeder Kombination fragt FitFlat:
+
+- **Bearbeitbar lassen**: Die Originale bleiben im Ergebnis. Wähl das kombinierte Teil, dann erscheinen seine Teile darunter in der Liste (und als dünne Linien am Modell); ändere eins, und das Ergebnis zieht mit. **Anwenden** in der Zeile legt es fest, **Trennen** holt die Originale zurück. Wer die Punkte des kombinierten Teils selbst bearbeitet, legt es damit ebenfalls fest.
+- **Anwenden**: Das Ergebnis wird sofort eine normale Kontur.
+
+Mit **Nicht mehr fragen** bleibt deine Wahl. Neue Punkte entstehen nur dort, wo sich Konturen kreuzen. Formen mit Löchern (wie ein Donut) bleiben ein Decal mit Loch. Im Spiegelmodus werden die gezeichneten Hälften kombiniert, und das Ergebnis bleibt gespiegelt, damit beide Seiten passen.
 
 ---
 
