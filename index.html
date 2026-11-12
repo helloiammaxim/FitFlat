@@ -344,6 +344,42 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 /* dialogs */
 dialog.geo{ border:0; border-radius:18px; padding:0; width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); background:var(--surface); color:var(--ink); box-shadow:0 24px 80px rgba(0,0,0,.25); }
 dialog.unitdlg{ width:min(480px, calc(100vw - 24px)); }
+dialog.introdlg{ width:min(460px, calc(100vw - 24px)); }
+.intro{ list-style:none; margin:0; padding:0; }
+.intro li{ display:none; }
+.intro li.on{ display:grid; gap:5px; }
+.iwelcome{ display:grid; gap:5px; }
+.iwelcome b{ font-weight:650; font-size:20px; letter-spacing:-.01em; }
+.iwelcome span{ color:var(--muted); font-size:14px; line-height:1.45; }
+.tour{ position:fixed; inset:0; z-index:400; }
+.tour[hidden]{ display:none; }
+.tspot{ position:fixed; border-radius:14px; box-shadow:0 0 0 9999px rgba(0,0,0,.42), 0 0 0 2px var(--accent); transition:left .28s ease, top .28s ease, width .28s ease, height .28s ease; pointer-events:none; }
+.tcard{ position:fixed; width:min(340px, calc(100vw - 24px)); background:var(--surface); color:var(--ink); border-radius:16px; box-shadow:0 18px 60px rgba(0,0,0,.3); padding:16px 16px 12px; transition:left .28s ease, top .28s ease; }
+.tcard .ianim{ margin-bottom:6px; }
+.tclose{ position:absolute; top:6px; right:8px; width:28px; height:28px; border:0; border-radius:50%; background:none; color:var(--muted); font-size:20px; line-height:1; cursor:pointer; }
+.tclose:hover{ background:var(--fill); color:var(--ink); }
+.tfoot{ display:flex; align-items:center; gap:8px; margin-top:12px; }
+.tfoot .spacer{ flex:1; }
+@media (prefers-reduced-motion: reduce){ .tspot, .tcard{ transition:none; } }
+.ianim{ width:100%; height:auto; aspect-ratio:320/150; border-radius:12px; background:var(--fill); margin-bottom:8px; display:block; }
+.ianim line, .ianim polygon, .ianim rect, .ianim circle{ fill:none; stroke-linecap:round; stroke-linejoin:round; }
+.ianim .it line{ stroke:var(--ink); stroke-width:5; }
+.ianim .iw{ stroke:var(--fill2); stroke-width:3; }
+.ianim .itube{ fill:var(--surface); stroke:var(--line); stroke-width:1.5; }
+.ianim .ia line{ stroke:var(--accent); stroke-width:2.5; }
+.ianim .ip circle{ fill:var(--surface); stroke:var(--accent); stroke-width:2.5; }
+.ianim .ic circle{ fill:var(--ink); opacity:.28; }
+.ianim .ifill{ fill:var(--accent-soft); stroke:var(--accent); stroke-width:2; }
+.ianim .ifix{ fill-opacity:.2; stroke-width:2.5; }
+.ianim .isheet{ fill:var(--surface); stroke:var(--line); stroke-width:1.5; stroke-dasharray:5 4; }
+.ianim .icut{ stroke:var(--ink); stroke-width:2.5; }
+.intro b{ font-weight:650; font-size:15.5px; padding-right:24px; }
+.intro span{ color:var(--muted); font-size:13.5px; line-height:1.45; }
+.ilink{ color:var(--accent); font-size:13.5px; text-decoration:none; margin-left:8px; }
+.ilink:hover{ text-decoration:underline; }
+.idots{ display:flex; gap:6px; align-items:center; }
+.idots i{ width:7px; height:7px; border-radius:50%; background:var(--fill2); }
+.idots i.on{ background:var(--accent); }
 dialog.libdlg{ width:min(900px, calc(100vw - 24px)); }
 .libtabs{ margin-top:12px; display:inline-flex; }
 .libbar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
@@ -377,6 +413,7 @@ dialog.geo::backdrop{ background:rgba(0,0,0,.28); backdrop-filter:blur(4px); }
 .geo header{ padding:20px 22px 6px; }
 .geo header h2{ margin:0; font-size:20px; font-weight:650; letter-spacing:-.01em; }
 .geo header p{ margin:6px 0 0; color:var(--muted); font-size:13.5px; max-width:62ch; }
+.introdlg .body{ padding-top:22px; }
 .geo .body{ padding:10px 22px 12px; overflow:auto; display:flex; flex-direction:column; gap:14px; }
 .geo .row2{ display:grid; grid-template-columns:2fr 1fr auto auto; gap:8px; align-items:end; }
 .geo .row3{ display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; align-items:end; }
@@ -445,6 +482,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <button class="projname" id="projName" title="Your projects: open, rename, duplicate or start from a template"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span></button>
     <span class="modelinfo" id="modelinfo"></span>
     <span class="spacer"></span>
+    <button class="btn" id="introBtn" title="How it works: a short walkthrough and the manual" aria-label="How it works">?</button>
     <div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div>
     <div class="grp" aria-label="Panel layout">
       <select class="btn layoutsel" id="layoutSel" aria-label="Panel layout" title="Panel layout: where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown">
@@ -775,6 +813,26 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <footer><span class="note" id="libMsg" role="status"></span><span class="spacer"></span><button type="button" class="btn" id="libClose">Close</button></footer>
   </form>
 </dialog>
+<dialog class="geo introdlg" id="introDlg" aria-label="Welcome">
+  <form method="dialog" onsubmit="return false">
+    <div class="body"><canvas class="ianim" id="introLogo" width="640" height="300" aria-hidden="true"></canvas>
+      <div class="iwelcome"><b translate="no">FitFlat</b><span>You draw shapes on a bike frame. FitFlat turns them into flat pieces your cutter can cut.</span></div></div>
+    <footer><span class="spacer"></span>
+      <button type="button" class="btn" id="introSkip">Skip</button>
+      <button type="button" class="btn primary" id="introGo" autofocus>Show me around</button>
+    </footer>
+  </form>
+</dialog>
+<div class="tour" id="tour" hidden>
+  <div class="tspot" id="tourSpot"></div>
+  <div class="tcard" id="tourCard" role="dialog" aria-label="How it works">
+    <button type="button" class="tclose" id="tourClose" aria-label="Close" title="Close">×</button>
+    <ol class="intro"><li data-t="stage"><b>This is your frame</b><span>Drag the background to turn it, right-drag to slide it, scroll to zoom. Open at the top loads your own model.</span></li><li data-t="draw"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="30" y="46" width="260" height="58" rx="29" class="itube"/><polygon points="92,62 206,58 232,88 104,92" class="ifill" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.66;.74;.94;1" dur="5s" repeatCount="indefinite"/></polygon><g class="ia"><line x1="92" y1="62" x2="206" y2="58" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.14;0.24;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="206" y1="58" x2="232" y2="88" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.27;0.37;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="232" y1="88" x2="104" y2="92" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.40;0.50;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="104" y1="92" x2="92" y2="62" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.53;0.63;0.94;1" dur="5s" repeatCount="indefinite"/></line></g><g class="ip"><circle cx="92" cy="62" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.08;0.11;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="206" cy="58" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.21;0.24;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="232" cy="88" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.34;0.37;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="104" cy="92" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.47;0.50;0.94;1" dur="5s" repeatCount="indefinite"/></circle></g><g class="ic"><circle r="7"><animate attributeName="cx" values="60;92;206;232;104;92;92;60" keyTimes="0;.1;.23;.36;.49;.62;.94;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="120;62;58;88;92;62;62;120" keyTimes="0;.1;.23;.36;.49;.62;.94;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Draw a decal</b><span>With Draw, click points around the area you want to protect and click the first point again to close it. Ready shapes like a rectangle or a pill work too.</span></li><li data-t="edit"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="30" y="46" width="260" height="58" rx="29" class="itube"/><polygon points="88,58 236,50 262,112 96,94" class="ifix"><animate attributeName="points" values="88,58 236,50 262,112 96,94;88,58 236,50 262,112 96,94;88,58 222,58 226,92 96,94;88,58 222,58 226,92 96,94;88,58 236,50 262,112 96,94" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="fill" values="#ff453a;#ff453a;#0a84ff;#0a84ff;#ff453a" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="stroke" values="#ff453a;#ff453a;#0a84ff;#0a84ff;#ff453a" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></polygon><g class="ip"><circle r="4.5"><animate attributeName="cx" values="262;262;226;226;262" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="112;112;92;92;112" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="88" cy="58" r="4.5"/><circle cx="96" cy="94" r="4.5"/><circle r="4.5"><animate attributeName="cx" values="236;236;222;222;236" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="50;50;58;58;50" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle></g><g class="ic"><circle r="7"><animate attributeName="cx" values="290;262;226;226;290" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="135;112;92;92;135" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Make it fit</b><span>Edit drags points and moves the whole decal. Mirror puts a copy on the other side of the frame. If a decal turns red, the film would have to stretch too far there: make it smaller or split it with the Knife.</span></li><li data-t="sheet"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="62" y="16" width="196" height="118" rx="6" class="isheet"/><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.05;0.10;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="-70 60;-70 60;0 0;0 0" keyTimes="0;0.05;0.21;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="78" y="30" width="96" height="30" rx="15" class="ifill"/><rect x="78" y="30" width="96" height="30" rx="15" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.50;0.60;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.13;0.18;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="120 40;120 40;0 0;0 0" keyTimes="0;0.13;0.29;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="78" y="72" width="64" height="46" rx="8" class="ifill"/><rect x="78" y="72" width="64" height="46" rx="8" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.59;0.69;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.21;0.26;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="90 -60;90 -60;0 0;0 0" keyTimes="0;0.21;0.37;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="188" y="30" width="54" height="88" rx="12" class="ifill"/><rect x="188" y="30" width="54" height="88" rx="12" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.68;0.78;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.29;0.34;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="-110 -50;-110 -50;0 0;0 0" keyTimes="0;0.29;0.45;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><circle cx="165" cy="95" r="14" class="ifill"/><circle cx="165" cy="95" r="14" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.77;0.87;0.94;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Cut it</b><span>In the Sheet tab, pick your film and sheet size, then download the SVG or DXF for your cutter.</span></li><li data-t="help"><b>Need more?</b><span>This button plays the tour again. The manual has every tool and shortcut.</span></li></ol>
+    <div class="tfoot"><span class="idots" id="introDots" aria-hidden="true"></span><a class="ilink" id="introManual" href="https://github.com/helloiammaxim/FitFlat/blob/main/MANUAL.md" target="_blank" rel="noopener" title="The full manual, with every tool and shortcut">Manual</a><span class="spacer"></span>
+      <button type="button" class="btn" id="introBack">Previous</button>
+      <button type="button" class="btn primary" id="introOk">Next</button></div>
+  </div>
+</div>
 <dialog class="geo unitdlg" id="unitDlg" aria-labelledby="unitTitle">
   <form method="dialog" onsubmit="return false">
     <header><h2 id="unitTitle">Check the model size</h2>
@@ -6146,6 +6204,34 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "Skip": "Überspringen",
+  "Show me around": "Zeig's mir",
+  "Welcome": "Willkommen",
+  "This is your frame": "Das ist dein Rahmen",
+  "Drag the background to turn it, right-drag to slide it, scroll to zoom. Open at the top loads your own model.": "Zieh am Hintergrund, um ihn zu drehen, mit der rechten Maustaste verschiebst du ihn, mit dem Mausrad zoomst du. Mit Öffnen oben lädst du dein eigenes Modell.",
+  "With Draw, click points around the area you want to protect and click the first point again to close it. Ready shapes like a rectangle or a pill work too.": "Klick mit Zeichnen Punkte um die Stelle, die du schützen willst, und zum Schließen wieder auf den ersten Punkt. Fertige Formen wie Rechteck oder Pille gehen auch.",
+  "Edit drags points and moves the whole decal. Mirror puts a copy on the other side of the frame. If a decal turns red, the film would have to stretch too far there: make it smaller or split it with the Knife.": "Mit Bearbeiten ziehst du Punkte und verschiebst das ganze Decal. Spiegeln setzt eine Kopie auf die andere Rahmenseite. Wird ein Decal rot, müsste sich die Folie dort zu stark dehnen: mach es kleiner oder teil es mit dem Messer.",
+  "In the Sheet tab, pick your film and sheet size, then download the SVG or DXF for your cutter.": "Wähl im Reiter Bogen Folie und Bogengröße und lade dann die SVG- oder DXF-Datei für deinen Plotter herunter.",
+  "Need more?": "Mehr wissen?",
+  "This button plays the tour again. The manual has every tool and shortcut.": "Dieser Knopf startet die Tour noch einmal. Im Handbuch stehen alle Werkzeuge und Tastenkürzel.",
+  "A start frame is already loaded; drag the background to turn it. With the Draw tool, click points around the area you want to protect and click the first point again to close it. Ready shapes like a rectangle or a pill work too.": "Ein Startrahmen ist schon geladen; zieh am Hintergrund, um ihn zu drehen. Klick mit dem Zeichnen-Werkzeug Punkte um die Stelle, die du schützen willst, und zum Schließen wieder auf den ersten Punkt. Fertige Formen wie Rechteck oder Pille gehen auch.",
+  "Manual": "Handbuch", "The full manual, with every tool and shortcut": "Das ganze Handbuch mit allen Werkzeugen und Tastenkürzeln",
+
+  "You draw shapes on a bike frame. FitFlat turns them into flat pieces your cutter can cut.": "Du zeichnest Formen auf einen Fahrradrahmen. FitFlat macht daraus flache Teile, die dein Plotter schneiden kann.",
+  "Next": "Weiter", "Previous": "Zurück",
+  "Got it": "Alles klar",
+  "How it works: a short walkthrough and the manual": "So geht's: kurze Einführung und das Handbuch",
+  "How it works": "So geht's",
+  "Get a frame on screen": "Rahmen auf den Schirm",
+  "A start frame is already loaded, so you can try things right away. For your own bike, Open loads a 3D model, or Frame from geometry builds one from the numbers on the geometry chart.": "Ein Startrahmen ist schon geladen, du kannst also sofort loslegen. Für dein eigenes Rad lädt Öffnen ein 3D-Modell, oder Rahmen aus Geometrie baut eins aus den Zahlen der Geometrietabelle.",
+  "Look around": "Umschauen",
+  "Drag the background to turn the frame, right-drag to slide it, scroll to zoom.": "Zieh am Hintergrund, um den Rahmen zu drehen, mit der rechten Maustaste verschiebst du ihn, mit dem Mausrad zoomst du.",
+  "Draw a decal": "Decal zeichnen",
+  "With the Draw tool, click points around the area you want to protect and click the first point again to close it. Or pick a ready shape, like a rectangle or a pill, and drag it onto a tube.": "Klick mit dem Zeichnen-Werkzeug Punkte um die Stelle, die du schützen willst, und zum Schließen wieder auf den ersten Punkt. Oder nimm eine fertige Form, etwa ein Rechteck oder eine Pille, und zieh sie auf ein Rohr.",
+  "Make it fit": "Passend machen",
+  "The Edit tool drags points and moves the whole decal. Mirror puts a copy on the other side of the frame. If a decal turns red, the film would have to stretch too far there: make it smaller or split it with the Knife.": "Mit dem Bearbeiten-Werkzeug ziehst du Punkte und verschiebst das ganze Decal. Spiegeln setzt eine Kopie auf die andere Rahmenseite. Wird ein Decal rot, müsste sich die Folie dort zu stark dehnen: mach es kleiner oder teil es mit dem Messer.",
+  "Cut it": "Schneiden",
+  "Open the Sheet tab on the right, pick your film and sheet size, and download the SVG or DXF for your cutter.": "Öffne rechts den Reiter Bogen, wähl Folie und Bogengröße und lade die SVG- oder DXF-Datei für deinen Plotter herunter.",
   "Join": "Verbinden", "Move seam": "Naht verlegen", "Join at seam": "An Naht verbinden", "Open seam": "Naht öffnen",
   "Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there": "Beide Seiten an der Mittellinie zu einem Teil verbinden. Aus: zwei getrennte gespiegelte Teile, die sich dort nur berühren",
   "This piece goes all the way around, so it is left open along one seam. Move the seam to the other side": "Dieses Teil läuft ganz herum und bleibt deshalb an einer Naht offen. Naht auf die andere Seite verlegen",
@@ -6693,6 +6779,100 @@ document.querySelectorAll('#lang [data-lang]').forEach(b => b.addEventListener('
 
 demoFrame();
 setLang(LANG);
+
+// The welcome: the logo unrolling, shown once on the first visit. It leads into a short tour that points at the real controls;
+// the ? button starts the tour again.
+{
+  const dlg = $('#introDlg'), tour = $('#tour'), spot = $('#tourSpot'), card = $('#tourCard'), KEY = 'decal-studio-intro';
+  const steps = [...tour.querySelectorAll('.intro li')], dots = $('#introDots'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let at = 0, tabWas = null;
+  dots.innerHTML = steps.map(() => '<i></i>').join('');
+  // The logo in 3D: two Fs joined by arms that wrap half around a tube. It unrolls flat and rolls back, which is the whole tool in one move.
+  const logo = (() => {
+    const L = Math.PI / 2, U = 2 + L, NA = 28;
+    let rdr = null, scene, cam, geo, raf = 0, t0 = 0;
+    const path = (u, k) => { // plan position of the strip at length u for bend k (1 folded, 0 flat)
+      if (u <= 1) return [0.5 - u, 0.5];
+      const th = k * Math.PI, a = Math.min(u - 1, L), rest = u - 1 - a;
+      if (th < 1e-4) return [-0.5 - a - rest, 0.5];
+      const R = L / th, ph = th * a / L;
+      return [-0.5 - R * Math.sin(ph) - rest * Math.cos(ph), 0.5 - R + R * Math.cos(ph) - rest * Math.sin(ph)];
+    };
+    const quads = []; // [u0, u1, z0, z1]
+    quads.push([0, 0.5, 0, 2], [1.5 + L, U, 0, 2]);
+    for (const [z0, z1] of [[1.5, 2], [0.5, 1]]) { quads.push([0.5, 1, z0, z1], [1 + L, 1.5 + L, z0, z1]); for (let i = 0; i < NA; i++) quads.push([1 + L * i / NA, 1 + L * (i + 1) / NA, z0, z1]); }
+    const stops = [[0, 0x00, 0x33, 0xf8], [0.28, 0x42, 0x58, 0xfb], [0.5, 0x76, 0x80, 0xec], [0.72, 0xa0, 0xa4, 0xfa], [1, 0xed, 0xee, 0xfc]];
+    const colAt = u => { const x = u / U; let i = 0; while (i < stops.length - 2 && x > stops[i + 1][0]) i++; const a = stops[i], b = stops[i + 1], f = Math.max(0, Math.min(1, (x - a[0]) / (b[0] - a[0]))); return [1, 2, 3].map(q => (a[q] + (b[q] - a[q]) * f) / 255); };
+    const init = () => {
+      rdr = new THREE.WebGLRenderer({ canvas: $('#introLogo'), alpha: true, antialias: true }); rdr.setPixelRatio(1);
+      scene = new THREE.Scene(); cam = new THREE.OrthographicCamera(-2.75, 2.75, 1.29, -1.29, 0.1, 50); cam.up.set(0, 0, 1);
+      geo = new THREE.BufferGeometry();
+      const col = [];
+      for (const [u0, u1] of quads) for (const u of [u0, u1, u1, u0, u1, u0]) col.push(...colAt(u));
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(quads.length * 18), 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })));
+    };
+    const ease = x => x * x * (3 - 2 * x);
+    const draw = t => { // one 7 s loop: hold folded, unroll, hold flat, roll back
+      const c = t % 7, k = c < 1.4 ? 1 : c < 3.2 ? 1 - ease((c - 1.4) / 1.8) : c < 4.8 ? 0 : c < 6.6 ? ease((c - 4.8) / 1.8) : 1;
+      const P = geo.attributes.position.array; let o = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      for (const [u0, u1, z0, z1] of quads) { const a = path(u0, k), b = path(u1, k);
+        for (const [p, z] of [[a, z0], [b, z0], [b, z1], [a, z0], [b, z1], [a, z1]]) { P[o++] = p[0]; P[o++] = p[1]; P[o++] = z; }
+        for (const p of [a, b]) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
+      geo.attributes.position.needsUpdate = true;
+      const sway = Math.sin(t * 0.9) * 0.12 * k, d = [0.415 * k + 0.06 * (1 - k), 0.814 * k + 1 * (1 - k), 0.407 * k + 0.1 * (1 - k)], cs = Math.cos(sway), sn = Math.sin(sway);
+      const dx = d[0] * cs - d[1] * sn, dy = d[0] * sn + d[1] * cs, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+      cam.position.set(cx + dx * 10, cy + dy * 10, 1 + d[2] * 10); cam.lookAt(cx, cy, 1);
+      rdr.render(scene, cam);
+    };
+    const tick = now => { raf = requestAnimationFrame(tick); draw((now - t0) / 1000); };
+    return {
+      start() { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); t0 = performance.now(); if (still) draw(0); else raf = requestAnimationFrame(tick); },
+      stop() { cancelAnimationFrame(raf); raf = 0; },
+    };
+  })();
+  const target = k => ({ stage: $('#stage'), draw: $('#modeDraw'), edit: $('#modeEdit'), sheet: document.querySelector('aside.panel'), help: $('#introBtn') })[k];
+  const place = () => {
+    const el = target(steps[at].dataset.t), r = el.getBoundingClientRect(), W = innerWidth, H = innerHeight, big = r.width > W * 0.5 && r.height > H * 0.5;
+    const pad = big ? -10 : 6, x = r.left - pad, y = r.top - pad, w = r.width + pad * 2, h = r.height + pad * 2;
+    Object.assign(spot.style, { left: x + 'px', top: y + 'px', width: w + 'px', height: h + 'px' });
+    const cw = card.offsetWidth, ch = card.offsetHeight, gap = 14; let cx, cy;
+    if (big) { cx = x + w / 2 - cw / 2; cy = y + h - ch - 24; }                                   // inside a big area, low in the middle
+    else if (W - (x + w) >= cw + gap + 8) { cx = x + w + gap; cy = y + h / 2 - ch / 2; }          // to the right
+    else if (x >= cw + gap + 8) { cx = x - gap - cw; cy = y + h / 2 - ch / 2; }                   // to the left
+    else if (H - (y + h) >= ch + gap + 8) { cx = x + w / 2 - cw / 2; cy = y + h + gap; }          // below
+    else { cx = x + w / 2 - cw / 2; cy = y - gap - ch; }                                          // above
+    card.style.left = Math.max(12, Math.min(W - cw - 12, cx)) + 'px'; card.style.top = Math.max(12, Math.min(H - ch - 12, cy)) + 'px';
+  };
+  const go = i => { at = Math.max(0, Math.min(steps.length - 1, i));
+    const key = steps[at].dataset.t;
+    if (key === 'sheet') { if (tabWas == null) tabWas = localStorage.getItem('decal-studio-tab') || 'decals'; window.__showTab('sheet'); } else if (tabWas != null) { window.__showTab(tabWas); tabWas = null; }
+    steps.forEach((li, q) => { li.classList.toggle('on', q === at); const sv = li.querySelector('svg'); if (!sv) return;
+      try { if (q === at && !still) { sv.setCurrentTime(0); sv.unpauseAnimations(); } else { sv.setCurrentTime(q === at ? 4.4 : 0); sv.pauseAnimations(); } } catch (e) {} });
+    [...dots.children].forEach((d, q) => d.classList.toggle('on', q === at));
+    $('#introBack').style.visibility = at ? '' : 'hidden';
+    $('#introManual').hidden = at !== steps.length - 1;
+    $('#introManual').href = 'https://github.com/helloiammaxim/FitFlat/blob/main/' + (LANG === 'de' ? 'MANUAL.de.md' : 'MANUAL.md');
+    $('#introOk').textContent = at === steps.length - 1 ? 'Got it' : 'Next';
+    place(); };
+  const startTour = () => { if (dlg.open) dlg.close(); tour.hidden = false; go(0); $('#introOk').focus(); };
+  const endTour = () => { if (tour.hidden) return; tour.hidden = true; if (tabWas != null) { window.__showTab(tabWas); tabWas = null; } steps.forEach(li => { try { li.querySelector('svg')?.pauseAnimations(); } catch (e) {} }); };
+  const welcome = () => { if (!dlg.open) dlg.showModal(); logo.start(); try { localStorage.setItem(KEY, '1'); } catch (e) {} };
+  dlg.addEventListener('close', () => logo.stop());
+  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
+  $('#introSkip').addEventListener('click', () => dlg.close());
+  $('#introGo').addEventListener('click', startTour);
+  $('#introOk').addEventListener('click', () => { if (at === steps.length - 1) endTour(); else go(at + 1); });
+  $('#introBack').addEventListener('click', () => go(at - 1));
+  $('#tourClose').addEventListener('click', endTour);
+  tour.addEventListener('pointerdown', e => { if (e.target === tour) endTour(); });
+  addEventListener('keydown', e => { if (tour.hidden) return; if (e.key === 'Escape') endTour(); else if (e.key === 'ArrowRight') go(at + 1); else if (e.key === 'ArrowLeft') go(at - 1); else return; e.preventDefault(); e.stopPropagation(); }, true);
+  addEventListener('resize', () => { if (!tour.hidden) place(); });
+  $('#introBtn').addEventListener('click', startTour);
+  let seen = false; try { seen = !!localStorage.getItem(KEY); } catch (e) {}
+  if (!seen) setTimeout(() => { if (!document.querySelector('dialog[open]')) welcome(); }, 700);
+}
 })();
 
 </script>
