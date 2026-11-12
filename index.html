@@ -344,13 +344,25 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 /* dialogs */
 dialog.geo{ border:0; border-radius:18px; padding:0; width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); background:var(--surface); color:var(--ink); box-shadow:0 24px 80px rgba(0,0,0,.25); }
 dialog.unitdlg{ width:min(480px, calc(100vw - 24px)); }
-dialog.introdlg{ width:min(460px, calc(100vw - 24px)); }
 .intro{ list-style:none; margin:0; padding:0; }
 .intro li{ display:none; }
 .intro li.on{ display:grid; gap:5px; }
-.iwelcome{ display:grid; gap:5px; }
-.iwelcome b{ font-weight:650; font-size:20px; letter-spacing:-.01em; }
-.iwelcome span{ color:var(--muted); font-size:14px; line-height:1.45; }
+dialog.splash{ border:0; padding:0; margin:0; width:100vw; height:100vh; height:100dvh; max-width:none; max-height:none; color:var(--ink);
+  background:radial-gradient(120% 90% at 50% 38%, var(--surface) 0%, var(--paper) 75%); }
+dialog.splash::backdrop{ background:var(--paper); }
+dialog.splash form{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 20px; box-sizing:border-box; text-align:center; }
+.slogo{ width:min(44vh, 78vw, 400px); height:auto; aspect-ratio:1; display:block; margin-bottom:-6px; }
+.sword{ margin:0; font-size:clamp(34px, 6vw, 52px); font-weight:700; letter-spacing:-.03em; line-height:1; display:flex; }
+.sword i{ font-style:normal; display:inline-block; opacity:0; transform:translateY(.5em); animation:sup .5s cubic-bezier(.2,.9,.3,1.2) forwards; }
+.sword i:nth-child(1){ animation-delay:1.25s } .sword i:nth-child(2){ animation-delay:1.3s } .sword i:nth-child(3){ animation-delay:1.35s } .sword i:nth-child(4){ animation-delay:1.4s }
+.sword i:nth-child(5){ animation-delay:1.45s } .sword i:nth-child(6){ animation-delay:1.5s } .sword i:nth-child(7){ animation-delay:1.55s }
+.sline{ margin:4px 0 0; max-width:36ch; color:var(--muted); font-size:15px; line-height:1.45; opacity:0; animation:sup .5s ease 1.75s forwards; }
+.sbtns{ display:flex; gap:10px; margin-top:14px; opacity:0; animation:sup .5s ease 2s forwards; }
+.sbtns .btn{ padding:9px 16px; font-size:14.5px; }
+dialog.splash.out{ animation:sout .28s ease forwards; }
+@keyframes sup{ to{ opacity:1; transform:none; } }
+@keyframes sout{ to{ opacity:0; transform:scale(1.03); } }
+@media (prefers-reduced-motion: reduce){ .sword i, .sline, .sbtns{ animation:none; opacity:1; transform:none; } dialog.splash.out{ animation:none; } }
 .tour{ position:fixed; inset:0; z-index:400; }
 .tour[hidden]{ display:none; }
 .tspot{ position:fixed; border-radius:14px; box-shadow:0 0 0 9999px rgba(0,0,0,.42), 0 0 0 2px var(--accent); transition:left .28s ease, top .28s ease, width .28s ease, height .28s ease; pointer-events:none; }
@@ -413,7 +425,6 @@ dialog.geo::backdrop{ background:rgba(0,0,0,.28); backdrop-filter:blur(4px); }
 .geo header{ padding:20px 22px 6px; }
 .geo header h2{ margin:0; font-size:20px; font-weight:650; letter-spacing:-.01em; }
 .geo header p{ margin:6px 0 0; color:var(--muted); font-size:13.5px; max-width:62ch; }
-.introdlg .body{ padding-top:22px; }
 .geo .body{ padding:10px 22px 12px; overflow:auto; display:flex; flex-direction:column; gap:14px; }
 .geo .row2{ display:grid; grid-template-columns:2fr 1fr auto auto; gap:8px; align-items:end; }
 .geo .row3{ display:grid; grid-template-columns:1fr 1fr 1fr auto; gap:8px; align-items:end; }
@@ -813,21 +824,22 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <footer><span class="note" id="libMsg" role="status"></span><span class="spacer"></span><button type="button" class="btn" id="libClose">Close</button></footer>
   </form>
 </dialog>
-<dialog class="geo introdlg" id="introDlg" aria-label="Welcome">
+<dialog class="splash" id="introDlg" aria-label="Welcome">
   <form method="dialog" onsubmit="return false">
-    <div class="body"><canvas class="ianim" id="introLogo" width="640" height="300" aria-hidden="true"></canvas>
-      <div class="iwelcome"><b translate="no">FitFlat</b><span>You draw shapes on a bike frame. FitFlat turns them into flat pieces your cutter can cut.</span></div></div>
-    <footer><span class="spacer"></span>
+    <canvas class="slogo" id="introLogo" width="720" height="720" aria-hidden="true"></canvas>
+    <h1 class="sword" translate="no" aria-label="FitFlat"><i>F</i><i>i</i><i>t</i><i>F</i><i>l</i><i>a</i><i>t</i></h1>
+    <p class="sline">You draw shapes on a bike frame. FitFlat turns them into flat pieces your cutter can cut.</p>
+    <div class="sbtns">
       <button type="button" class="btn" id="introSkip">Skip</button>
       <button type="button" class="btn primary" id="introGo" autofocus>Show me around</button>
-    </footer>
+    </div>
   </form>
 </dialog>
 <div class="tour" id="tour" hidden>
   <div class="tspot" id="tourSpot"></div>
   <div class="tcard" id="tourCard" role="dialog" aria-label="How it works">
     <button type="button" class="tclose" id="tourClose" aria-label="Close" title="Close">×</button>
-    <ol class="intro"><li data-t="stage"><b>This is your frame</b><span>Drag the background to turn it, right-drag to slide it, scroll to zoom. Open at the top loads your own model.</span></li><li data-t="draw"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="30" y="46" width="260" height="58" rx="29" class="itube"/><polygon points="92,62 206,58 232,88 104,92" class="ifill" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.66;.74;.94;1" dur="5s" repeatCount="indefinite"/></polygon><g class="ia"><line x1="92" y1="62" x2="206" y2="58" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.14;0.24;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="206" y1="58" x2="232" y2="88" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.27;0.37;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="232" y1="88" x2="104" y2="92" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.40;0.50;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="104" y1="92" x2="92" y2="62" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.53;0.63;0.94;1" dur="5s" repeatCount="indefinite"/></line></g><g class="ip"><circle cx="92" cy="62" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.08;0.11;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="206" cy="58" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.21;0.24;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="232" cy="88" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.34;0.37;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="104" cy="92" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.47;0.50;0.94;1" dur="5s" repeatCount="indefinite"/></circle></g><g class="ic"><circle r="7"><animate attributeName="cx" values="60;92;206;232;104;92;92;60" keyTimes="0;.1;.23;.36;.49;.62;.94;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="120;62;58;88;92;62;62;120" keyTimes="0;.1;.23;.36;.49;.62;.94;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Draw a decal</b><span>With Draw, click points around the area you want to protect and click the first point again to close it. Ready shapes like a rectangle or a pill work too.</span></li><li data-t="edit"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="30" y="46" width="260" height="58" rx="29" class="itube"/><polygon points="88,58 236,50 262,112 96,94" class="ifix"><animate attributeName="points" values="88,58 236,50 262,112 96,94;88,58 236,50 262,112 96,94;88,58 222,58 226,92 96,94;88,58 222,58 226,92 96,94;88,58 236,50 262,112 96,94" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="fill" values="#ff453a;#ff453a;#0a84ff;#0a84ff;#ff453a" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="stroke" values="#ff453a;#ff453a;#0a84ff;#0a84ff;#ff453a" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></polygon><g class="ip"><circle r="4.5"><animate attributeName="cx" values="262;262;226;226;262" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="112;112;92;92;112" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="88" cy="58" r="4.5"/><circle cx="96" cy="94" r="4.5"/><circle r="4.5"><animate attributeName="cx" values="236;236;222;222;236" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="50;50;58;58;50" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle></g><g class="ic"><circle r="7"><animate attributeName="cx" values="290;262;226;226;290" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="135;112;92;92;135" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Make it fit</b><span>Edit drags points and moves the whole decal. Mirror puts a copy on the other side of the frame. If a decal turns red, the film would have to stretch too far there: make it smaller or split it with the Knife.</span></li><li data-t="sheet"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="62" y="16" width="196" height="118" rx="6" class="isheet"/><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.05;0.10;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="-70 60;-70 60;0 0;0 0" keyTimes="0;0.05;0.21;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="78" y="30" width="96" height="30" rx="15" class="ifill"/><rect x="78" y="30" width="96" height="30" rx="15" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.50;0.60;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.13;0.18;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="120 40;120 40;0 0;0 0" keyTimes="0;0.13;0.29;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="78" y="72" width="64" height="46" rx="8" class="ifill"/><rect x="78" y="72" width="64" height="46" rx="8" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.59;0.69;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.21;0.26;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="90 -60;90 -60;0 0;0 0" keyTimes="0;0.21;0.37;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="188" y="30" width="54" height="88" rx="12" class="ifill"/><rect x="188" y="30" width="54" height="88" rx="12" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.68;0.78;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.29;0.34;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="-110 -50;-110 -50;0 0;0 0" keyTimes="0;0.29;0.45;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><circle cx="165" cy="95" r="14" class="ifill"/><circle cx="165" cy="95" r="14" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.77;0.87;0.94;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Cut it</b><span>In the Sheet tab, pick your film and sheet size, then download the SVG or DXF for your cutter.</span></li><li data-t="help"><b>Need more?</b><span>This button plays the tour again. The manual has every tool and shortcut.</span></li></ol>
+    <ol class="intro"><li data-t="stage"><b>This is your frame</b><span>Drag the background to turn it, right-drag to slide it, scroll to zoom. Open at the top loads your own model.</span></li><li data-t="draw"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="30" y="46" width="260" height="58" rx="29" class="itube"/><polygon points="92,62 206,58 232,88 104,92" class="ifill" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.66;.74;.94;1" dur="5s" repeatCount="indefinite"/></polygon><g class="ia"><line x1="92" y1="62" x2="206" y2="58" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.14;0.24;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="206" y1="58" x2="232" y2="88" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.27;0.37;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="232" y1="88" x2="104" y2="92" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.40;0.50;0.94;1" dur="5s" repeatCount="indefinite"/></line><line x1="104" y1="92" x2="92" y2="62" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.53;0.63;0.94;1" dur="5s" repeatCount="indefinite"/></line></g><g class="ip"><circle cx="92" cy="62" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.08;0.11;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="206" cy="58" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.21;0.24;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="232" cy="88" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.34;0.37;0.94;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="104" cy="92" r="4.5" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.47;0.50;0.94;1" dur="5s" repeatCount="indefinite"/></circle></g><g class="ic"><circle r="7"><animate attributeName="cx" values="60;92;206;232;104;92;92;60" keyTimes="0;.1;.23;.36;.49;.62;.94;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="120;62;58;88;92;62;62;120" keyTimes="0;.1;.23;.36;.49;.62;.94;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Draw a decal</b><span>With Draw, click points around the area you want to protect and click the first point again to close it. Ready shapes like a rectangle or a pill work too.</span></li><li data-t="edit"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="30" y="46" width="260" height="58" rx="29" class="itube"/><polygon points="88,58 236,50 262,112 96,94" class="ifix"><animate attributeName="points" values="88,58 236,50 262,112 96,94;88,58 236,50 262,112 96,94;88,58 222,58 226,92 96,94;88,58 222,58 226,92 96,94;88,58 236,50 262,112 96,94" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="fill" values="#ff453a;#ff453a;#0a84ff;#0a84ff;#ff453a" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="stroke" values="#ff453a;#ff453a;#0a84ff;#0a84ff;#ff453a" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></polygon><g class="ip"><circle r="4.5"><animate attributeName="cx" values="262;262;226;226;262" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="112;112;92;92;112" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle><circle cx="88" cy="58" r="4.5"/><circle cx="96" cy="94" r="4.5"/><circle r="4.5"><animate attributeName="cx" values="236;236;222;222;236" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="50;50;58;58;50" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle></g><g class="ic"><circle r="7"><animate attributeName="cx" values="290;262;226;226;290" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/><animate attributeName="cy" values="135;112;92;92;135" keyTimes="0;.2;.5;.85;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Make it fit</b><span>Edit drags points and moves the whole decal. Mirror puts a copy on the other side of the frame. The Knife splits a decal in two.</span></li><li data-t="decals"><b>Decals: your pieces</b><span>Every decal you draw lands in this list. Rename, duplicate, lock or delete it here, or combine two with Union, Subtract and Intersect. History underneath steps back through your changes.</span></li><li data-t="view"><b>View: how you look at it</b><span>Jump to a fixed side, show a grid or a reference photo, and save views you need again. Stretch colours each decal by how hard the film has to stretch; red means too far.</span></li><li data-t="sheet"><svg class="ianim" viewBox="0 0 320 150" aria-hidden="true"><rect x="62" y="16" width="196" height="118" rx="6" class="isheet"/><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.05;0.10;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="-70 60;-70 60;0 0;0 0" keyTimes="0;0.05;0.21;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="78" y="30" width="96" height="30" rx="15" class="ifill"/><rect x="78" y="30" width="96" height="30" rx="15" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.50;0.60;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.13;0.18;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="120 40;120 40;0 0;0 0" keyTimes="0;0.13;0.29;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="78" y="72" width="64" height="46" rx="8" class="ifill"/><rect x="78" y="72" width="64" height="46" rx="8" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.59;0.69;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.21;0.26;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="90 -60;90 -60;0 0;0 0" keyTimes="0;0.21;0.37;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><rect x="188" y="30" width="54" height="88" rx="12" class="ifill"/><rect x="188" y="30" width="54" height="88" rx="12" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.68;0.78;0.94;1" dur="5s" repeatCount="indefinite"/></rect></g><g opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;0.29;0.34;0.94;1" dur="5s" repeatCount="indefinite"/><animateTransform attributeName="transform" type="translate" values="-110 -50;-110 -50;0 0;0 0" keyTimes="0;0.29;0.45;1" dur="5s" repeatCount="indefinite" calcMode="spline" keySplines="0 0 1 1;.2 .8 .2 1;0 0 1 1"/><circle cx="165" cy="95" r="14" class="ifill"/><circle cx="165" cy="95" r="14" class="icut" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1"><animate attributeName="stroke-dashoffset" values="1;1;0;0;1" keyTimes="0;0.77;0.87;0.94;1" dur="5s" repeatCount="indefinite"/></circle></g></svg><b>Sheet: ready to cut</b><span>All pieces are laid out flat here. Pick your film and sheet size, then download the SVG or DXF for your cutter.</span></li><li data-t="help"><b>Need more?</b><span>This button plays the tour again. The manual has every tool and shortcut.</span></li></ol>
     <div class="tfoot"><span class="idots" id="introDots" aria-hidden="true"></span><a class="ilink" id="introManual" href="https://github.com/helloiammaxim/FitFlat/blob/main/MANUAL.md" target="_blank" rel="noopener" title="The full manual, with every tool and shortcut">Manual</a><span class="spacer"></span>
       <button type="button" class="btn" id="introBack">Previous</button>
       <button type="button" class="btn primary" id="introOk">Next</button></div>
@@ -6204,6 +6216,13 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "Edit drags points and moves the whole decal. Mirror puts a copy on the other side of the frame. The Knife splits a decal in two.": "Mit Bearbeiten ziehst du Punkte und verschiebst das ganze Decal. Spiegeln setzt eine Kopie auf die andere Rahmenseite. Das Messer teilt ein Decal in zwei.",
+  "Decals: your pieces": "Decals: deine Teile",
+  "Every decal you draw lands in this list. Rename, duplicate, lock or delete it here, or combine two with Union, Subtract and Intersect. History underneath steps back through your changes.": "Jedes gezeichnete Decal landet in dieser Liste. Hier kannst du es umbenennen, duplizieren, sperren oder löschen, oder zwei mit Vereinigen, Abziehen und Schnittmenge kombinieren. Der Verlauf darunter geht deine Änderungen zurück.",
+  "View: how you look at it": "Ansicht: wie du draufschaust",
+  "Jump to a fixed side, show a grid or a reference photo, and save views you need again. Stretch colours each decal by how hard the film has to stretch; red means too far.": "Spring auf eine feste Seite, blende ein Raster oder ein Referenzfoto ein und speichere Ansichten, die du wieder brauchst. Dehnung färbt jedes Decal danach, wie stark sich die Folie dehnen muss; Rot heißt zu viel.",
+  "Sheet: ready to cut": "Bogen: fertig zum Schneiden",
+  "All pieces are laid out flat here. Pick your film and sheet size, then download the SVG or DXF for your cutter.": "Hier liegen alle Teile flach ausgelegt. Wähl Folie und Bogengröße und lade dann die SVG- oder DXF-Datei für deinen Plotter herunter.",
   "Skip": "Überspringen",
   "Show me around": "Zeig's mir",
   "Welcome": "Willkommen",
@@ -6787,9 +6806,10 @@ setLang(LANG);
   const steps = [...tour.querySelectorAll('.intro li')], dots = $('#introDots'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let at = 0, tabWas = null;
   dots.innerHTML = steps.map(() => '<i></i>').join('');
-  // The logo in 3D: two Fs joined by arms that wrap half around a tube. It unrolls flat and rolls back, which is the whole tool in one move.
+  // The logo in 3D: two Fs joined by arms that wrap half around a tube. On the splash a flat strip spins in, rolls up into
+  // the logo with a little overshoot and then idles with a slow sway.
   const logo = (() => {
-    const L = Math.PI / 2, U = 2 + L, NA = 28;
+    const L = Math.PI / 2, U = 2 + L, NA = 32;
     let rdr = null, scene, cam, geo, raf = 0, t0 = 0;
     const path = (u, k) => { // plan position of the strip at length u for bend k (1 folded, 0 flat)
       if (u <= 1) return [0.5 - u, 0.5];
@@ -6803,36 +6823,41 @@ setLang(LANG);
     for (const [z0, z1] of [[1.5, 2], [0.5, 1]]) { quads.push([0.5, 1, z0, z1], [1 + L, 1.5 + L, z0, z1]); for (let i = 0; i < NA; i++) quads.push([1 + L * i / NA, 1 + L * (i + 1) / NA, z0, z1]); }
     const stops = [[0, 0x00, 0x33, 0xf8], [0.28, 0x42, 0x58, 0xfb], [0.5, 0x76, 0x80, 0xec], [0.72, 0xa0, 0xa4, 0xfa], [1, 0xed, 0xee, 0xfc]];
     const colAt = u => { const x = u / U; let i = 0; while (i < stops.length - 2 && x > stops[i + 1][0]) i++; const a = stops[i], b = stops[i + 1], f = Math.max(0, Math.min(1, (x - a[0]) / (b[0] - a[0]))); return [1, 2, 3].map(q => (a[q] + (b[q] - a[q]) * f) / 255); };
+    const base = quads.map(([u0, u1]) => [colAt(u0), colAt(u1)]);
     const init = () => {
-      rdr = new THREE.WebGLRenderer({ canvas: $('#introLogo'), alpha: true, antialias: true }); rdr.setPixelRatio(1);
-      scene = new THREE.Scene(); cam = new THREE.OrthographicCamera(-2.75, 2.75, 1.29, -1.29, 0.1, 50); cam.up.set(0, 0, 1);
+      const cv = $('#introLogo'), px = Math.round(Math.min(2, devicePixelRatio || 1) * (cv.clientWidth || 360));
+      rdr = new THREE.WebGLRenderer({ canvas: cv, alpha: true, antialias: true }); rdr.setPixelRatio(1); rdr.setSize(px, px, false);
+      scene = new THREE.Scene(); cam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 80); cam.up.set(0, 0, 1);
       geo = new THREE.BufferGeometry();
-      const col = [];
-      for (const [u0, u1] of quads) for (const u of [u0, u1, u1, u0, u1, u0]) col.push(...colAt(u));
       geo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(quads.length * 18), 3));
-      geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+      geo.setAttribute('color', new THREE.Float32BufferAttribute(new Float32Array(quads.length * 18), 3));
       scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide })));
     };
-    const ease = x => x * x * (3 - 2 * x);
-    const draw = t => { // one 7 s loop: hold folded, unroll, hold flat, roll back
-      const c = t % 7, k = c < 1.4 ? 1 : c < 3.2 ? 1 - ease((c - 1.4) / 1.8) : c < 4.8 ? 0 : c < 6.6 ? ease((c - 4.8) / 1.8) : 1;
-      const P = geo.attributes.position.array; let o = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
-      for (const [u0, u1, z0, z1] of quads) { const a = path(u0, k), b = path(u1, k);
-        for (const [p, z] of [[a, z0], [b, z0], [b, z1], [a, z0], [b, z1], [a, z1]]) { P[o++] = p[0]; P[o++] = p[1]; P[o++] = z; }
-        for (const p of [a, b]) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } }
-      geo.attributes.position.needsUpdate = true;
-      const sway = Math.sin(t * 0.9) * 0.12 * k, d = [0.415 * k + 0.06 * (1 - k), 0.814 * k + 1 * (1 - k), 0.407 * k + 0.1 * (1 - k)], cs = Math.cos(sway), sn = Math.sin(sway);
-      const dx = d[0] * cs - d[1] * sn, dy = d[0] * sn + d[1] * cs, cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
-      cam.position.set(cx + dx * 10, cy + dy * 10, 1 + d[2] * 10); cam.lookAt(cx, cy, 1);
+    const c01 = x => Math.max(0, Math.min(1, x)), outCubic = x => 1 - Math.pow(1 - c01(x), 3);
+    const outBack = x => { x = c01(x); const c = 1.9; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+    const draw = t => {
+      const k = Math.min(1.06, outBack((t - 0.15) / 1.35)) * (t < 0.15 ? 0 : 1);                 // roll up, overshoot a touch, settle
+      const spin = -Math.PI * 2.2 * (1 - outCubic(t / 1.9)) + Math.sin(Math.max(0, t - 1.9) * 0.8) * 0.22; // whirl in, then sway
+      const zoom = 3.4 - 1.95 * outBack(t / 1.5), lift = 0.407 + 0.9 * (1 - outCubic(t / 1.7));  // from far and above to the logo view
+      const d0 = [0.415, 0.814], cs = Math.cos(spin), sn = Math.sin(spin), dx = d0[0] * cs - d0[1] * sn, dy = d0[0] * sn + d0[1] * cs;
+      const P = geo.attributes.position.array, C = geo.attributes.color.array; let o = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9;
+      quads.forEach(([u0, u1, z0, z1], qi) => { const a = path(u0, k), b = path(u1, k), tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
+        const face = Math.abs((-ty * dx + tx * dy) / tl) / Math.hypot(dx, dy), sh = 0.72 + 0.28 * face, ca = base[qi][0], cb = base[qi][1];
+        for (const [p, z, c] of [[a, z0, ca], [b, z0, cb], [b, z1, cb], [a, z0, ca], [b, z1, cb], [a, z1, ca]]) { C[o] = c[0] * sh; C[o + 1] = c[1] * sh; C[o + 2] = Math.min(1, c[2] * (0.86 + 0.14 * face)); P[o++] = p[0]; P[o++] = p[1]; P[o++] = z; }
+        for (const p of [a, b]) { if (p[0] < x0) x0 = p[0]; if (p[0] > x1) x1 = p[0]; if (p[1] < y0) y0 = p[1]; if (p[1] > y1) y1 = p[1]; } });
+      geo.attributes.position.needsUpdate = true; geo.attributes.color.needsUpdate = true;
+      const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, bob = Math.sin(Math.max(0, t - 1.9) * 1.1) * 0.03;
+      cam.left = -zoom; cam.right = zoom; cam.top = zoom; cam.bottom = -zoom; cam.updateProjectionMatrix();
+      cam.position.set(cx + dx * 20, cy + dy * 20, 1 + bob + lift * 20); cam.lookAt(cx, cy, 1 + bob);
       rdr.render(scene, cam);
     };
     const tick = now => { raf = requestAnimationFrame(tick); draw((now - t0) / 1000); };
     return {
-      start() { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); t0 = performance.now(); if (still) draw(0); else raf = requestAnimationFrame(tick); },
+      start() { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); t0 = performance.now(); if (still) draw(30); else raf = requestAnimationFrame(tick); },
       stop() { cancelAnimationFrame(raf); raf = 0; },
     };
   })();
-  const target = k => ({ stage: $('#stage'), draw: $('#modeDraw'), edit: $('#modeEdit'), sheet: document.querySelector('aside.panel'), help: $('#introBtn') })[k];
+  const target = k => ({ stage: $('#stage'), draw: $('#modeDraw'), edit: $('#modeEdit'), decals: document.querySelector('aside.panel'), view: document.querySelector('aside.panel'), sheet: document.querySelector('aside.panel'), help: $('#introBtn') })[k];
   const place = () => {
     const el = target(steps[at].dataset.t), r = el.getBoundingClientRect(), W = innerWidth, H = innerHeight, big = r.width > W * 0.5 && r.height > H * 0.5;
     const pad = big ? -10 : 6, x = r.left - pad, y = r.top - pad, w = r.width + pad * 2, h = r.height + pad * 2;
@@ -6847,7 +6872,7 @@ setLang(LANG);
   };
   const go = i => { at = Math.max(0, Math.min(steps.length - 1, i));
     const key = steps[at].dataset.t;
-    if (key === 'sheet') { if (tabWas == null) tabWas = localStorage.getItem('decal-studio-tab') || 'decals'; window.__showTab('sheet'); } else if (tabWas != null) { window.__showTab(tabWas); tabWas = null; }
+    if (key === 'decals' || key === 'view' || key === 'sheet') { if (tabWas == null) tabWas = localStorage.getItem('decal-studio-tab') || 'decals'; window.__showTab(key); } else if (tabWas != null) { window.__showTab(tabWas); tabWas = null; }
     steps.forEach((li, q) => { li.classList.toggle('on', q === at); const sv = li.querySelector('svg'); if (!sv) return;
       try { if (q === at && !still) { sv.setCurrentTime(0); sv.unpauseAnimations(); } else { sv.setCurrentTime(q === at ? 4.4 : 0); sv.pauseAnimations(); } } catch (e) {} });
     [...dots.children].forEach((d, q) => d.classList.toggle('on', q === at));
@@ -6860,9 +6885,9 @@ setLang(LANG);
   const endTour = () => { if (tour.hidden) return; tour.hidden = true; if (tabWas != null) { window.__showTab(tabWas); tabWas = null; } steps.forEach(li => { try { li.querySelector('svg')?.pauseAnimations(); } catch (e) {} }); };
   const welcome = () => { if (!dlg.open) dlg.showModal(); logo.start(); try { localStorage.setItem(KEY, '1'); } catch (e) {} };
   dlg.addEventListener('close', () => logo.stop());
-  dlg.addEventListener('click', e => { if (e.target === dlg) dlg.close(); });
-  $('#introSkip').addEventListener('click', () => dlg.close());
-  $('#introGo').addEventListener('click', startTour);
+  const leave = then => { if (still) { dlg.close(); then && then(); return; } dlg.classList.add('out'); setTimeout(() => { dlg.classList.remove('out'); dlg.close(); then && then(); }, 260); };
+  $('#introSkip').addEventListener('click', () => leave());
+  $('#introGo').addEventListener('click', () => leave(startTour));
   $('#introOk').addEventListener('click', () => { if (at === steps.length - 1) endTour(); else go(at + 1); });
   $('#introBack').addEventListener('click', () => go(at - 1));
   $('#tourClose').addEventListener('click', endTour);

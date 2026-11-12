@@ -8,7 +8,7 @@ FitFlat ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeichnest
 
 ---
 
-Der **?**-Knopf oben startet eine kurze Tour, die auf die wichtigsten Bedienelemente zeigt: 3D-Ansicht, Zeichnen, Bearbeiten und den Reiter Bogen. Beim ersten Besuch erscheint sie von selbst.
+Der **?**-Knopf oben startet eine kurze Tour, die auf die wichtigsten Bedienelemente zeigt: 3D-Ansicht, Zeichnen, Bearbeiten und die drei Reiter Decals, Ansicht und Bogen. Beim ersten Besuch erscheint sie von selbst.
 
 ## Inhalt
 

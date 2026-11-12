@@ -8,7 +8,7 @@ Open `index.html` in a current browser (Chrome, Edge, Safari, Firefox). Nothing 
 
 ---
 
-The **?** button at the top starts a short tour that points at the main controls: the 3D view, Draw, Edit and the Sheet tab. It appears by itself on your first visit.
+The **?** button at the top starts a short tour that points at the main controls: the 3D view, Draw, Edit and the three tabs Decals, View and Sheet. It appears by itself on your first visit.
 
 ## Contents
 
