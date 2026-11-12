@@ -559,12 +559,13 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <div class="seg" id="drawShape" role="group" aria-label="Shape">
               <button data-shape="free" aria-pressed="true" title="Click points or sketch freehand">Pen</button>
               <button data-shape="rect" aria-pressed="false" title="Drag from corner to corner (Shift: square, Alt: from centre)">Rect</button>
-              <button data-shape="circle" aria-pressed="false" title="Drag from the centre (Shift: from edge to edge)">Circle</button>
+              <button data-shape="circle" aria-pressed="false" title="Click to place one of the typed size, or drag from the centre (Shift: from edge to edge)">Circle</button>
               <button data-shape="poly" aria-pressed="false" title="Drag from the centre; the drag direction sets the rotation">Polygon</button>
               <button data-shape="pill" aria-pressed="false" title="A pill (stadium): drag its length and width, or type the size and click to place it">Pill</button>
             </div>
             <label class="clip" id="polySidesWrap" hidden title="Number of sides">Sides <input type="number" id="polySides" value="6" min="3" max="64" step="1"></label>
             <label class="clip" id="pillWrap" hidden title="Pill size in mm: click on the model to place one at this size, or drag to draw any size">L <input type="number" id="pillL" value="60" min="1" step="1"> × W <input type="number" id="pillW" value="20" min="1" step="1"> mm</label>
+            <label class="clip" id="circWrap" hidden title="Circle diameter in mm: click on the model to place one at this size, or drag to draw any size">Ø <input type="number" id="circD" value="30" min="1" step="1"> mm</label>
             <label class="clip" id="shapeRoundWrap" hidden title="Corner radius for rectangles and polygons">r <input type="number" id="shapeRound" value="0" min="0" step="0.5"> mm</label>
             <button class="btn tog" id="shapeMid" aria-pressed="false" hidden title="Snap the shape's centre onto the mirror plane, so it sits exactly in the middle">Centre on mirror</button>
             <div class="seg" id="lineStyle" role="group" aria-label="New points">
@@ -3318,7 +3319,7 @@ canvas.addEventListener('pointermove', e => {
       if (h) { const last = od.ctrl[od.ctrl.length - 1].p, seg = v3.len(v3.sub(h.p, last)); let tot = seg; for (let i = 1; i < od.ctrl.length; i++) tot += v3.len(v3.sub(od.ctrl[i].p, od.ctrl[i - 1].p));
         showMeasure(x, y, `${tr('Segment')} <b>${fmm(seg)} mm</b><br>${tr('Line')} <b>${fmm(tot)} mm</b>`); } else hideMeasure();
     } else if (!$('#measure').hidden) hideMeasure();
-    if (S.mode === 'draw' && S.drawShape === 'pill' && !S.vline && !S.placing) { const pp = pillAt(x, y); if (pp) drawShapeGhost(pp); else $('#placeGhost').hidden = true; } // see the pill before you click
+    if (S.mode === 'draw' && (S.drawShape === 'pill' || S.drawShape === 'circle') && !S.vline && !S.placing) { const pp = S.drawShape === 'pill' ? pillAt(x, y) : circleAt(x, y); if (pp) drawShapeGhost(pp); else $('#placeGhost').hidden = true; } // see the shape before you click
     return;
   }
   if (Math.hypot(x - press.x0, y - press.y0) > 4) press.moved = true;
@@ -3350,6 +3351,7 @@ function endPress(e) {
   if (p.type === 'shape') { $('#placeGhost').hidden = true;
     if (Math.hypot(p.x - p.x0, p.y - p.y0) > 6) makeShape(p);
     else if (S.drawShape === 'pill') placePill(p.x0, p.y0);
+    else if (S.drawShape === 'circle') { const c = circleAt(p.x0, p.y0); if (c) makeShape(c); else flash('Click on the model to place the circle.'); }
     else flash('Drag to size the shape.');
     return; }
   if (p.type === 'vline') { if (!p.moved) addViewPoint(p.x0, p.y0); else if (S.vline && S.lastMouse && Math.hypot(p.lx - S.lastMouse.x, p.ly - S.lastMouse.y) > 4) addViewPoint(S.lastMouse.x, S.lastMouse.y, true); return; }
@@ -3983,7 +3985,7 @@ function hintText() {
   if (L.length === 1) return 'Ctrl-click adds a point, Alt-click deletes one. Drag to move (hold Shift for fine moves, arrow keys nudge). Drag the pink handles to bend the curve; Alt-drag breaks them apart. Drop onto a neighbour to merge. F zooms in.';
   if (S.active && !S.active.closed) return S.mode === 'draw' ? 'Open line selected. Click on the model to continue it from the end (select the first point to continue from the start).' : 'Open line: drag points, Ctrl-click to add a point (past an end to extend it), Alt-click a point to delete it. Close shape turns it into a decal; switch to Draw to extend it.';
   if (S.active && S.active.closed) return (S.mode === 'edit' ? 'Drag inside the decal to move it; Ctrl + scroll turns it, Alt + scroll sizes it (Shift for bigger steps). ' : '') + 'Shift-click another decal to combine the two (union, subtract, intersect). Click a point to select it, Shift-drag a box to select several. Ctrl-click the line or the model to add a point, Alt-click a point to delete it. ' + (S.mode === 'draw' ? 'Click elsewhere on the model to start a new decal.' : 'Drag anywhere else to turn the view.');
-  if (S.mode === 'draw' && S.drawShape && S.drawShape !== 'free') return { rect: 'Rectangle: drag from corner to corner. Shift makes a square, Alt draws from the centre.', circle: 'Circle: drag from the centre outwards. Shift drags from edge to edge.', poly: 'Polygon: drag from the centre; the drag direction sets the rotation. Set the number of sides in the toolbar.', pill: 'Pill: drag its length and width (Alt draws from the centre), or set L × W in the toolbar and click to place one at that size.' }[S.drawShape] + ' The shape is projected from your view onto the surface; turn the view to line it up with a tube.';
+  if (S.mode === 'draw' && S.drawShape && S.drawShape !== 'free') return { rect: 'Rectangle: drag from corner to corner. Shift makes a square, Alt draws from the centre.', circle: 'Circle: click to place one of the size in the toolbar, or drag from the centre outwards (Shift drags from edge to edge).', poly: 'Polygon: drag from the centre; the drag direction sets the rotation. Set the number of sides in the toolbar.', pill: 'Pill: drag its length and width (Alt draws from the centre), or set L × W in the toolbar and click to place one at that size.' }[S.drawShape] + ' The shape is projected from your view onto the surface; turn the view to line it up with a tube.';
   if (S.mode === 'draw') return (S.lineStyle === 'curved' ? 'Clicks make smooth curves. ' : 'Clicks make straight lines; double-click a point later to curve it. ') + 'Click on the model to place points, or press and drag to sketch a freehand outline. Click off the model to draw an outline in the view; where it runs off the model it follows the edge of the surface. Drag the background, or hold Alt or Space and drag, to turn the view; right-drag pans.' + (mirrorOn() ? ' Points near the pink centre plane snap to it; start and end there for one symmetric decal.' : '');
   return 'Click a decal to select it, then drag its points to reshape it.';
 }
@@ -4104,7 +4106,8 @@ function updateUI() {
   $('#polySidesWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'poly';
   $('#shapeRoundWrap').hidden = S.mode !== 'draw' || !['rect', 'poly'].includes(S.drawShape);
   $('#pillWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'pill';
-  if (!S.placing && !(S.mode === 'draw' && S.drawShape === 'pill') && !(press && press.type === 'shape')) $('#placeGhost').hidden = true;
+  $('#circWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'circle';
+  if (!S.placing && !(S.mode === 'draw' && (S.drawShape === 'pill' || S.drawShape === 'circle')) && !(press && press.type === 'shape')) $('#placeGhost').hidden = true;
   $('#shapeMid').hidden = S.mode !== 'draw' || !S.drawShape || S.drawShape === 'free' || !S.mirrorDefault; $('#shapeMid').setAttribute('aria-pressed', !!S.shapeMid);
   $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', S.knifeThrough); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
   $('#lsStraight').setAttribute('aria-pressed', S.lineStyle !== 'curved'); $('#lsCurved').setAttribute('aria-pressed', S.lineStyle === 'curved');
@@ -5638,6 +5641,13 @@ function pillAt(x, y) { // the drag box for a pill of the typed size centred at 
   const ppm = camera.isOrthographicCamera ? canvas.clientHeight / (camera.top - camera.bottom) : canvas.clientHeight / (2 * new THREE.Vector3(...hit.p).distanceTo(camera.position) * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
   return { x0: x - L * ppm / 2, y0: y - W * ppm / 2, x: x + L * ppm / 2, y: y + W * ppm / 2 };
 }
+// a circle of the typed diameter centred at (x, y), as the drag that would draw it
+function circleAt(x, y) {
+  const hit = pickAt(x, y); if (!hit) return null;
+  const D = Math.max(1, +$('#circD').value || 30);
+  const ppm = camera.isOrthographicCamera ? canvas.clientHeight / (camera.top - camera.bottom) : canvas.clientHeight / (2 * new THREE.Vector3(...hit.p).distanceTo(camera.position) * Math.tan(THREE.MathUtils.degToRad(FOV / 2)));
+  return { x0: x, y0: y, x: x + D * ppm / 2, y };
+}
 function placePill(x, y) {
   const p = pillAt(x, y); if (!p) { flash('Click on the model to place the pill.'); return; }
   makeShape(p);
@@ -6506,6 +6516,10 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "Circle: click to place one of the size in the toolbar, or drag from the centre outwards (Shift drags from edge to edge).": "Kreis: Klick setzt einen in der Größe aus der Leiste, oder von der Mitte nach außen ziehen (Umschalt zieht von Rand zu Rand).",
+  "Click to place one of the typed size, or drag from the centre (Shift: from edge to edge)": "Klick setzt einen in der eingegebenen Größe, oder von der Mitte aus ziehen (Umschalt: von Rand zu Rand)",
+  "Circle diameter in mm: click on the model to place one at this size, or drag to draw any size": "Kreisdurchmesser in mm: Klick aufs Modell setzt einen in dieser Größe, oder zieh, um eine beliebige Größe zu zeichnen",
+  "Click on the model to place the circle.": "Klick aufs Modell, um den Kreis zu setzen.",
   "Draw it on the bike. Cut it flat. Done.": "Auf dem Rad zeichnen. Flach schneiden. Fertig.",
   "Where should it open?": "Wo soll es aufgehen?",
   "goes all the way round the tube. Film can't lie flat as a closed ring, so the piece gets one seam, a cut where its two edges meet on the frame. Pick a side where it won't show; the dashed line marks it.": "läuft ganz um das Rohr. Als geschlossener Ring liegt Folie nicht flach, deshalb bekommt das Teil eine Naht: einen Schnitt, an dem sich seine beiden Kanten am Rahmen treffen. Wähl eine Seite, wo sie nicht auffällt; die gestrichelte Linie zeigt sie.",
