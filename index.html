@@ -380,6 +380,9 @@ dialog.splash.out{ animation:sout .28s ease forwards; }
 .ianim .it line{ stroke:var(--ink); stroke-width:5; }
 .ianim .iw{ stroke:var(--fill2); stroke-width:3; }
 .ianim .it2 line{ stroke:var(--muted); stroke-width:3; }
+.ianim .ifr polygon, .ianim .ifr circle{ fill:var(--ink); stroke:var(--ink); stroke-width:.6; }
+.ianim .ibike .iw{ stroke-width:2; }
+.ianim .icap{ fill:var(--muted); font:500 11px -apple-system, 'Segoe UI', sans-serif; stroke:none; }
 .ianim .ifile path{ fill:var(--surface); stroke:var(--accent); stroke-width:2.5; }
 .ianim .ifile .ifold{ fill:none; }
 .ianim .ifile text{ fill:var(--accent); font:650 15px -apple-system, 'Segoe UI', sans-serif; stroke:none; }
@@ -6818,6 +6821,31 @@ setLang(LANG);
   const steps = [...tour.querySelectorAll('.intro li')], dots = $('#introDots'), still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   let at = 0, tabWas = null;
   dots.innerHTML = steps.map(() => '<i></i>').join('');
+  // The frames in the tour are the tool's own: side views built from the frame presets, with their real angles and tube diameters.
+  const frameArt = (name, cls) => {
+    const p = BUILTIN_PRESETS.find(q => q.name === name); if (!p) return '';
+    const g = {}; for (const k in p.geo) g[k] = p.geo[k][Math.min(1, p.geo[k].length - 1)];
+    const tubes = frameTubes(g, { ...TUBE_DEFAULT, ...p.tubes }), D = tubes.derived, R = p.cat === 'MTB' ? 372 : p.cat === 'Gravel' ? 350 : 340;
+    const x0 = D.rear[0] - R, x1 = D.front[0] + R, yG = D.rear[1] - R, yT = Math.max(D.htTop[1], ...tubes.map(t => Math.max(t.A[1], t.B[1]))) + 30;
+    const k = Math.min(296 / (x1 - x0), 132 / (yT - yG)), ox = 160 - (x0 + x1) / 2 * k, oy = 143 + yG * k;
+    const X = x => (ox + x * k).toFixed(1), Y = y => (oy - y * k).toFixed(1);
+    let out = `<g class="${cls}"><circle cx="${X(D.rear[0])}" cy="${Y(D.rear[1])}" r="${(R * k).toFixed(1)}" class="iw"/><circle cx="${X(D.front[0])}" cy="${Y(D.front[1])}" r="${(R * k).toFixed(1)}" class="iw"/><g class="ifr">`;
+    for (const t of tubes) {
+      if (/left$/.test(t.name)) continue;
+      if (/^BB/.test(t.name)) { out += `<circle cx="${X(0)}" cy="${Y(0)}" r="${(t.r1 * k).toFixed(1)}"/>`; continue; }
+      const dx = t.B[0] - t.A[0], dy = t.B[1] - t.A[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, a = t.r1 * (t.sx || 1), b = t.r2 * (t.sx || 1);
+      out += `<polygon points="${X(t.A[0] + nx * a)},${Y(t.A[1] + ny * a)} ${X(t.B[0] + nx * b)},${Y(t.B[1] + ny * b)} ${X(t.B[0] - nx * b)},${Y(t.B[1] - ny * b)} ${X(t.A[0] - nx * a)},${Y(t.A[1] - ny * a)}"/>`;
+    }
+    return out + `</g><text x="12" y="20" class="icap">${esc(p.name)}</text></g>`;
+  };
+  try {
+    const names = ['Road race', 'Carbon gravel', 'Trail hardtail 29'], n = names.length, D = n * 2.6;
+    $('#tour li[data-t="frame"] svg').innerHTML = names.map((nm, i) => { const a = i / n, b = (i + 1) / n, f = 0.12 / n;
+      const vals = i === 0 ? `1;1;0;0;1` : `0;0;1;1;0;0`, kts = i === 0 ? `0;${(b - f).toFixed(3)};${b.toFixed(3)};${(1 - f).toFixed(3)};1` : `0;${(a - f).toFixed(3)};${a.toFixed(3)};${(b - f).toFixed(3)};${b.toFixed(3)};1`;
+      return frameArt(nm, 'ibike').replace('<g class="ibike">', `<g class="ibike" opacity="${i ? 0 : 1}"><animate attributeName="opacity" values="${vals}" keyTimes="${kts}" dur="${D}s" repeatCount="indefinite"/>`); }).join('');
+    const file = $('#tour li[data-t="model"] svg .ifile');
+    $('#tour li[data-t="model"] svg').innerHTML = frameArt('Road race', 'ibike').replace('<g class="ibike">', '<g class="ibike" opacity="0"><animate attributeName="opacity" values="0;0;1;1;0" keyTimes="0;.34;.5;.95;1" dur="6s" repeatCount="indefinite"/>').replace(/<text.*?<\/text>/, '') + (file ? file.outerHTML : '');
+  } catch (e) {}
   // The logo in 3D: two Fs joined by arms that wrap half around a tube; one side of the sheet is white, the other blue.
   // On the splash: a blank sheet, the shape is cut into it from the right, its right half peels up and rolls over to the left
   // showing the blue side, the finished piece stands up, makes one full turn and stays as the logo.
