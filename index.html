@@ -356,12 +356,15 @@ dialog.splash{ --surface:#FFFFFF; --ink:#1C1C1E; --muted:#6E6E73; --line:rgba(60
   background:#FFFFFF; }
 dialog.splash::backdrop{ background:#FFFFFF; }
 dialog.splash form{ height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:24px 20px; box-sizing:border-box; text-align:center; }
-.slogo{ width:min(54vh, 88vw, 520px); height:auto; aspect-ratio:1; display:block; margin-bottom:-6px; }
+.slogo.live{ cursor:grab; touch-action:none; }
+.slogo.live.grab{ cursor:grabbing; }
+.slogo{ width:min(58vh, 92vw, 560px); height:auto; aspect-ratio:1; display:block; margin-bottom:-6px; }
 .sword{ color:#FFFFFF; margin:10px 0 6px; font-family:'FitFlat Mark', -apple-system, 'Segoe UI', sans-serif; font-size:clamp(40px, 10vw, 76px); font-weight:400; letter-spacing:0; line-height:1; display:flex; }
 .sword i{ font-style:normal; display:inline-block; opacity:0; transform:translateY(.5em); animation:sup .5s cubic-bezier(.2,.9,.3,1.2) forwards; }
 .sword i:nth-child(1){ animation-delay:4.7s } .sword i:nth-child(2){ animation-delay:4.75s } .sword i:nth-child(3){ animation-delay:4.8s } .sword i:nth-child(4){ animation-delay:4.85s }
 .sword i:nth-child(5){ animation-delay:4.9s } .sword i:nth-child(6){ animation-delay:4.95s } .sword i:nth-child(7){ animation-delay:5s }
-.sline span{ display:block; }
+.sline span, .sline b{ display:block; }
+.sline b{ color:#FFFFFF; font-weight:650; font-size:21px; letter-spacing:-.01em; margin-bottom:4px; }
 .sline{ text-wrap:balance; margin:6px 0 0; max-width:44ch; color:rgba(255,255,255,.72); font-size:17px; line-height:1.45; opacity:0; animation:sup .5s ease 5.3s forwards; }
 .sbtns{ display:flex; gap:10px; margin-top:14px; opacity:0; animation:sup .5s ease 1.2s forwards; }
 .sbtns .btn{ padding:9px 16px; font-size:14.5px; }
@@ -842,7 +845,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
   <form method="dialog" onsubmit="return false">
     <canvas class="slogo" id="introLogo" width="720" height="720" aria-hidden="true"></canvas>
     <h1 class="sword" translate="no" aria-label="FitFlat"><i>F</i><i>i</i><i>t</i><i>F</i><i>l</i><i>a</i><i>t</i></h1>
-    <p class="sline"><span>Draw straight on the 3D frame.</span> <span>Watch it unwrap flat, live.</span></p>
+    <p class="sline"><b>No more paper templates.</b> <span>Draw the film right on the frame. Cut it on your plotter.</span></p>
     <div class="sbtns">
       <button type="button" class="btn" id="introSkip">Skip</button>
       <button type="button" class="btn primary" id="introGo" autofocus>Show me around</button>
@@ -6230,6 +6233,8 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "No more paper templates.": "Schluss mit Papierschablonen.",
+  "Draw the film right on the frame. Cut it on your plotter.": "Zeichne die Folie direkt auf den Rahmen. Schneid sie auf deinem Plotter.",
   "Draw straight on the 3D frame.": "Zeichne direkt auf den 3D-Rahmen.",
   "Watch it unwrap flat, live.": "Sieh live zu, wie es flach wird.",
   "You draw shapes on a bike frame.": "Du zeichnest Formen auf einen Fahrradrahmen.",
@@ -6912,8 +6917,9 @@ setLang(LANG);
       const e = 0.4 * inOut((t - 0.6) / 2.2) + 0.6 * stand;                      // camera: straight down, then round to the logo view
       // one full turn that eases in and out; the slow sway grows out of its last part, so it never comes to a dead stop
       const settle = inOut((t - 5.4) / 2.6), spin = Math.PI * 2 * smoother((t - 3.0) / 3.1) + Math.sin(Math.max(0, t - 5.4) * 0.75) * 0.2 * settle;
-      const zoom = 2.3 - 1.02 * smoother((t - 2.4) / 2.4);  // it ends larger than it started
-      const q = qTop.clone().slerp(qEnd, e).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), spin));
+      const zoom = 2.3 - 0.8 * smoother((t - 2.4) / 2.4);  // it ends larger than it started
+      const q = qTop.clone().slerp(qEnd, e).premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 0, 1), spin + user.yaw - user.fx * 0.7));
+      { const pt = user.pitch - user.fy * 0.3; if (pt) q.premultiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0).applyQuaternion(q), pt)); } // tilt about the view's own horizontal
       const v = new THREE.Vector3(0, 0, 1).applyQuaternion(q);                   // from the piece towards the camera
       const P = geo.attributes.position.array, C = geo.attributes.color.array; let o = 0, x0 = 1e9, x1 = -1e9, y0 = 1e9, y1 = -1e9, zl = 1e9, zh = -1e9;
       quads.forEach(([u0, u1, z0, z1], qi) => { const a = path(u0, uf), b = path(u1, uf), tx = b[0] - a[0], ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
@@ -6939,9 +6945,26 @@ setLang(LANG);
       cam.quaternion.copy(q); cam.position.set(cx + v.x * 20, cy + v.y * 20, cz + v.z * 20);
       rdr.render(scene, cam);
     };
-    const tick = now => { raf = requestAnimationFrame(tick); draw((now - t0) / 1000); };
+    // once it has landed you can grab the logo and turn it; let go and it coasts, then drifts back to the logo view
+    const user = { yaw: 0, pitch: 0, vy: 0, vp: 0, drag: false, x: 0, y: 0, last: 0, rest: 0, hx: 0, hy: 0, fx: 0, fy: 0 }, READY = 5.6;
+    const bind = cv => {
+      cv.addEventListener('pointerdown', e => { if ((performance.now() - t0) / 1000 < READY && !still) return; user.drag = true; user.x = e.clientX; user.y = e.clientY; user.vy = user.vp = 0; cv.setPointerCapture(e.pointerId); cv.classList.add('grab'); e.preventDefault(); });
+      cv.addEventListener('pointermove', e => { if (!user.drag) return; const k = 5 / (cv.clientWidth || 360), dx = (e.clientX - user.x) * k, dy = (e.clientY - user.y) * k;
+        user.x = e.clientX; user.y = e.clientY; user.yaw -= dx; user.pitch = Math.max(-1.0, Math.min(0.5, user.pitch - dy * 0.6)); user.vy = -dx * 60; user.vp = 0; if (still) draw(30); });
+      // without a button held it simply looks towards the cursor
+      dlg.addEventListener('pointermove', e => { if (e.pointerType === 'touch') return; const r = cv.getBoundingClientRect(); user.hx = Math.max(-1, Math.min(1, (e.clientX - r.left - r.width / 2) / (innerWidth / 2))); user.hy = Math.max(-1, Math.min(1, (e.clientY - r.top - r.height / 2) / (innerHeight / 2))); });
+      dlg.addEventListener('pointerleave', () => { user.hx = user.hy = 0; });
+      const up = () => { if (!user.drag) return; user.drag = false; user.rest = performance.now(); cv.classList.remove('grab'); };
+      cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+    };
+    const coast = dt => { const live = (performance.now() - t0) / 1000 >= READY, f = 1 - Math.exp(-5 * dt);
+      user.fx += ((live ? user.hx : 0) - user.fx) * f; user.fy += ((live ? user.hy : 0) - user.fy) * f;
+      if (user.drag) return;
+      user.yaw += user.vy * dt; user.vy *= Math.exp(-2.2 * dt);
+      if (performance.now() - user.rest > 1400) { const home = Math.round(user.yaw / (Math.PI * 2)) * Math.PI * 2, k = 1 - Math.exp(-1.6 * dt); user.yaw += (home - user.yaw) * k; user.pitch += (0 - user.pitch) * k; } };
+    const tick = now => { raf = requestAnimationFrame(tick); const dt = Math.min(0.05, (now - user.last) / 1000 || 0); user.last = now; coast(dt); $('#introLogo').classList.toggle('live', (now - t0) / 1000 >= READY); draw((now - t0) / 1000); };
     return {
-      start() { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); t0 = performance.now(); if (still) draw(30); else { draw(0); raf = requestAnimationFrame(tick); } },
+      start() { try { if (!rdr) { init(); bind($('#introLogo')); } } catch (e) { return; } cancelAnimationFrame(raf); t0 = performance.now(); user.yaw = user.pitch = user.vy = user.fx = user.fy = user.hx = user.hy = 0; user.drag = false; $('#introLogo').classList.toggle('live', still); if (still) draw(30); else { draw(0); raf = requestAnimationFrame(tick); } },
       stop() { cancelAnimationFrame(raf); raf = 0; },
       at(t) { try { if (!rdr) init(); } catch (e) { return; } cancelAnimationFrame(raf); draw(t); },
     };
