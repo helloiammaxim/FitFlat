@@ -3028,13 +3028,15 @@ function clipHit(d, hit, wasPlane) {
 // d.seamOpen: never join (two separate mirrored pieces). d.seamFlip: join at the lower stretch and open the upper one.
 function mergedCtrl(d) {
   if (!d.mirror || !S.model || d.seamOpen) return null;
-  const n = d.ctrl.length, pi = [];
-  d.ctrl.forEach((c, i) => { if (c.plane) pi.push(i); });
+  const n = d.ctrl.length, C = d.ctrl, pi = [];
+  // a row of points that all sit on the centre line is one stretch of it: only its two ends count
+  const inner = i => d.closed ? C[(i - 1 + n) % n].plane && C[(i + 1) % n].plane : i > 0 && i < n - 1 && C[i - 1].plane && C[i + 1].plane;
+  C.forEach((c, i) => { if (c.plane && !(inner(i) && C.filter(x => x.plane).length < n)) pi.push(i); });
   if (pi.length < 2) return null;
   let best = null, band = false;
   const pairs = pi.slice(0, -1).map((a, q) => [a, pi[q + 1]]);
   if (d.closed) pairs.push([pi[pi.length - 1], pi[0]]);
-  const cntOf = ([a, b]) => (b - a - 1 + n) % n, zero = d.closed ? pairs.filter(pr => cntOf(pr) === 0) : [], full = pairs.filter(pr => cntOf(pr) >= 1);
+  const cntOf = ([a, b]) => { let k = 0; for (let i = (a + 1) % n; i !== b; i = (i + 1) % n) if (!C[i].plane) k++; return k; }, zero = d.closed ? pairs.filter(pr => cntOf(pr) === 0) : [], full = pairs.filter(pr => cntOf(pr) >= 1);
   if (zero.length && full.length) {
     const ht = ([a, b]) => d.ctrl[a].p[1] + d.ctrl[b].p[1];
     zero.sort((x, y) => ht(y) - ht(x)); // highest first: by default the seam is underneath
@@ -3723,8 +3725,10 @@ function addCurve(d, ctrl, res, preview, faint) {
   if (samples.length >= 2) {
     const k = S.model.diag * 0.0003;
     const pts = samples.map(s => offsetPt(s.point, s.face, k));
-    const bad = !preview && res?.error, act = S.active === d || isPicked(d), ghost = d.partOf && S.active !== d;
-    const l = fatLine(pts, d.closed, lineMat(bad ? '#D2413A' : isPicked(d) ? '#2F8FFF' : d.color, ghost ? 1.6 : faint ? 2 : act ? 3.5 : 2.5, ghost ? 0.6 : faint ? 0.7 : 1));
+    const bad = !preview && res?.error, act = S.active === d || isPicked(d), ghost = (d.partOf && S.active !== d) || (d.liveOf != null && partFocus() === d.liveOf);
+    const mat = lineMat(bad ? '#D2413A' : isPicked(d) ? '#2F8FFF' : d.color, ghost ? 1.5 : faint ? 2 : act ? 3.5 : 2.5, ghost ? 0.75 : faint ? 0.7 : 1);
+    if (ghost) { mat.dashed = true; mat.dashSize = 2.5; mat.gapSize = 2; mat.needsUpdate = true; } // the other parts: dashed, so they never read as part of the result
+    const l = fatLine(pts, d.closed, mat);
     l.renderOrder = 3; decalGroup.add(l); d.obj.push(l);
   }
   if (!preview && res?.seamEdges?.length && !res.error && isShown(d)) { // the seam a wrapped piece opens along: a dashed line on the model
@@ -3850,9 +3854,10 @@ S.picked = [];
 const isPicked = d => S.picked.includes(d);
 const comboOfDecal = d => d ? (d.partOf ? d.partOf.cid : d.liveOf ?? (d.holeOf ? comboOfDecal(S.decals.find(x => x.id === d.holeOf)) : null)) : null;
 const comboFocus = () => comboOfDecal(S.active);
-const isShown = d => !d.partOf || comboFocus() === d.partOf.cid;
+const partFocus = () => S.active?.partOf?.cid ?? (S.active?.holeOf ? S.decals.find(x => x.id === S.active.holeOf)?.partOf?.cid : undefined);
+const isShown = d => !d.partOf || partFocus() === d.partOf.cid;
 const pickable = d => !d.locked && isShown(d);
-const lookOf = d => (S.active === d ? 'a' : '') + (isPicked(d) ? 's' : '') + (d.partOf || d.liveOf != null ? (comboFocus() === comboOfDecal(d) ? 'f' : 'n') : '');
+const lookOf = d => (S.active === d ? 'a' : '') + (isPicked(d) ? 's' : '') + (d.partOf || d.liveOf != null ? (comboFocus() === comboOfDecal(d) ? 'f' : 'n') + (partFocus() === comboOfDecal(d) ? 'p' : '') : '');
 function restyle() { for (const x of S.decals) if (x.closed && x._look !== lookOf(x)) updateDecalVisual(x, false); }
 function setActive(d) { S.picked = d ? S.picked.filter(x => x !== d) : []; S.active = d; if (!d || S.sel?.decal !== d) S.sel = null; S.drawing = S.mode === 'draw' && d && !d.closed ? d : null; restyle(); renderHandles(); updateUI(); }
 function removeDecal(d, quiet) {
@@ -5009,10 +5014,10 @@ function ringToCtrl(ring, locate) {
   return ctrl.length >= 3 ? ctrl : null;
 }
 // grow a face set a little and fill its holes so it can be flattened as one disk
-function solidRegion(faceSet) {
+function solidRegion(faceSet, grow = 2) {
   const { mesh, topo } = S.model, T = mesh.tri, nf = T.length / 3, inR = new Uint8Array(nf);
   for (const f of faceSet) inR[f] = 1;
-  for (let ring = 0; ring < 2; ring++) {
+  for (let ring = 0; ring < grow; ring++) {
     const add = [];
     for (let f = 0; f < nf; f++) if (inR[f]) for (let k = 0; k < 3; k++) { const v = T[3*f+k]; for (let q = topo.vfStart[v]; q < topo.vfStart[v+1]; q++) add.push(topo.vf[q]); }
     for (const f of add) inR[f] = 1;
@@ -5161,45 +5166,71 @@ function clipSafe(op, a, bs) {
 }
 const ringArea = r => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]); return Math.abs(a) / 2; };
 // A combined with several shapes at once: Union joins all, Subtract cuts all of them out of A, Intersect keeps what all share.
-// Mirrored decals: if A is a mirrored half, the halves are combined and the result stays mirrored (so both sides match);
-// otherwise a mirrored shape counts on both sides.
+// Mirrored decals are combined as their drawn halves, each a plain closed outline on one side of the centre line (a piece
+// joined across the centre, even one that goes all the way round a tube, is just a disk on one side). The result is a half
+// again, with its points on the centre line marked, so it joins up exactly as the originals did. A one-sided decal combined
+// with a mirrored one therefore counts on both sides.
 function booleanCoreN(op, A, Bs, noTwins) {
-  const { mesh } = S.model, half = A.mirror && !A.mergedMap;
+  const { mesh } = S.model, half = !!A.mirror && !!mirrorPlane(), side = A.side || 1;
   const twinOf = B => !half && !noTwins && B.mirror && !B.mergedMap && B.twin?.res && !B.twin.res.error ? B.twin : null;
-  const faces = new Set(A.res.insideFaces);
-  for (const B of Bs) { for (const f of B.res.insideFaces) faces.add(f); const t = twinOf(B); if (t) for (const f of t.res.insideFaces) faces.add(f); }
-  for (const d of [A, ...Bs]) if (d.id != null) for (const h of holesOf(d)) for (const f of h.res?.insideFaces || []) faces.add(f);
-  const fl = Core.flatten(mesh, solidRegion(faces));
-  if (fl.error) {
+  const third = (a, b) => a.map((v, k) => v + (b[k] - v) / 3);
+  // a drawn half as a closed outline: its curves exactly as they run in the joined piece, and the stretch along the centre
+  // line straight along it
+  const closeHalf = d => {
+    const M = d.mergedMap, C = d.ctrl, n = C.length, H = new Map();
+    if (M) M.forEach((m, j) => { if (m.map && !m.map.m) H.set(m.map.o, Core.handlesFor(M, j, true)); });
+    return C.map((c, i) => { const nx = C[(i + 1) % n], pv = C[(i - 1 + n) % n], h = H.get(i) || Core.handlesFor(C, i, true);
+      return { p: c.p.slice(), face: c.face, plane: !!c.plane, type: 'bezier', broken: true, hin: c.plane && pv.plane ? third(c.p, pv.p) : h[0].slice(), hout: c.plane && nx.plane ? third(c.p, nx.p) : h[1].slice() }; });
+  };
+  const flipSide = C => C.map(c => { const q = Core.closestPoint(mesh, S.model.grid, reflect(c.p), 80); return { ...c, p: q.point, face: q.face, hin: reflect(c.hin), hout: reflect(c.hout) }; });
+  const halfOf = d => {
+    if (!half) return { ctrl: d.mergedMap || d.ctrl, res: d.res };
+    if (!d.mirror) return { ctrl: d.ctrl, res: d.res };
+    const own = (d.side || side) === side;
+    if (d.mergedMap) { const c = own ? closeHalf(d) : flipSide(closeHalf(d)); return { ctrl: c, res: solveOne(c, d.flip) }; }
+    if (own || !d.twin?.res || d.twin.res.error) return { ctrl: d.ctrl, res: d.res };
+    return { ctrl: d.twin.ctrl, res: d.twin.res };
+  };
+  const hA = halfOf(A), hBs = Bs.map(halfOf);
+  for (const h of [hA, ...hBs]) if (!h.res || h.res.error) return { error: 'One of the shapes could not be unwrapped on its own side of the centre line.' };
+  const holeHalves = d => d.id != null ? holesOf(d).map(halfOf).filter(h => h.res && !h.res.error) : [];
+  const faces = new Set(hA.res.insideFaces);
+  for (const [i, B] of Bs.entries()) { for (const f of hBs[i].res.insideFaces) faces.add(f); const t = twinOf(B); if (t) for (const f of t.res.insideFaces) faces.add(f); }
+  for (const d of [A, ...Bs]) for (const h of holeHalves(d)) for (const f of h.res.insideFaces) faces.add(f);
+  // the shapes are laid flat together; the margin around them is kept small enough that it never closes a ring round a tube
+  // (a ring would have to be cut open, and outlines crossing that cut can't be combined)
+  let fl = null;
+  for (const grow of [2, 1, 0]) { fl = Core.flatten(mesh, solidRegion(faces, grow)); if (!fl.error && !fl.seam) break; }
+  if (fl.error || fl.seam) {
     if (!noTwins && Bs.some(twinOf)) return booleanCoreN(op, A, Bs, true); // the mirrored side is out of reach: use the drawn side alone
-    return { error: 'These shapes do not overlap on one surface.' };
+    return { error: fl.seam ? 'Together these shapes go all the way round the tube, so they can\'t be combined as one flat piece. Leave a gap somewhere around the tube, or combine them in smaller steps.' : 'These shapes do not overlap on one surface.' };
   }
   const uvOf = (f, b) => { const li = fl.localFace.get(f); if (li === undefined) return null; const t = fl.lf[li]; return [b[0]*fl.u[t[0]] + b[1]*fl.u[t[1]] + b[2]*fl.u[t[2]], b[0]*fl.v[t[0]] + b[1]*fl.v[t[1]] + b[2]*fl.v[t[2]]]; };
   const sources = [];
   const ring = (ctrl, smp) => { const src = makeSource(ctrl, smp || [], uvOf); sources.push(src); const r = src.uvs.slice(); r.push(r[0]); return r; };
-  const poly = d => [ring(d.mergedMap || d.ctrl, d.res.samples), ...(d.id != null ? holesOf(d) : []).map(h => ring(h.mergedMap || h.ctrl, h.res?.samples || h.samples || []))].filter(r => r.length > 3);
-  const pA = poly(A); if (!pA.length) return { error: `${A.name} could not be laid flat with the others.` };
-  const pBs = Bs.map(B => { const mp = [poly(B)], t = twinOf(B); if (t) mp.push([ring(t.ctrl, t.res.samples)]); return mp.filter(p => p.length && p[0].length > 3); }).filter(m => m.length);
+  const poly = (h, d) => [ring(h.ctrl, h.res.samples), ...holeHalves(d).map(x => ring(x.ctrl, x.res.samples))].filter(r => r.length > 3);
+  const pA = poly(hA, A); if (!pA.length) return { error: `${A.name} could not be laid flat with the others.` };
+  const pBs = Bs.map((B, i) => { const mp = [poly(hBs[i], B)], t = twinOf(B); if (t) mp.push([ring(t.ctrl, t.res.samples)]); return mp.filter(p => p.length && p[0].length > 3); }).filter(m => m.length);
   if (!pBs.length) return { error: 'The other shapes could not be laid flat with this one.' };
   let res = clipSafe(op, pA, pBs);
   if (!res) return { error: 'These outlines run too closely along each other to combine. Move one of them a little and try again.' };
   // drop slivers left where outlines run along each other
-  const tiny = Math.max(0.5, (S.model.L || 1) ** 2 * 0.05);
+  const tiny = Math.max(1, (S.model.L || 1) ** 2 * 0.2);
   res = res.map(pg => [pg[0], ...pg.slice(1).filter(h => ringArea(h) > tiny)]).filter(pg => ringArea(pg[0]) > tiny);
   if (!res.length) return { error: op === 'intersection' ? 'These shapes do not overlap.' : 'Nothing would be left.', empty: true };
-  const locate = makeLocator(fl), sym = !!A.mergedMap;
+  const locate = makeLocator(fl), pl = mirrorPlane(), ptol = Math.max(0.25, (S.model.L || 1) * 0.3);
+  // points that came out on the centre line are put exactly on it, so the half joins its mirror there
+  const onPlane = ctrl => { if (!half) return ctrl; for (const c of ctrl) if (Math.abs(c.p[pl.k] - pl.c) < ptol) { const sn = snapToPlane(c.p, c.face); if (sn) { const dl = [0, 1, 2].map(k => sn.p[k] - c.p[k]); c.p = sn.p; c.face = sn.face; if (c.hin) c.hin = c.hin.map((v, k) => v + dl[k]); if (c.hout) c.hout = c.hout.map((v, k) => v + dl[k]); } c.plane = true; } else c.plane = false; return ctrl; };
   const made = [];
   res.forEach((pg, pi) => {
-    const outerExact = ringToCtrlExact(pg[0], sources, locate);
-    const outer = outerExact || ringToCtrl(pg[0], locate); if (!outer) return;
+    const outer = onPlane(ringToCtrlExact(pg[0], sources, locate) || ringToCtrl(pg[0], locate) || []); if (outer.length < 3) return;
     const id = S.nextId++;
-    const od = { id, name: res.length > 1 ? `${A.name} ${pi + 1}` : A.name, color: A.color, ctrl: outer, closed: true, flip: false, mirror: A.mirror && !sym, side: A.side, res: null, twin: null, obj: [] };
-    od._want = { area: ringArea(pg[0]), ring: pg[0], locate, sym };
-    if (sym && halveSymmetric(od, A)) od.mirror = true; // back to one editable half joined at the centre
+    const od = { id, name: res.length > 1 ? `${A.name} ${pi + 1}` : A.name, color: A.color, ctrl: outer, closed: true, flip: false, mirror: half, side, res: null, twin: null, obj: [] };
+    od._want = { area: ringArea(pg[0]), ring: pg[0], locate, half, onPlane };
     made.push(od);
     for (const hr of pg.slice(1)) {
       const hc = ringToCtrlExact(hr, sources, locate) || ringToCtrl(hr, locate); if (!hc) continue;
-      made.push({ id: S.nextId++, name: `${od.name} hole`, color: A.color, ctrl: hc, closed: true, flip: false, mirror: false, side: A.side, holeOf: id, res: null, twin: null, obj: [], _want: { area: ringArea(hr), ring: hr, locate, sym: false } });
+      made.push({ id: S.nextId++, name: `${od.name} hole`, color: A.color, ctrl: onPlane(hc), closed: true, flip: false, mirror: half, side, holeOf: id, res: null, twin: null, obj: [], _want: { area: ringArea(hr), ring: hr, locate, half, onPlane } });
     }
   });
   if (!made.length) return { error: 'That combination left no shape that can be cut.' };
@@ -5211,12 +5242,20 @@ function solveMade(made) {
   for (const d of made) {
     solveNow(d);
     const w = d._want; delete d._want;
-    if (!w || w.sym) continue;
-    const ok = r => r && !r.error && Math.abs(r.area - w.area) <= Math.max(w.area * 0.06, 4);
+    if (!w) continue;
+    // the flat union is one half; joined across the centre the piece is twice that. An inside-out fill is far off either way
+    const ok = r => { if (!r || r.error) return false; const want = w.half && d.merged ? w.area * 2 : w.area; return Math.abs(r.area - want) <= Math.max(want * 0.08, 4); };
     if (ok(d.res)) continue;
-    const alt = ringToCtrl(w.ring, w.locate); if (!alt) continue;
-    const keep = d.ctrl; d.ctrl = alt; solveNow(d);
-    if (!ok(d.res) && keep && d.res?.error) { d.ctrl = keep; solveNow(d); }
+    const alt = ringToCtrl(w.ring, w.locate), keep = { ctrl: d.ctrl, flip: d.flip };
+    const tries = [() => { d.flip = !keep.flip; }];
+    if (alt) tries.push(() => { d.flip = false; d.ctrl = w.onPlane(alt.map(c => ({ ...c }))); }, () => { d.flip = true; d.ctrl = w.onPlane(alt.map(c => ({ ...c }))); });
+    let best = { err: Math.abs((d.res?.area ?? 1e12) - w.area), ctrl: keep.ctrl, flip: keep.flip }, fixed = false;
+    for (const t of tries) {
+      d.ctrl = keep.ctrl; d.flip = keep.flip; t(); solveNow(d);
+      if (ok(d.res)) { fixed = true; break; }
+      const e = Math.abs((d.res?.area ?? 1e12) - w.area); if (!d.res?.error && e < best.err) best = { err: e, ctrl: d.ctrl, flip: d.flip };
+    }
+    if (!fixed) { d.ctrl = best.ctrl; d.flip = best.flip; solveNow(d); }
   }
 }
 // cut a full symmetric outline at the centre plane and keep the home half, so it stays a mirrored decal
@@ -5264,7 +5303,7 @@ function runBoolean(op, A, Bs) {
       S.decals.splice(at, 0, ...r.made);
       S.recomputing = true; try { solveMade(r.made); } finally { S.recomputing = false; }
       S.active = r.made[0] || null; S.sel = null; S.picked = [];
-      for (const d of S.decals) if (d.partOf?.cid === cid) updateDecalVisual(d, false);
+      restyle();
       setBusy(false); renderHandles(); updateUI();
       const holes = r.made.filter(d => d.holeOf).length, n = r.made.length - holes;
       const what = `${tr(BOOL_NAMES[op])}: ${n} ${n === 1 ? tr('piece') : tr('pieces')}${holes ? `, ${holes} ${holes === 1 ? tr('hole') : tr('holes')}` : ''}.`;
@@ -5325,7 +5364,7 @@ function undoCombo(cid) {
   const parts = S.decals.filter(d => d.partOf?.cid === cid);
   for (const d of parts) delete d.partOf;
   S.active = parts.find(d => !d.holeOf) || null;
-  for (const d of parts) updateDecalVisual(d, false);
+  for (const d of parts) updateDecalVisual(d, false); restyle();
   renderHandles(); updateUI(); flash('Back to the separate originals.');
 }
 // a part changed: build the result again from all parts; the other decals are left alone
@@ -5345,7 +5384,7 @@ function recomputeCombo(cid) {
   S.decals.splice(Math.max(0, Math.min(at, S.decals.length)), 0, ...r.made);
   S.recomputing = true; try { solveMade(r.made); } finally { S.recomputing = false; }
   if (wasActive) S.active = r.made[0] || null;
-  renderHandles(); updateUI();
+  restyle(); renderHandles(); updateUI();
 }
 // make the mirrored copy real geometry so it can be edited freely
 function applyMirror(d) {
