@@ -21,7 +21,7 @@ Projects save and load as `.json` (frame + decals + views).
 
 ## Projects, templates and sizes
 
-Projects are saved in the browser (with autosave), with search, duplicate and download. **Starting points** keep a frame with its usual decals for new projects; **decal templates** place a saved decal on any frame. Frames built from a geometry chart with several sizes can be **graded**: draw once, export cut sheets for every size.
+Projects are saved in the browser on your computer (with autosave; see [Privacy and data storage](#privacy-and-data-storage--datenschutz)), with search, duplicate and download. **Starting points** keep a frame with its usual decals for new projects; **decal templates** place a saved decal on any frame. Frames built from a geometry chart with several sizes can be **graded**: draw once, export cut sheets for every size.
 
 ## Film and cutting
 
@@ -42,6 +42,49 @@ The tools, tool options, View panel and point tools float: drag one by its grip,
 ## Language
 
 English and German (Deutsch). Switch with **EN | DE** in the top bar; the choice is remembered, and German browsers start in German.
+
+## Privacy and data storage / Datenschutz
+
+**In short:** FitFlat runs entirely in your browser. It has no server, no accounts, no analytics, no tracking and no cookies. Your frames, decals, projects and cut files are never uploaded anywhere; they stay on your computer.
+
+### What is processed where
+
+- **All work happens on your device.** Models, SVG artwork and project files you open are read locally by the browser. Unwrapping, packing and export (SVG, DXF, project `.json`) are computed locally and saved straight to your disk.
+- **Nothing is sent by FitFlat.** The app makes no network requests of its own: no upload, no telemetry, no error reporting, no third-party scripts beyond the libraries listed below.
+
+### What is stored, and where
+
+Stored only in your browser's own storage on this computer (IndexedDB and localStorage), under the site's address:
+
+| What | When | How to remove it |
+|---|---|---|
+| Saved projects and starting points (frame, decals, sheet settings, a small preview picture) | when you click Save or save a starting point | Projects → Delete |
+| Last session (autosave) | every 30 seconds while there are unsaved changes | Projects → Delete |
+| Decal templates | when you save one to the library | Projects → Decal templates → Delete |
+| Preferences: language, panel layout, film, sizes, open tab, hints and intro seen, combine choice | when you change them | clear the site data in the browser |
+
+None of this contains personal data unless you type it in yourself (for example a customer's name as a project name). Clearing the browser's site data for FitFlat deletes everything. To move or back up work, use **Download** in Projects and **Open** on the other computer.
+
+### Outside connections
+
+Only two, and only to load the page:
+
+1. **Hosting.** fitflat.app is served by GitHub Pages (GitHub, Inc., a Microsoft company). Like any web host, GitHub receives the visitor's IP address and browser details when the page is loaded. See the [GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
+2. **Libraries.** three.js and polygon-clipping are loaded from the jsDelivr CDN, which also receives the IP address. They are pinned to exact versions and checked with integrity hashes, so a changed file is refused.
+
+The **Manual** link opens GitHub only when you click it.
+
+### Running it fully locally or on a company network
+
+FitFlat is a single `index.html`. A company can host it on its own web server or intranet, so no request leaves the network except the library downloads. With the libraries bundled into the file (an offline build), it runs with no outside connection at all, also opened straight from disk. For strict GDPR requirements that is the recommended setup; get in touch for the offline build.
+
+### Note for operators
+
+Whoever offers FitFlat to others (for example on their own domain or in a company) is responsible for the privacy policy (Datenschutzerklärung) and legal notice (Impressum) of that site, including naming the host. This section describes how the software handles data; it is not legal advice.
+
+### Kurz auf Deutsch
+
+FitFlat läuft komplett im Browser. Es gibt keinen Server, kein Konto, keine Analyse, kein Tracking und keine Cookies. Rahmen, Decals, Projekte und Schneidedateien werden nirgends hochgeladen, sie bleiben auf deinem Computer. Gespeichert wird nur im Speicher deines Browsers (Projekte, Startpunkte, Vorlagen, automatische Sicherung, Einstellungen); Löschen der Website-Daten entfernt alles. Beim Laden der Seite erhalten nur der Hoster (GitHub Pages) und das CDN jsDelivr für die Bibliotheken die IP-Adresse. Für strenge DSGVO-Anforderungen lässt sich FitFlat im eigenen Firmennetz oder als Offline-Datei ganz ohne externe Verbindung betreiben. Wer FitFlat anderen anbietet, braucht für seine Seite eine eigene Datenschutzerklärung und ein Impressum. Dies ist keine Rechtsberatung.
 
 ## Tech
 
