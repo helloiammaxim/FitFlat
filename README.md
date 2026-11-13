@@ -6,7 +6,7 @@ A browser tool for making bicycle frame protection film decals. Load a frame mod
 
 **Manual:** [English](MANUAL.md) · [Deutsch](MANUAL.de.md)
 
-It is one self-contained `index.html` — no build step, no install. Open it in a browser, or serve the repo with GitHub Pages.
+It is one `index.html` plus its libraries in `lib/` — no build step, no install. Open it in a browser, serve the repo with GitHub Pages, or use the single-file [`fitflat-offline.html`](fitflat-offline.html).
 
 ## Workflow
 
@@ -67,16 +67,17 @@ None of this contains personal data unless you type it in yourself (for example 
 
 ### Outside connections
 
-Only two, and only to load the page:
+Only one, and only to load the page: **hosting.** fitflat.app is served by GitHub Pages (GitHub, Inc., a Microsoft company). Like any web host, GitHub receives the visitor's IP address and browser details when the page and its files are loaded. See the [GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
 
-1. **Hosting.** fitflat.app is served by GitHub Pages (GitHub, Inc., a Microsoft company). Like any web host, GitHub receives the visitor's IP address and browser details when the page is loaded. See the [GitHub Privacy Statement](https://docs.github.com/site-policy/privacy-policies/github-general-privacy-statement).
-2. **Libraries.** three.js and polygon-clipping are loaded from the jsDelivr CDN, which also receives the IP address. They are pinned to exact versions and checked with integrity hashes, so a changed file is refused.
-
-The **Manual** link opens GitHub only when you click it.
+The libraries (three.js, polygon-clipping) are served from the same site, from [`lib/`](lib/), so no CDN or other third party is contacted. On the public site a Content-Security-Policy lets the page load only its own files and send nothing anywhere. The **Manual** link opens GitHub only when you click it.
 
 ### Running it fully locally or on a company network
 
-FitFlat is a single `index.html`. A company can host it on its own web server or intranet, so no request leaves the network except the library downloads. With the libraries bundled into the file (an offline build), it runs with no outside connection at all, also opened straight from disk. For strict GDPR requirements that is the recommended setup; get in touch for the offline build.
+- **Offline file:** [`fitflat-offline.html`](fitflat-offline.html) is FitFlat as one file (about 1.6 MB) with all libraries inside. Save it, then open it straight from disk or put it on an intranet server. It makes no outside connection at all: a strict Content-Security-Policy in the file blocks every network address. To get it, download the file from this repository (open it on GitHub, then *Download raw file*).
+- **Own server:** copy `index.html` and the `lib/` folder to any web server in the company network; nothing then leaves the network.
+- **Projects in a company folder:** in Chrome and Edge, Projects → *Use a folder…* keeps projects and templates as files in a folder you pick, for example on a network drive, instead of in the browser.
+
+For strict GDPR requirements, the offline file or an own server together with a project folder is the recommended setup.
 
 ### Note for operators
 
@@ -84,11 +85,11 @@ Whoever offers FitFlat to others (for example on their own domain or in a compan
 
 ### Kurz auf Deutsch
 
-FitFlat läuft komplett im Browser. Es gibt keinen Server, kein Konto, keine Analyse, kein Tracking und keine Cookies. Rahmen, Decals, Projekte und Schneidedateien werden nirgends hochgeladen, sie bleiben auf deinem Computer. Gespeichert wird standardmäßig nur im Speicher deines Browsers (Projekte, Startpunkte, Vorlagen, automatische Sicherung, Einstellungen); Löschen der Website-Daten entfernt alles. Wahlweise (Chrome, Edge) liegen Projekte als Dateien in einem Ordner deiner Wahl, etwa auf einem Netzlaufwerk. Beim Laden der Seite erhalten nur der Hoster (GitHub Pages) und das CDN jsDelivr für die Bibliotheken die IP-Adresse. Für strenge DSGVO-Anforderungen lässt sich FitFlat im eigenen Firmennetz oder als Offline-Datei ganz ohne externe Verbindung betreiben. Wer FitFlat anderen anbietet, braucht für seine Seite eine eigene Datenschutzerklärung und ein Impressum. Dies ist keine Rechtsberatung.
+FitFlat läuft komplett im Browser. Es gibt keinen Server, kein Konto, keine Analyse, kein Tracking und keine Cookies. Rahmen, Decals, Projekte und Schneidedateien werden nirgends hochgeladen, sie bleiben auf deinem Computer. Gespeichert wird standardmäßig nur im Speicher deines Browsers (Projekte, Startpunkte, Vorlagen, automatische Sicherung, Einstellungen); Löschen der Website-Daten entfernt alles. Wahlweise (Chrome, Edge) liegen Projekte als Dateien in einem Ordner deiner Wahl, etwa auf einem Netzlaufwerk. Beim Laden der Seite erhält nur der Hoster (GitHub Pages) die IP-Adresse; die Bibliotheken kommen von derselben Seite, kein CDN. Für strenge DSGVO-Anforderungen gibt es `fitflat-offline.html`: eine einzige Datei, die ohne jede externe Verbindung läuft, direkt von der Festplatte oder aus dem Firmennetz. Wer FitFlat anderen anbietet, braucht für seine Seite eine eigene Datenschutzerklärung und ein Impressum. Dies ist keine Rechtsberatung.
 
 ## Tech
 
-[three.js](https://threejs.org) r147 and [polygon-clipping](https://github.com/mfogel/polygon-clipping) 0.15.7, loaded from jsDelivr.
+[three.js](https://threejs.org) r147 and [polygon-clipping](https://github.com/mfogel/polygon-clipping) 0.15.7, served from [`lib/`](lib/) (byte-identical copies of the npm packages, with their licences). After changing `index.html`, run `python3 tools/build-offline.py` to rebuild `fitflat-offline.html`.
 
 ## License
 

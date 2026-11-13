@@ -965,24 +965,24 @@ select optgroup{ font-weight:600; color:#6E6E73; }
   </form>
 </dialog>
 <script>
-// On the public site, only this page and the pinned libraries may run, and nothing may be sent anywhere:
+// On the public site, only this page and its own copies of the libraries (lib/) may run, and nothing may be sent anywhere:
 // a crafted project or SVG file cannot load or leak anything even if it slipped past the checks below.
 if (!/(^|\.)claude(usercontent)?\.(ai|com)$|^localhost$|^$/.test(location.hostname)) { const m = document.createElement('meta'); m.httpEquiv = 'Content-Security-Policy';
-  m.content = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'";
+  m.content = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'";
   document.head.appendChild(m); }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/polygon-clipping@0.15.7/dist/polygon-clipping.umd.min.js" integrity="sha384-2gzcIyrtB96QDjrxsFcJ1O461CWiXJ8fiHgIkJLwTgy4WTktHXTOXt4dviXz9Y5Q" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/build/three.min.js" integrity="sha384-vV17nr/rMaJqmeZkFUzXLpHdQ+ME5QHKdydaqqN+3Ga39RJlNrTatJxHwGV4ml2C" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/controls/OrbitControls.js" integrity="sha384-I0DMsfimAPIqWT8lF+oA997gRgdUi3jhidoTq3fN0zmn35smXZukD01FLnsPRU9i" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/GLTFLoader.js" integrity="sha384-FassWWYNEPQsuRQm+59KIMcDetEc30bNyE9yfx16Ok8lvoowyH81LtrPmLWltJMh" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/OBJLoader.js" integrity="sha384-zfBxZaiI8ZUg+I969NX47atW0LUUD1FLZxHlKLXLBAV8auKwVZCrF4i2BmMYdD89" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/STLLoader.js" integrity="sha384-z6Lbfx7Kh5dVdhEISsKE58gMRQj53xGx7jmDq6OgcXZ0UPVWLe1y46AZhp7DsiL1" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/loaders/SVGLoader.js" integrity="sha384-fk8EqljrTozHuOoi2NP/E81AqUQieLbJuWHsBOMPvgTIxD5RUXwNaH1wyaTDz245" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineSegmentsGeometry.js" integrity="sha384-myvbuu07Ikobcpiipf+WNHm0pZLVEslrAcOVM/wdMvG8+SAC7Ei0e96sZFlf7pgo" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineGeometry.js" integrity="sha384-ByLKh9yfmFQTjn6gnQ0IUEo1pzOrqLKnjMMX2BbXXGKIY2r05b5TDT5zDudQlK4h" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineMaterial.js" integrity="sha384-IysLpP+Ly1pP5wmDWOP9440DUD50qkc6SPvXj4SOSKHkmcSOOWw4Es2nwDRor8B0" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/LineSegments2.js" integrity="sha384-KeRPoF0zM5NtVfYoZz1Oeo2IthunIvkcIAlC7qCQBTjOtGHFLSgri19QgypiUAmA" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/three@0.147.0/examples/js/lines/Line2.js" integrity="sha384-WcZdtfooDu/YcIXQxXsmu7SNOrvAf6IXMBTabEB2o+qUBcBfw0wwQCp0xE5OYyGL" crossorigin="anonymous"></script>
+<script src="lib/polygon-clipping/dist/polygon-clipping.umd.min.js"></script>
+<script src="lib/three/build/three.min.js"></script>
+<script src="lib/three/examples/js/controls/OrbitControls.js"></script>
+<script src="lib/three/examples/js/loaders/GLTFLoader.js"></script>
+<script src="lib/three/examples/js/loaders/OBJLoader.js"></script>
+<script src="lib/three/examples/js/loaders/STLLoader.js"></script>
+<script src="lib/three/examples/js/loaders/SVGLoader.js"></script>
+<script src="lib/three/examples/js/lines/LineSegmentsGeometry.js"></script>
+<script src="lib/three/examples/js/lines/LineGeometry.js"></script>
+<script src="lib/three/examples/js/lines/LineMaterial.js"></script>
+<script src="lib/three/examples/js/lines/LineSegments2.js"></script>
+<script src="lib/three/examples/js/lines/Line2.js"></script>
 <script>
 /* ===== CORE GEOMETRY (DOM-free) ===== */
 const Core = (() => {
