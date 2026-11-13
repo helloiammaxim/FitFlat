@@ -184,6 +184,7 @@ In Edit mode, with a closed decal selected, the **Decal** panel lets you type ex
 - **Join** (in the decal's row) decides whether the two sides are one piece across the centre line or two separate mirrored pieces that only meet there.
 - A shape that goes all the way around a tube is never closed into a ring: it joins along one stretch of the centre line and stays open along the other, so it always unwraps into one flat piece.
 - Whenever a piece closes around a tube, FitFlat asks where the seam should go (underneath, on top, the far side or the near side) and marks it on the model as a dashed line. **Seam** in the decal's row changes it later.
+- Where a mirrored decal runs along the centre line, each stretch it runs along is an **edge** with a small numbered tag on the model: a link means **joined** (both sides are one piece there), scissors mean **seam** (the film is cut open there, dashed line). Click a tag to switch it. Only one edge can stay joined; joined at two, the piece would close into a ring, so FitFlat asks which edges stay open (hover a row to see the edge light up). Cut every edge open and you get two separate pieces.
 - The Knife cuts seams too: a cut along the centre line splits a joined decal into its two sides, and they stay apart until you press **Join**.
 - A decal that starts and ends on the centre plane becomes **one symmetric decal** across the middle — you edit one half, the other follows.
 - A shape or pen outline that crosses the centre plane is cut there and becomes a symmetric decal (no overlapping copies).

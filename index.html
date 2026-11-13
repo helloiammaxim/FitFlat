@@ -309,6 +309,21 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 .tw.live{ background:var(--accent-soft); color:var(--accent); }
 .seamlist{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .seamlist .btn{ padding:10px 12px; justify-content:center; }
+.seamlist.runs{ grid-template-columns:1fr; gap:4px; }
+.runrow{ display:flex; align-items:center; gap:10px; padding:9px 12px; border-radius:10px; background:var(--fill); cursor:pointer; }
+.runrow:hover{ background:var(--fill2); }
+.runrow input{ width:18px; height:18px; accent-color:var(--accent); margin:0; }
+.runrow span{ color:var(--muted); }
+.runrow .st{ margin-left:auto; font-size:12px; }
+.runwarn{ margin:6px 2px 0; min-height:1.2em; font-size:12.5px; color:var(--muted); }
+.runwarn.bad{ color:#D2413A; }
+#seamMarks{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+#seamMarks button{ position:absolute; left:0; top:0; pointer-events:auto; display:flex; align-items:center; gap:3px; height:24px; padding:0 8px 0 6px; border-radius:12px; border:1.5px solid var(--accent); background:var(--surface); color:var(--ink); font:600 11.5px/1 inherit; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.25); white-space:nowrap; }
+#seamMarks button svg{ width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+#seamMarks button.cut{ border-style:dashed; border-color:var(--ink); }
+#seamMarks button.join{ color:var(--accent); }
+#seamMarks button.back{ opacity:.45; }
+#seamMarks button:hover{ opacity:1; border-color:#E5007E; color:#E5007E; }
 .libwhere p{ margin:0; }
 .libwbtns{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px; }
 .libwbtns .btn{ padding:5px 10px; font-size:13px; }
@@ -723,6 +738,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div class="ghost" id="knifeLine" hidden></div>
       <div class="ghost" id="vlineOverlay" hidden></div>
       <div id="gizmo" hidden></div>
+      <div id="seamMarks" hidden></div>
       <div class="refov" id="refOv" hidden><img id="refImg" alt="Reference image"><span class="rgrip" id="refMove" title="Drag to move the image"></span><span class="rsize" id="refSize" title="Drag to size the image; hold Alt to turn it"></span></div>
       <div class="placebar" id="placeBar" hidden>
         <strong>Place artwork</strong>
@@ -857,7 +873,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
   <form method="dialog" onsubmit="return false">
     <canvas class="slogo" id="introLogo" width="720" height="720" aria-hidden="true"></canvas>
     <h1 class="sword" translate="no" aria-label="FitFlat"><i>F</i><i>i</i><i>t</i><i>F</i><i>l</i><i>a</i><i>t</i></h1>
-    <p class="sline"><b>Draw it on the bike. Cut it flat. Done.</b></p>
+    <p class="sline"><b>Draw in 3D. Export flat. Done.</b></p>
     <div class="sbtns">
       <button type="button" class="btn" id="introSkip">Skip</button>
       <button type="button" class="btn primary" id="introGo" autofocus>Show me around</button>
@@ -877,9 +893,9 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 <dialog class="geo unitdlg" id="seamDlg" aria-labelledby="seamTitle">
   <form method="dialog" onsubmit="return false">
     <header><h2 id="seamTitle">Where should it open?</h2>
-      <p><b id="seamName"></b> <span>goes all the way round the tube. Film can't lie flat as a closed ring, so the piece gets one seam, a cut where its two edges meet on the frame. Pick a side where it won't show; the dashed line marks it.</span></p></header>
+      <p><b id="seamName"></b> <span id="seamText">goes all the way round the tube. Film can't lie flat as a closed ring, so the piece gets one seam, a cut where its two edges meet on the frame. Pick a side where it won't show; the dashed line marks it.</span></p></header>
     <div class="body"><div class="seamlist" id="seamList"></div></div>
-    <footer><span class="spacer"></span><button type="button" class="btn" id="seamKeep">Keep it underneath</button></footer>
+    <footer><span class="spacer"></span><button type="button" class="btn" id="seamKeep">Keep it underneath</button><button type="button" class="btn primary" id="seamOk" hidden>Done</button></footer>
   </form>
 </dialog>
 <dialog class="geo unitdlg" id="boolDlg" aria-labelledby="boolTitle">
@@ -1942,7 +1958,7 @@ new MutationObserver(() => wake(600)).observe(document.body, { subtree: true, ch
 (function loop(){ const now = performance.now(); if (tween) { wake(); tween(); } controls.update();
   let pressing = false; try { pressing = !!press; } catch (e) {} // press is declared further down
   if (now > awakeUntil && !S.busy && !pressing && now - lastDraw < 1000) { requestAnimationFrame(loop); return; } lastDraw = now;
-  syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
+  syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); drawSeamMarks(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
   if (S.model && !camera.isOrthographicCamera) { const dd = camera.position.distanceTo(controls.target); const nn = Math.max(0.05, dd * 0.01); if (Math.abs(camera.near - nn) > nn * 0.2) { camera.near = nn; camera.updateProjectionMatrix(); } } renderer.render(scene, camera); requestAnimationFrame(loop); })();
 
 // ---------- model ----------
@@ -2248,7 +2264,7 @@ function buildFromGeometry(geo, tubesIn, name, carryDecals, meta) {
     const old = S.source.tubes;
     carry = S.decals.filter(d => d.ctrl.length).map(d => ({
       id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir,
-      ctrl: d.ctrl.map(c => ({ p: toTube(c.p, old), hin: c.hin && toTube(c.hin, old), hout: c.hout && toTube(c.hout, old), type: c.type, plane: c.plane })),
+      ctrl: d.ctrl.map(c => ({ p: toTube(c.p, old), hin: c.hin && toTube(c.hin, old), hout: c.hout && toTube(c.hout, old), type: c.type, plane: c.plane, seam: c.seam })),
     }));
   }
   const raw = tubesToRaw(tubes);
@@ -2475,7 +2491,7 @@ function projectJSON() {
     presets: userPresets,
     decals: S.decals.filter(d => d.ctrl.length).map(d => ({
       id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir,
-      ctrl: d.ctrl.map(c => ({ p: r3(c.p), type: c.type || 'auto', hin: r3(c.hin), hout: r3(c.hout), plane: !!c.plane })),
+      ctrl: d.ctrl.map(c => ({ p: r3(c.p), type: c.type || 'auto', hin: r3(c.hin), hout: r3(c.hout), plane: !!c.plane, seam: c.seam })),
     })),
   });
 }
@@ -2853,7 +2869,7 @@ function restoreDecals(list, msg, fname) {
     const { mesh, grid } = S.model, idMap = new Map(), made = [];
     for (const dd of list) {
       const id = S.nextId++; if (dd.id != null) idMap.set(dd.id, id);
-      const ctrl = dd.ctrl.map(c => { const h = c.p && Core.closestPoint(mesh, grid, c.p, 120); return h && { p: h.point, face: h.face, type: c.type, hin: c.hin || undefined, hout: c.hout || undefined, plane: !!c.plane }; }).filter(Boolean);
+      const ctrl = dd.ctrl.map(c => { const h = c.p && Core.closestPoint(mesh, grid, c.p, 120); return h && { p: h.point, face: h.face, type: c.type, hin: c.hin || undefined, hout: c.hout || undefined, plane: !!c.plane, seam: typeof c.seam === 'boolean' ? c.seam : undefined }; }).filter(Boolean);
       if (!ctrl.length) continue;
       const d = { id, name: safeName(dd.name) || `Decal ${id}`, color: safeColor(dd.color) || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, seamOpen: !!dd.seamOpen, seamFlip: !!dd.seamFlip, res: null, twin: null, obj: [], _hole: dd.holeOf, _part: dd.partOf, _live: dd.liveOf, seamDir: Array.isArray(dd.seamDir) && dd.seamDir.length === 3 && dd.seamDir.every(Number.isFinite) ? dd.seamDir : undefined };
       S.decals.push(d); made.push(d);
@@ -3013,7 +3029,7 @@ function hitLine(x, y) {
 // ---------- history ----------
 const HIST = { undo: [], redo: [] };
 const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf || undefined, liveOf: d.liveOf ?? undefined, seamDir: d.seamDir,
-  ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken })) });
+  ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken, seam: c.seam })) });
 const snapshot = () => JSON.stringify({ decals: S.decals.map(decalState), drawing: S.drawing?.id ?? null });
 // each entry is the state before a step, with the step's name and time
 function pushHistory(label) { HIST.undo.push({ s: snapshot(), label: label ? tr(label) : null, t: Date.now() }); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; renderHistorySoon(); }
@@ -3138,21 +3154,38 @@ function clipHit(d, hit, wasPlane) {
 // The two sides join along one stretch of the centre line only. Where the outline touches the centre line a second time
 // (a shape that goes all the way around a tube), that stretch stays open as the seam, so the piece can always be unwrapped.
 // d.seamOpen: never join (two separate mirrored pieces). d.seamFlip: join at the lower stretch and open the upper one.
-function mergedCtrl(d) {
-  if (!d.mirror || !S.model || d.seamOpen) return null;
+// Each stretch can also be set by hand: the point it starts at carries seam: true (stays open) or false (joined).
+// Joined along two or more stretches the piece would close into a ring, so only one is ever joined; the user picks which.
+function planeRuns(d) {
   const n = d.ctrl.length, C = d.ctrl, pi = [];
   // a row of points that all sit on the centre line is one stretch of it: only its two ends count
   const inner = i => d.closed ? C[(i - 1 + n) % n].plane && C[(i + 1) % n].plane : i > 0 && i < n - 1 && C[i - 1].plane && C[i + 1].plane;
-  C.forEach((c, i) => { if (c.plane && !(inner(i) && C.filter(x => x.plane).length < n)) pi.push(i); });
+  const np = C.filter(x => x.plane).length;
+  C.forEach((c, i) => { if (c.plane && !(inner(i) && np < n)) pi.push(i); });
   if (pi.length < 2) return null;
-  let best = null, band = false;
   const pairs = pi.slice(0, -1).map((a, q) => [a, pi[q + 1]]);
   if (d.closed) pairs.push([pi[pi.length - 1], pi[0]]);
   const cntOf = ([a, b]) => { let k = 0; for (let i = (a + 1) % n; i !== b; i = (i + 1) % n) if (!C[i].plane) k++; return k; }, zero = d.closed ? pairs.filter(pr => cntOf(pr) === 0) : [], full = pairs.filter(pr => cntOf(pr) >= 1);
+  const ht = ([a, b]) => C[a].p[1] + C[b].p[1];
+  zero.sort((x, y) => ht(y) - ht(x)); // highest first: by default the seam is underneath
+  return { pairs, zero, full, cntOf };
+}
+// the centre-line stretch the two sides join along, or null for two separate pieces
+function joinOf(d, zero) {
+  if (d.seamOpen) return null;
+  const ex = zero.find(pr => d.ctrl[pr[0]].seam === false); if (ex) return ex;
+  const free = zero.filter(pr => d.ctrl[pr[0]].seam !== true);
+  return free.length ? free[d.seamFlip ? free.length - 1 : 0] : null;
+}
+function mergedCtrl(d) {
+  if (!d.mirror || !S.model || d.seamOpen) return null;
+  const n = d.ctrl.length, R = planeRuns(d);
+  if (!R) return null;
+  const { pairs, zero, full, cntOf } = R;
+  let best = null, band = false;
   if (zero.length && full.length) {
-    const ht = ([a, b]) => d.ctrl[a].p[1] + d.ctrl[b].p[1];
-    zero.sort((x, y) => ht(y) - ht(x)); // highest first: by default the seam is underneath
-    const g = zero[d.seamFlip ? zero.length - 1 : 0];
+    const g = joinOf(d, zero);
+    if (!g) return null; // every stretch is marked as a seam: two separate pieces
     best = { a: g[1], b: g[0] }; band = zero.length > 1;
   } else for (const pr of pairs) { const cnt = cntOf(pr); if (cnt >= 1 && (!best || cnt > best.cnt)) best = { a: pr[0], b: pr[1], cnt }; }
   if (!best) return null;
@@ -3780,10 +3813,12 @@ function solveNow(d) {
   updateDecalVisual(d, false);
   if (d.partOf && !S.recomputing && !S.restoring) queueCombo(d.partOf.cid); // one of its parts changed
   // it closed around a tube: ask once where the seam should go (a live combination's pieces are asked when they are applied)
-  if (isWrapped(d) && !d.seamDir && !d.seamAsked && !S.restoring && !S.recomputing && d.liveOf == null && !d.partOf) { d.seamAsked = true; setTimeout(() => askSeam(d), 60); }
+  const band = !!d.mergedMap?.band;
+  if (isWrapped(d) && !(band ? runsSet(d) : d.seamDir) && !d.seamAsked && !S.restoring && !S.recomputing && d.liveOf == null && !d.partOf) { d.seamAsked = true; setTimeout(() => band ? askRuns(d) : askSeam(d), 60); }
 }
 // wrapped all the way round; a seam that follows a slit drawn into the outline stays where it was drawn
 const isWrapped = d => !!((d.res?.seamEdges?.length && !d.res.slitSeam) || d.mergedMap?.band);
+const runsSet = d => !!(d.seamFlip || d.seamOpen || d.ctrl.some(c => typeof c.seam === 'boolean'));
 function solve(d) {
   S.dirty = true;
   setBusy(d.mirror ? 'Unwrapping both sides…' : 'Unwrapping…');
@@ -3959,6 +3994,7 @@ function renderHandles() {
     grp.children.forEach(o => o.renderOrder = 11);
     scene.add(grp); bezObj = grp;
   }
+  renderRuns();
 }
 
 // selection only changes how a decal's line looks: redraw just the decals whose look changed, never the others
@@ -4274,7 +4310,7 @@ function renderList() {
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
     const plain = !d.partOf && d.liveOf == null; // parts and live pieces get their own short set of actions
-    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !d.seamOpen + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || centreRuns(d).length > 1 ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, [d]); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
@@ -4290,8 +4326,8 @@ function renderList() {
       if (b.dataset.a === 'applymir') applyMirror(d);
       if (b.dataset.a === 'unhole') { pushHistory(); delete d.holeOf; updateDecalVisual(d, false); updateUI(); }
       if (b.dataset.a === 'flip') { pushHistory('Invert'); d.flip = !d.flip; solve(d); }
-      if (b.dataset.a === 'join') { pushHistory(d.seamOpen ? 'Join at seam' : 'Open seam'); d.seamOpen = !d.seamOpen; solve(d); }
-      if (b.dataset.a === 'seam') { askSeam(d); return; }
+      if (b.dataset.a === 'join') { pushHistory(d.seamOpen || !d.mergedMap ? 'Join at seam' : 'Open seam'); if (d.seamOpen || !d.mergedMap) { d.seamOpen = false; const R = planeRuns(d); if (R && !joinOf(d, R.zero)) for (const c of d.ctrl) delete c.seam; } else d.seamOpen = true; solve(d); }
+      if (b.dataset.a === 'seam') { if (centreRuns(d).length > 1) askRuns(d); else askSeam(d); return; }
       if (b.dataset.a === 'mir') { pushHistory('Mirror'); d.mirror = !d.mirror; S.active = d; if (d.closed) solve(d); else updateDecalVisual(d, true); updateUI(); }
     }));
     ul.appendChild(li);
@@ -5433,13 +5469,123 @@ function seamChoices(d) {
   return [{ k: 'down', label: 'Underneath', dir: [0, -1, 0] }, { k: 'up', label: 'On top', dir: [0, 1, 0] },
     { k: 'far', label: 'Far side, away from you', dir: [f.x, 0, f.z] }, { k: 'near', label: 'Near side, facing you', dir: [-f.x, 0, -f.z] }];
 }
+const SEAM_TEXT = "goes all the way round the tube. Film can't lie flat as a closed ring, so the piece gets one seam, a cut where its two edges meet on the frame. Pick a side where it won't show; the dashed line marks it.";
 function askSeam(d) {
   if (!S.decals.includes(d) || !isWrapped(d) || document.querySelector('dialog[open]')) return;
   const dlg = $('#seamDlg'), box = $('#seamList'); $('#seamName').textContent = d.name;
+  $('#seamTitle').textContent = tr('Where should it open?'); $('#seamText').textContent = tr(SEAM_TEXT);
+  box.className = 'seamlist'; $('#seamOk').hidden = true; $('#seamKeep').textContent = tr('Keep it underneath'); dlg.onclose = null;
   box.innerHTML = seamChoices(d).map(c => `<button type="button" class="btn" data-k="${c.k}">${esc(tr(c.label))}</button>`).join('');
   box.querySelectorAll('button').forEach(b => b.onclick = () => { dlg.close(); setSeam(d, seamChoices(d).find(c => c.k === b.dataset.k)); });
   $('#seamKeep').onclick = () => { dlg.close(); };
   dlg.showModal();
+}
+// ---------- seams along the centre line of a mirrored piece ----------
+// Every stretch of the centre line the outline runs along is either joined (both sides are one piece there) or a seam
+// (the film is cut open there). Joined along more than one stretch, the piece would close into a ring that can't lie flat,
+// so at most one stays joined: the user marks the others as seams, on the model or in the dialog.
+function centreRuns(d) {
+  if (!d || !d.mirror || !d.closed || !S.model || d.ctrl.length < 3 || d.holeOf) return [];
+  const R = planeRuns(d); if (!R || !R.zero.length || !R.full.length) return [];
+  const g = joinOf(d, R.zero), n = d.ctrl.length;
+  return R.zero.map((pr, k) => { const idx = []; for (let i = pr[0]; ; i = (i + 1) % n) { idx.push(i); if (i === pr[1]) break; } return { no: k + 1, a: pr[0], b: pr[1], idx, joined: pr === g }; });
+}
+const RUNGEO = new WeakMap();
+function runPts(d, r) {
+  const C = r.idx.map(i => d.ctrl[i]), key = C.map(c => c.p.map(v => v.toFixed(4)).join(',')).join('|');
+  let m = RUNGEO.get(d); if (!m) RUNGEO.set(d, m = new Map());
+  if (m.has(key)) return m.get(key);
+  const { mesh, topo, grid } = S.model;
+  let sm = []; try { sm = Core.sampleOutline(mesh, topo, grid, C.map(c => ({ p: c.p, face: c.face, type: 'corner' })), false, fineStep()); } catch (e) {}
+  const pts = sm.length >= 2 ? sm.map(q => ({ p: q.point, face: q.face })) : C.map(c => ({ p: c.p, face: c.face }));
+  if (m.size > 24) m.clear(); m.set(key, pts); return pts;
+}
+const runMid = (d, r) => { const P = runPts(d, r); return P[P.length >> 1]; };
+// where a stretch sits on the piece, in words: on top, underneath, or towards one end as seen now
+function runWhere(d, r) {
+  const P = (d.mergedMap || d.ctrl).map(c => c.p), cen = [0, 1, 2].map(k => P.reduce((a, p) => a + p[k], 0) / P.length), m = runMid(d, r).p;
+  const pl = mirrorPlane(), h = [0, 2].find(k => k !== pl.k) ?? 0, up = m[1] - cen[1], along = m[h] - cen[h];
+  if (pl.k === 1 || Math.abs(up) >= Math.abs(along)) return up > 0 ? 'on top' : 'underneath';
+  const a = screenOf(m), c = cen.slice(); c[h] = m[h] - along; c[1] = m[1]; const b = screenOf(c);
+  return a.x > b.x ? 'at the right end' : 'at the left end';
+}
+let runObj = null;
+const seamMarkTarget = () => { const d = S.active; return d && S.decals.includes(d) && !S.drawing && !d.locked && !d.partOf && d.liveOf == null && isShown(d) && (S.mode === 'edit' || S.mode === 'draw') ? d : null; };
+function renderRuns() {
+  if (runObj) { scene.remove(runObj); runObj.children.forEach(disposeObj); runObj = null; }
+  const d = seamMarkTarget(), runs = centreRuns(d); if (!runs.length) return;
+  const grp = new THREE.Group(), k = S.model.diag * 0.0006, hv = S.runHover && S.runHover.d === d ? S.runHover.a : null;
+  for (const r of runs) {
+    const pts = runPts(d, r).map(q => offsetPt(q.p, q.face, k)), hot = r.a === hv;
+    const mat = lineMat(hot ? '#E5007E' : r.joined ? '#2F8FFF' : '#111111', hot ? 5 : r.joined ? 2 : 2.5, hot ? 1 : r.joined ? 0.55 : 0.9, !hot);
+    if (!r.joined && !hot) { mat.dashed = true; mat.dashSize = 3; mat.gapSize = 2.5; mat.needsUpdate = true; }
+    const l = fatLine(pts, false, mat); l.renderOrder = hot ? 12 : 4; grp.add(l);
+  }
+  scene.add(grp); runObj = grp;
+}
+const ICON_CUT = '<svg viewBox="0 0 16 16"><circle cx="4" cy="4.5" r="2.2"/><circle cx="4" cy="11.5" r="2.2"/><path d="M5.8 5.8 14 12M5.8 10.2 14 4"/></svg>',
+  ICON_JOIN = '<svg viewBox="0 0 16 16"><path d="M6.5 9.5 9.5 6.5M7 4.5l1.2-1.2a2.6 2.6 0 0 1 3.7 3.7L10.7 8.2M9 11.5l-1.2 1.2a2.6 2.6 0 0 1-3.7-3.7L5.3 7.8"/></svg>';
+let markKey = '';
+function drawSeamMarks() {
+  const el = $('#seamMarks'); if (!el) return;
+  const d = seamMarkTarget(), runs = d && !press ? centreRuns(d) : [];
+  if (!runs.length) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; markKey = ''; } return; }
+  const key = d.id + ':' + runs.map(r => r.a + (r.joined ? 'j' : 's')).join(',') + ':' + (() => { try { return LANG; } catch (e) { return ''; } })();
+  if (key !== markKey) {
+    markKey = key; el.hidden = false;
+    el.innerHTML = runs.map((r, i) => `<button type="button" data-i="${i}" class="${r.joined ? 'join' : 'cut'}" title="${esc(tr(r.joined ? 'Edge {0} is joined: both sides are one piece here. Click to cut it open as a seam' : 'Edge {0} is a seam: the film is cut open here. Click to join it').replace('{0}', r.no))}">${r.joined ? ICON_JOIN : ICON_CUT}${r.no}</button>`).join('');
+    el.querySelectorAll('button').forEach(b => {
+      const r = () => centreRuns(seamMarkTarget())[+b.dataset.i];
+      b.onclick = e => { e.stopPropagation(); const x = r(); if (x) toggleRun(seamMarkTarget(), x); };
+      b.onpointerenter = () => { const x = r(); if (x) { S.runHover = { d: seamMarkTarget(), a: x.a }; renderHandles(); wake(); } };
+      b.onpointerleave = () => { S.runHover = null; renderHandles(); wake(); };
+    });
+  }
+  const bs = el.children;
+  runs.forEach((r, i) => { const b = bs[i]; if (!b) return; const m = runMid(d, r), q = screenOf(m.p);
+    b.style.transform = `translate(${Math.round(q.x - b.offsetWidth / 2)}px,${Math.round(q.y - b.offsetHeight / 2)}px)`;
+    b.style.visibility = q.z > 1 ? 'hidden' : ''; b.classList.toggle('back', !facing(m.p, m.face)); });
+}
+function toggleRun(d, r) {
+  if (!d) return;
+  const runs = centreRuns(d), want = runs.map(x => x.a === r.a ? !x.joined : x.joined);
+  if (want.filter(Boolean).length > 1) { askRuns(d, runs.map(x => x.a === r.a), 'would close into a ring if edge {0} joined too, and a ring can’t lie flat. Tick the edges that stay open as seams; one stays joined.', r.no); return; }
+  setRuns(d, runs, want);
+}
+function setRuns(d, runs, want) {
+  pushHistory('Changed seams');
+  runs.forEach((r, k) => { for (const i of r.idx.slice(0, -1)) delete d.ctrl[i].seam; d.ctrl[r.a].seam = !want[k]; });
+  d.seamFlip = false; d.seamAsked = true;
+  if (want.some(Boolean)) d.seamOpen = false;
+  solve(d); renderHandles(); updateUI();
+  const j = runs.findIndex((r, k) => want[k]);
+  flash(j < 0 ? tr('Every edge is open: two separate pieces that meet on the centre line.') : runs.length > 1 ? tr('Joined at edge {0}; the other edges stay open as seams.').replace('{0}', runs[j].no) : tr('Joined: both sides are one piece.'));
+}
+function askRuns(d, want, why, no) {
+  const runs = centreRuns(d); if (!runs.length || !S.decals.includes(d) || document.querySelector('dialog[open]')) return;
+  want = want || runs.map(r => r.joined);
+  const dlg = $('#seamDlg'), box = $('#seamList');
+  $('#seamTitle').textContent = tr('Which edges open?'); $('#seamName').textContent = d.name;
+  $('#seamText').textContent = tr(why || 'meets the centre line along more than one edge. Joined at all of them it would close into a ring, and a ring can’t lie flat. Tick the edges that stay open as seams (dashed on the model); one stays joined.').replace('{0}', no);
+  box.className = 'seamlist runs';
+  box.innerHTML = runs.map((r, k) => `<label class="runrow" data-k="${k}"><input type="checkbox"${want[k] ? '' : ' checked'}><b>${esc(tr('Edge'))} ${r.no}</b><span>${esc(tr(runWhere(d, r)))}</span><span class="st"></span></label>`).join('') + '<p class="runwarn" id="runWarn"></p>';
+  const boxes = [...box.querySelectorAll('input')];
+  const check = () => {
+    const j = boxes.filter(b => !b.checked).length, w = $('#runWarn');
+    boxes.forEach(b => b.closest('.runrow').querySelector('.st').textContent = tr(b.checked ? 'seam' : 'joined'));
+    w.textContent = j > 1 ? tr('Only one edge can stay joined, or the piece closes into a ring.') : j === 0 ? tr('All open: you get two separate pieces.') : '';
+    w.classList.toggle('bad', j > 1); $('#seamOk').disabled = j > 1;
+  };
+  boxes.forEach(b => b.onchange = check);
+  box.querySelectorAll('.runrow').forEach(row => {
+    row.onpointerenter = () => { S.runHover = { d, a: runs[+row.dataset.k].a }; renderHandles(); wake(); };
+    row.onpointerleave = () => { S.runHover = null; renderHandles(); wake(); };
+  });
+  $('#seamOk').hidden = false; $('#seamKeep').textContent = tr('Cancel');
+  $('#seamOk').onclick = () => { const w = boxes.map(b => !b.checked); if (w.filter(Boolean).length > 1) return; dlg.close(); setRuns(d, runs, w); };
+  $('#seamKeep').onclick = () => dlg.close();
+  dlg.onclose = () => { S.runHover = null; dlg.onclose = null; renderHandles(); wake(); };
+  check(); dlg.showModal();
 }
 function setSeam(d, c) {
   if (!c) return;
@@ -6653,7 +6799,7 @@ const DE = {
   "Click to place one of the typed size, or drag from the centre (Shift: from edge to edge)": "Klick setzt einen in der eingegebenen Größe, oder von der Mitte aus ziehen (Umschalt: von Rand zu Rand)",
   "Circle diameter in mm: click on the model to place one at this size, or drag to draw any size": "Kreisdurchmesser in mm: Klick aufs Modell setzt einen in dieser Größe, oder zieh, um eine beliebige Größe zu zeichnen",
   "Click on the model to place the circle.": "Klick aufs Modell, um den Kreis zu setzen.",
-  "Draw it on the bike. Cut it flat. Done.": "Auf dem Rad zeichnen. Flach schneiden. Fertig.",
+  "Draw in 3D. Export flat. Done.": "In 3D zeichnen. Flach exportieren. Fertig.",
   "Where should it open?": "Wo soll es aufgehen?",
   "goes all the way round the tube. Film can't lie flat as a closed ring, so the piece gets one seam, a cut where its two edges meet on the frame. Pick a side where it won't show; the dashed line marks it.": "läuft ganz um das Rohr. Als geschlossener Ring liegt Folie nicht flach, deshalb bekommt das Teil eine Naht: einen Schnitt, an dem sich seine beiden Kanten am Rahmen treffen. Wähl eine Seite, wo sie nicht auffällt; die gestrichelte Linie zeigt sie.",
   "Keep it underneath": "Unten lassen",
@@ -6662,6 +6808,25 @@ const DE = {
   "Far side, away from you": "Hinten, von dir weg",
   "Near side, facing you": "Vorne, zu dir hin",
   "Moved seam": "Naht verlegt",
+  "Which edges open?": "Welche Kanten bleiben offen?",
+  "meets the centre line along more than one edge. Joined at all of them it would close into a ring, and a ring can’t lie flat. Tick the edges that stay open as seams (dashed on the model); one stays joined.": "trifft die Mittellinie an mehr als einer Kante. Überall verbunden würde es zu einem Ring, und ein Ring liegt nie flach. Hak die Kanten an, die als Naht offen bleiben (gestrichelt am Modell); eine bleibt verbunden.",
+  "would close into a ring if edge {0} joined too, and a ring can’t lie flat. Tick the edges that stay open as seams; one stays joined.": "würde zum Ring, wenn Kante {0} auch verbunden wäre, und ein Ring liegt nie flach. Hak die Kanten an, die als Naht offen bleiben; eine bleibt verbunden.",
+  "Edge": "Kante",
+  "on top": "oben",
+  "underneath": "unten",
+  "at the right end": "am rechten Ende",
+  "at the left end": "am linken Ende",
+  "seam": "Naht",
+  "joined": "verbunden",
+  "Only one edge can stay joined, or the piece closes into a ring.": "Nur eine Kante kann verbunden bleiben, sonst wird das Stück zum Ring.",
+  "All open: you get two separate pieces.": "Alles offen: du bekommst zwei einzelne Stücke.",
+  "Edge {0} is joined: both sides are one piece here. Click to cut it open as a seam": "Kante {0} ist verbunden: beide Seiten sind hier ein Stück. Klick, um sie als Naht aufzuschneiden",
+  "Edge {0} is a seam: the film is cut open here. Click to join it": "Kante {0} ist eine Naht: die Folie ist hier offen. Klick, um sie zu verbinden",
+  "Every edge is open: two separate pieces that meet on the centre line.": "Alle Kanten offen: zwei einzelne Stücke, die sich auf der Mittellinie treffen.",
+  "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
+  "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
+  "Changed seams": "Nähte geändert",
+  "Done": "Fertig",
   "Seam placed: {0}.": "Naht gesetzt: {0}.",
   "Seam": "Naht",
   "This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where": "Dieses Teil läuft ganz um ein Rohr und geht deshalb an einer Naht auf (gestrichelte Linie). Wähl, wo",
