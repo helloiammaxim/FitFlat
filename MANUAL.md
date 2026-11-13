@@ -292,6 +292,16 @@ Your work is kept **in this browser** (on this computer). The project name in th
 
 Browser storage belongs to this browser on this computer. To move work to another computer, or as a backup, use **Download** and open the file there.
 
+### Keeping projects in a folder
+
+By default everything stays in the browser. In **Projects**, **Use a folder…** keeps projects, starting points and decal templates as files in a folder you choose instead: on your disk, on a USB stick or on a company network drive.
+
+- Each project is one `.fitflat.json` file named after the project; it also opens with **Open**. Starting points go into a *Starting points* subfolder, the last session into *Autosave*, decal templates into *FitFlat templates.json*.
+- Rename, duplicate and delete in Projects change the files in the folder.
+- **Copy browser projects here** copies what you saved in the browser into the folder. **Use this browser** switches back; the folder stays as it is.
+- The browser asks once for permission to use the folder. After a restart it may ask again: open Projects and click **Reconnect**.
+- Folders work in Chrome and Edge. Firefox and Safari keep projects in the browser; use Download and Open there.
+
 ---
 
 ## 14. Panels and language

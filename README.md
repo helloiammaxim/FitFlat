@@ -21,7 +21,7 @@ Projects save and load as `.json` (frame + decals + views).
 
 ## Projects, templates and sizes
 
-Projects are saved in the browser on your computer (with autosave; see [Privacy and data storage](#privacy-and-data-storage--datenschutz)), with search, duplicate and download. **Starting points** keep a frame with its usual decals for new projects; **decal templates** place a saved decal on any frame. Frames built from a geometry chart with several sizes can be **graded**: draw once, export cut sheets for every size.
+Projects are saved in the browser on your computer by default, or as files in a folder you pick (Chrome and Edge), with autosave (see [Privacy and data storage](#privacy-and-data-storage--datenschutz)), search, duplicate and download. **Starting points** keep a frame with its usual decals for new projects; **decal templates** place a saved decal on any frame. Frames built from a geometry chart with several sizes can be **graded**: draw once, export cut sheets for every size.
 
 ## Film and cutting
 
@@ -54,7 +54,7 @@ English and German (Deutsch). Switch with **EN | DE** in the top bar; the choice
 
 ### What is stored, and where
 
-Stored only in your browser's own storage on this computer (IndexedDB and localStorage), under the site's address:
+By default everything is stored only in your browser's own storage on this computer (IndexedDB and localStorage), under the site's address. Optionally (Chrome and Edge) projects, starting points and decal templates are kept as plain files in a folder you pick instead, for example on a company network drive; then the browser only remembers which folder that is.
 
 | What | When | How to remove it |
 |---|---|---|
@@ -84,7 +84,7 @@ Whoever offers FitFlat to others (for example on their own domain or in a compan
 
 ### Kurz auf Deutsch
 
-FitFlat läuft komplett im Browser. Es gibt keinen Server, kein Konto, keine Analyse, kein Tracking und keine Cookies. Rahmen, Decals, Projekte und Schneidedateien werden nirgends hochgeladen, sie bleiben auf deinem Computer. Gespeichert wird nur im Speicher deines Browsers (Projekte, Startpunkte, Vorlagen, automatische Sicherung, Einstellungen); Löschen der Website-Daten entfernt alles. Beim Laden der Seite erhalten nur der Hoster (GitHub Pages) und das CDN jsDelivr für die Bibliotheken die IP-Adresse. Für strenge DSGVO-Anforderungen lässt sich FitFlat im eigenen Firmennetz oder als Offline-Datei ganz ohne externe Verbindung betreiben. Wer FitFlat anderen anbietet, braucht für seine Seite eine eigene Datenschutzerklärung und ein Impressum. Dies ist keine Rechtsberatung.
+FitFlat läuft komplett im Browser. Es gibt keinen Server, kein Konto, keine Analyse, kein Tracking und keine Cookies. Rahmen, Decals, Projekte und Schneidedateien werden nirgends hochgeladen, sie bleiben auf deinem Computer. Gespeichert wird standardmäßig nur im Speicher deines Browsers (Projekte, Startpunkte, Vorlagen, automatische Sicherung, Einstellungen); Löschen der Website-Daten entfernt alles. Wahlweise (Chrome, Edge) liegen Projekte als Dateien in einem Ordner deiner Wahl, etwa auf einem Netzlaufwerk. Beim Laden der Seite erhalten nur der Hoster (GitHub Pages) und das CDN jsDelivr für die Bibliotheken die IP-Adresse. Für strenge DSGVO-Anforderungen lässt sich FitFlat im eigenen Firmennetz oder als Offline-Datei ganz ohne externe Verbindung betreiben. Wer FitFlat anderen anbietet, braucht für seine Seite eine eigene Datenschutzerklärung und ein Impressum. Dies ist keine Rechtsberatung.
 
 ## Tech
 

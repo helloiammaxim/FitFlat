@@ -292,6 +292,16 @@ Deine Arbeit wird **in diesem Browser** (auf diesem Computer) gespeichert. Der P
 
 Der Browserspeicher gehört zu diesem Browser auf diesem Computer. Um Arbeit auf einen anderen Computer zu bringen oder als Sicherung, nutze **Herunterladen** und öffne die Datei dort.
 
+### Projekte in einem Ordner speichern
+
+Standardmäßig bleibt alles im Browser. In **Projekte** speichert **Ordner verwenden …** Projekte, Startpunkte und Decal-Vorlagen stattdessen als Dateien in einem Ordner deiner Wahl: auf der Festplatte, auf einem USB-Stick oder auf einem Netzlaufwerk der Firma.
+
+- Jedes Projekt ist eine `.fitflat.json`-Datei mit dem Projektnamen; sie lässt sich auch mit **Öffnen** laden. Startpunkte landen im Unterordner *Starting points*, die letzte Sitzung in *Autosave*, Decal-Vorlagen in *FitFlat templates.json*.
+- Umbenennen, Duplizieren und Löschen in Projekte ändern die Dateien im Ordner.
+- **Browser-Projekte hierher kopieren** kopiert, was du im Browser gespeichert hast, in den Ordner. **Diesen Browser verwenden** schaltet zurück; der Ordner bleibt, wie er ist.
+- Der Browser fragt einmal um Erlaubnis, den Ordner zu nutzen. Nach einem Neustart fragt er eventuell erneut: Projekte öffnen und **Wieder verbinden** klicken.
+- Ordner funktionieren in Chrome und Edge. Firefox und Safari speichern Projekte im Browser; dort Herunterladen und Öffnen nutzen.
+
 ---
 
 ## 14. Panels und Sprache
