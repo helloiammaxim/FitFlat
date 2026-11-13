@@ -309,6 +309,9 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 .tw.live{ background:var(--accent-soft); color:var(--accent); }
 .seamlist{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
 .seamlist .btn{ padding:10px 12px; justify-content:center; }
+.libwhere p{ margin:0; }
+.libwbtns{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px; }
+.libwbtns .btn{ padding:5px 10px; font-size:13px; }
 .chk{ display:flex; align-items:center; gap:8px; font-size:13.5px; margin-top:10px; color:var(--muted); }
 .swatch{ width:10px; height:10px; border-radius:50%; background:var(--c); }
 .row input.name{ border:0; background:transparent; font-weight:600; padding:2px 0; min-width:0; width:100%; }
@@ -825,7 +828,9 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 <dialog class="geo libdlg" id="libDlg" aria-labelledby="libTitle">
   <form method="dialog" onsubmit="return false">
     <header><h2 id="libTitle">Projects and templates</h2>
-      <p>Kept in this browser on this computer. Download a project or your templates to back them up or move them to another computer.</p>
+      <div class="libwhere"><p id="libWhere">Kept in this browser on this computer. Download a project or your templates to back them up or move them to another computer.</p>
+        <div class="libwbtns"><button type="button" class="btn" id="libFolder" title="Keep projects, starting points and templates as files in a folder you choose, for example on your company network">Use a folder…</button><button type="button" class="btn primary" id="libReconnect" hidden>Reconnect</button><button type="button" class="btn" id="libCopy" hidden title="Copy the projects saved in this browser into the folder">Copy browser projects here</button><button type="button" class="btn" id="libBrowserStore" hidden title="Keep projects in this browser instead of the folder">Use this browser</button></div>
+        <p class="note" id="libNoFolder" hidden>To keep projects in a folder, use Chrome or Edge. Here they stay in this browser; Download and Open move them as files.</p></div>
       <div class="seg libtabs" role="tablist"><button type="button" role="tab" id="tabProj" aria-selected="true">Projects</button><button type="button" role="tab" id="tabStart" aria-selected="false">Starting points</button><button type="button" role="tab" id="tabTpl" aria-selected="false">Decal templates</button></div>
     </header>
     <div class="body">
@@ -2485,14 +2490,114 @@ async function saveFile(filename, data, note) {
 // ---------- projects and templates kept in this browser (IndexedDB) ----------
 const DB = (() => {
   let ready = null;
-  const open = () => ready || (ready = new Promise((res, rej) => { const r = indexedDB.open('decal-studio', 1);
-    r.onupgradeneeded = () => { const db = r.result; for (const s of ['projects', 'templates']) if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' }); };
+  const open = () => ready || (ready = new Promise((res, rej) => { const r = indexedDB.open('decal-studio', 2);
+    r.onupgradeneeded = () => { const db = r.result; for (const s of ['projects', 'templates', 'settings']) if (!db.objectStoreNames.contains(s)) db.createObjectStore(s, { keyPath: 'id' }); };
     r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }));
   const tx = async (store, mode, fn) => { const db = await open(); return new Promise((res, rej) => { const t = db.transaction(store, mode), q = fn(t.objectStore(store)); t.oncomplete = () => res(q?.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error); }); };
   return { all: s => tx(s, 'readonly', st => st.getAll()), get: (s, id) => tx(s, 'readonly', st => st.get(id)), put: (s, v) => tx(s, 'readwrite', st => st.put(v)), del: (s, id) => tx(s, 'readwrite', st => st.delete(id)) };
 })();
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 S.project = { id: null, name: '' };
+// ---------- where projects live: in this browser, or in a folder on the computer that the user picks ----------
+// In a folder every project is a plain .fitflat.json file (it opens with Open too), starting points sit in "Starting points",
+// the last session in "Autosave", templates in one "FitFlat templates.json". Nothing ever leaves the computer either way.
+const FOLDER = { handle: null, ok: false, name: '' }, canFolder = typeof window.showDirectoryPicker === 'function';
+S.storeMode = 'browser';
+const KV = { get: k => DB.get('settings', k).then(r => r?.v), set: (k, v) => DB.put('settings', { id: k, v }) };
+const fsafe = n => String(n || '').replace(/[\\/:*?"<>|\x00-\x1f]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^\.+/, '').slice(0, 80) || 'Untitled';
+const PROJ_EXT = '.fitflat.json', TPL_FILE = 'FitFlat templates.json', SUB = { start: 'Starting points', auto: 'Autosave' };
+async function folderPerm(ask) {
+  const h = FOLDER.handle; if (!h) return (FOLDER.ok = false);
+  try { let p = await h.queryPermission({ mode: 'readwrite' }); if (p !== 'granted' && ask) p = await h.requestPermission({ mode: 'readwrite' }); FOLDER.ok = p === 'granted'; }
+  catch (e) { FOLDER.ok = false; }
+  return FOLDER.ok;
+}
+const useFolder = () => S.storeMode === 'folder' && FOLDER.ok;
+const FS = (() => {
+  const sub = async (name, make) => { try { return await FOLDER.handle.getDirectoryHandle(name, { create: !!make }); } catch (e) { return null; } };
+  const where = id => id === 'autosave' ? [SUB.auto, 'Last session' + PROJ_EXT] : id.startsWith('s:') ? [SUB.start, id.slice(2)] : [null, id.slice(2)];
+  const dirOf = async (subName, make) => subName ? sub(subName, make) : FOLDER.handle;
+  const readRec = async (dir, fname, id) => {
+    const fh = await dir.getFileHandle(fname), f = await fh.getFile(), text = await f.text();
+    let pj = null; try { pj = JSON.parse(text); } catch (e) { return null; }
+    if (pj?.app !== 'decal-unwrap') return null;
+    const m = pj.meta || {};
+    return { id, kind: id.startsWith('s:') ? 'start' : undefined, name: String(m.name || fname.replace(/\.fitflat\.json$|\.decals\.json$|\.json$/i, '')).slice(0, 120), created: +m.created || f.lastModified, updated: +m.updated || f.lastModified,
+      thumb: typeof m.thumb === 'string' && /^data:image\/jpeg;base64,[A-Za-z0-9+/=]+$/.test(m.thumb) ? m.thumb : '', frame: String(m.frame || pj.name || ''), decals: Number.isFinite(+m.decals) ? +m.decals : (pj.decals || []).filter(d => d.closed && !d.holeOf).length, bytes: text.length, data: text };
+  };
+  const listDir = async (dir, pre) => { const out = []; if (!dir) return out;
+    for await (const [name, h] of dir.entries()) if (h.kind === 'file' && /\.json$/i.test(name) && name !== TPL_FILE) { try { const r = await readRec(dir, name, pre + name); if (r) out.push(r); } catch (e) {} }
+    return out; };
+  const write = async (dir, fname, text) => { const fh = await dir.getFileHandle(fname, { create: true }), w = await fh.createWritable(); await w.write(text); await w.close(); };
+  const exists = async (dir, fname) => { try { await dir.getFileHandle(fname); return true; } catch (e) { return false; } };
+  const tplRead = async () => { try { const f = await (await FOLDER.handle.getFileHandle(TPL_FILE)).getFile(), j = JSON.parse(await f.text()); return Array.isArray(j.templates) ? j.templates.filter(t => t && typeof t.id === 'string') : []; } catch (e) { return []; } };
+  const tplWrite = ts => write(FOLDER.handle, TPL_FILE, JSON.stringify({ app: 'decal-studio-templates', version: 1, templates: ts }, null, 1));
+  return {
+    async all(store) {
+      if (store === 'templates') return tplRead();
+      const [a, b, c] = await Promise.all([listDir(FOLDER.handle, 'p:'), listDir(await sub(SUB.start), 's:'), (async () => { const d = await sub(SUB.auto); if (!d) return []; try { return [await readRec(d, 'Last session' + PROJ_EXT, 'autosave')].filter(Boolean); } catch (e) { return []; } })()]);
+      return [...a, ...b, ...c];
+    },
+    async get(store, id) {
+      if (store === 'templates') return (await tplRead()).find(t => t.id === id);
+      const [sn, fname] = where(id), dir = await dirOf(sn); if (!dir) return undefined;
+      try { return await readRec(dir, fname, id); } catch (e) { return undefined; }
+    },
+    async put(store, rec) {
+      if (store === 'templates') { const ts = (await tplRead()).filter(t => t.id !== rec.id); ts.push(rec); await tplWrite(ts); return rec.id; }
+      const start = rec.kind === 'start' || String(rec.id).startsWith('s:'), auto = rec.id === 'autosave', dir = await dirOf(auto ? SUB.auto : start ? SUB.start : null, true);
+      let pj; try { pj = JSON.parse(rec.data); } catch (e) { throw new Error('bad project data'); }
+      pj.meta = { name: rec.name, created: rec.created, updated: rec.updated, thumb: rec.thumb || '', frame: rec.frame, decals: rec.decals };
+      const text = JSON.stringify(pj);
+      if (auto) { await write(dir, 'Last session' + PROJ_EXT, text); return 'autosave'; }
+      const pre = start ? 's:' : 'p:', oldName = String(rec.id).startsWith(pre) ? String(rec.id).slice(2) : null, base = fsafe(rec.name);
+      let fname = base + PROJ_EXT;
+      if (fname !== oldName) for (let k = 2; await exists(dir, fname); k++) fname = `${base} (${k})${PROJ_EXT}`;
+      await write(dir, fname, text);
+      if (oldName && oldName !== fname) { try { await dir.removeEntry(oldName); } catch (e) {} }
+      return pre + fname;
+    },
+    async del(store, id) {
+      if (store === 'templates') { await tplWrite((await tplRead()).filter(t => t.id !== id)); return; }
+      const [sn, fname] = where(id), dir = await dirOf(sn); if (dir) await dir.removeEntry(fname);
+    },
+  };
+})();
+const Store = { all: s => useFolder() ? FS.all(s) : DB.all(s), get: (s, id) => useFolder() ? FS.get(s, id) : DB.get(s, id), put: (s, v) => useFolder() ? FS.put(s, v) : DB.put(s, v).then(() => v.id), del: (s, id) => useFolder() ? FS.del(s, id) : DB.del(s, id) };
+async function pickFolder() {
+  if (!canFolder) { flash(tr('This browser cannot work with folders. Use Chrome or Edge, or Download and Open project files.')); return; }
+  let h; try { h = await window.showDirectoryPicker({ id: 'fitflat', mode: 'readwrite' }); }
+  catch (e) { if (e?.name !== 'AbortError') flash(tr('The folder could not be opened here: {0}').replace('{0}', e?.message || e)); return; } // AbortError: the user cancelled
+  FOLDER.handle = h; FOLDER.name = h.name; await folderPerm(true);
+  S.storeMode = FOLDER.ok ? 'folder' : 'browser';
+  try { await KV.set('folder', h); await KV.set('storeMode', S.storeMode); } catch (e) {}
+  if (S.project.id && !String(S.project.id).includes(':')) S.project = { id: null, name: S.project.name }; // the open project was a browser one: save it anew
+  updateWhere(); renderLib(); if (FOLDER.ok) flash(tr('Projects are now kept in the folder "{0}".').replace('{0}', h.name));
+}
+async function useBrowserStore() {
+  S.storeMode = 'browser'; try { await KV.set('storeMode', 'browser'); } catch (e) {}
+  if (String(S.project.id || '').includes(':')) S.project = { id: null, name: S.project.name };
+  updateWhere(); renderLib(); flash(tr('Projects are kept in this browser again.'));
+}
+async function copyBrowserToFolder() {
+  if (!useFolder()) return;
+  const [ps, ts] = await Promise.all([DB.all('projects').catch(() => []), DB.all('templates').catch(() => [])]);
+  let n = 0; for (const r of ps) if (r.id !== 'autosave') { try { await FS.put('projects', { ...r, id: r.kind === 'start' ? 's:' : 'new' }); n++; } catch (e) {} }
+  if (ts.length) { const have = await FS.all('templates'), ids = new Set(have.map(t => t.id)); for (const t of ts) if (!ids.has(t.id)) await FS.put('templates', t); }
+  renderLib(); flash(tr('Copied {0} projects into the folder. They are still in this browser too.').replace('{0}', n));
+}
+function updateWhere() {
+  const el = $('#libWhere'); if (!el) return;
+  const folder = S.storeMode === 'folder' && FOLDER.handle;
+  el.textContent = folder ? (FOLDER.ok ? tr('Kept in the folder "{0}" on this computer.') : tr('Kept in the folder "{0}". Click Reconnect to let FitFlat use it again.')).replace('{0}', FOLDER.name)
+    : tr('Kept in this browser on this computer. Download a project or your templates to back them up or move them to another computer.');
+  $('#libFolder').textContent = tr(folder ? 'Change folder…' : 'Use a folder…'); $('#libFolder').hidden = !canFolder;
+  $('#libReconnect').hidden = !(folder && !FOLDER.ok); $('#libBrowserStore').hidden = !folder; $('#libCopy').hidden = !(folder && FOLDER.ok);
+  $('#libNoFolder').hidden = canFolder;
+  $('#libBtn').title = tr(folder ? 'Your saved projects and decal templates, kept in a folder on this computer' : 'Your saved projects and decal templates, kept in this browser');
+}
+// on start: the folder chosen last time (the browser asks again for permission when needed)
+(async () => { try { const h = await KV.get('folder'), m = await KV.get('storeMode'); if (h && canFolder) { FOLDER.handle = h; FOLDER.name = h.name; await folderPerm(false); } if (m === 'folder' && h) S.storeMode = 'folder'; } catch (e) {} updateWhere(); })();
 // a small picture of the current view for the project card
 function viewThumb() {
   try { renderer.render(scene, camera); const src = renderer.domElement, c = document.createElement('canvas'), w = 320, h = 200; c.width = w; c.height = h;
@@ -2502,15 +2607,16 @@ function viewThumb() {
 }
 async function saveProject(asNew, quietName) {
   if (!S.source) return false;
+  if (S.storeMode === 'folder' && !FOLDER.ok && !(await folderPerm(true))) { flash(tr('FitFlat may not use the folder. Open Projects and click Reconnect, or switch back to this browser.')); return false; }
   let name = S.project.name;
   if (asNew || !S.project.id) { name = quietName || prompt(tr('Name for this project:'), name || S.project.suggest || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return false; name = name.trim() || tr('Untitled'); }
-  const id = asNew || !S.project.id ? uid() : S.project.id, old = asNew ? null : await DB.get('projects', id).catch(() => null);
+  const id = asNew || !S.project.id ? uid() : S.project.id, old = asNew ? null : await Store.get('projects', id).catch(() => null);
   const data = projectJSON(), rec = { id, name, created: old?.created || Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data };
-  try { await DB.put('projects', rec); } catch (e) { flash(tr('Could not save in this browser: {0}').replace('{0}', e?.message || e)); return false; }
-  S.project = { id, name }; S.dirty = false; updateProjName(); flash(tr('Saved "{0}" in Projects.').replace('{0}', name)); renderLibSoon(); return true;
+  let nid; try { nid = await Store.put('projects', rec); } catch (e) { flash(tr(useFolder() ? 'Could not save in the folder: {0}' : 'Could not save in this browser: {0}').replace('{0}', e?.message || e)); return false; }
+  S.project = { id: nid, name }; S.dirty = false; updateProjName(); flash(tr(useFolder() ? 'Saved "{0}" in the folder {1}.' : 'Saved "{0}" in Projects.').replace('{0}', name).replace('{1}', FOLDER.name)); renderLibSoon(); return true;
 }
 async function openProjectRec(id) {
-  const rec = await DB.get('projects', id); if (!rec) return;
+  const rec = await Store.get('projects', id); if (!rec) return;
   if (S.decals.length && S.dirty && !confirm(tr('Open "{0}"? Changes that are not saved will be lost.').replace('{0}', rec.name))) return;
   S.dirty = false; $('#libDlg').close(); loadProject(rec.data, rec.name);
   S.project = rec.id === 'autosave' ? { id: null, name: '' } : { id: rec.id, name: rec.name };
@@ -2519,7 +2625,8 @@ const fmtDate = t => new Date(t).toLocaleString([], { day: 'numeric', month: 'sh
 let libT = 0; const renderLibSoon = () => { clearTimeout(libT); libT = setTimeout(renderLib, 80); };
 async function renderLib() {
   if (!$('#libDlg').open) return;
-  let ps = [], ts = []; try { [ps, ts] = await Promise.all([DB.all('projects'), DB.all('templates')]); } catch (e) { $('#libMsg').textContent = tr('This browser does not allow saving here (private window?).'); }
+  updateWhere();
+  let ps = [], ts = []; try { [ps, ts] = await Promise.all([Store.all('projects'), Store.all('templates')]); } catch (e) { $('#libMsg').textContent = tr(useFolder() ? 'The folder could not be read: {0}' : 'This browser does not allow saving here (private window?).').replace('{0}', e?.message || e); }
   const starts = ps.filter(r => r.kind === 'start'); ps = ps.filter(r => r.kind !== 'start');
   const qq = ($('#libSearch').value || '').trim().toLowerCase(); if (qq) ps = ps.filter(r => (r.name + ' ' + r.frame).toLowerCase().includes(qq));
   const sortBy = $('#libSort').value;
@@ -2540,18 +2647,18 @@ async function renderLib() {
     : `<li class="empty">${tr('No templates yet. Select a decal in Edit mode and click Save to library in the Decal panel.')}</li>`;
 }
 $('#projList').addEventListener('click', async e => {
-  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const id = li.dataset.id, rec = await DB.get('projects', id); if (!rec) return;
+  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const id = li.dataset.id, rec = await Store.get('projects', id); if (!rec) return;
   if (b.dataset.a === 'open') openProjectRec(id);
-  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), rec.name); if (n && n.trim()) { rec.name = n.trim(); await DB.put('projects', rec); if (S.project.id === id) S.project.name = rec.name; renderLib(); } }
+  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), rec.name); if (n && n.trim()) { rec.name = n.trim(); const nid = await Store.put('projects', rec); if (S.project.id === id) S.project = { id: nid, name: rec.name }; updateProjName(); renderLib(); } }
   if (b.dataset.a === 'dl') saveFile(rec.name.replace(/[^\w-]+/g, '_') + '.decals.json', rec.data, $('#libMsg'));
-  if (b.dataset.a === 'dup') { await DB.put('projects', { ...rec, id: uid(), name: tr('{0} copy').replace('{0}', rec.name), created: Date.now(), updated: Date.now() }); renderLib(); }
-  if (b.dataset.a === 'del' && confirm(tr('Delete "{0}" from this browser? This cannot be undone.').replace('{0}', rec.id === 'autosave' ? tr('Last session (autosaved)') : rec.name))) { await DB.del('projects', id); if (S.project.id === id) S.project = { id: null, name: '' }; renderLib(); }
+  if (b.dataset.a === 'dup') { await Store.put('projects', { ...rec, id: uid(), name: tr('{0} copy').replace('{0}', rec.name), created: Date.now(), updated: Date.now() }); renderLib(); }
+  if (b.dataset.a === 'del' && confirm(tr(useFolder() ? 'Delete "{0}" from the folder? This cannot be undone.' : 'Delete "{0}" from this browser? This cannot be undone.').replace('{0}', rec.id === 'autosave' ? tr('Last session (autosaved)') : rec.name))) { await Store.del('projects', id); if (S.project.id === id) S.project = { id: null, name: '' }; renderLib(); }
 });
 $('#tplList').addEventListener('click', async e => {
-  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const t = await DB.get('templates', li.dataset.id); if (!t) return;
+  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const t = await Store.get('templates', li.dataset.id); if (!t) return;
   if (b.dataset.a === 'place') { $('#libDlg').close(); placeTemplate(t); }
-  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), t.name); if (n && n.trim()) { t.name = n.trim(); await DB.put('templates', t); renderLib(); } }
-  if (b.dataset.a === 'del' && confirm(tr('Delete the template "{0}"?').replace('{0}', t.name))) { await DB.del('templates', t.id); renderLib(); }
+  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), t.name); if (n && n.trim()) { t.name = n.trim(); await Store.put('templates', t); renderLib(); } }
+  if (b.dataset.a === 'del' && confirm(tr('Delete the template "{0}"?').replace('{0}', t.name))) { await Store.del('templates', t.id); renderLib(); }
 });
 function libTab(t) { t = t === true ? 'tpl' : t === false ? 'proj' : t; for (const [tab, pan, k] of [['#tabProj', '#libProj', 'proj'], ['#tabStart', '#libStart', 'start'], ['#tabTpl', '#libTpl', 'tpl']]) { $(tab).setAttribute('aria-selected', String(t === k)); $(pan).hidden = t !== k; } }
 $('#tabProj').addEventListener('click', () => libTab('proj')); $('#tabTpl').addEventListener('click', () => libTab('tpl')); $('#tabStart').addEventListener('click', () => libTab('start'));
@@ -2561,29 +2668,33 @@ $('#projName').addEventListener('click', () => { libTab('proj'); $('#libMsg').te
 $('#startSave').addEventListener('click', async () => {
   if (!S.source) return; const name = prompt(tr('Name for this starting point:'), S.project.name || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return;
   const data = projectJSON();
-  try { await DB.put('projects', { id: uid(), kind: 'start', name: name.trim() || tr('Untitled'), created: Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }); }
+  try { await Store.put('projects', { id: uid(), kind: 'start', name: name.trim() || tr('Untitled'), created: Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }); }
   catch (e) { $('#libMsg').textContent = tr('Could not save in this browser: {0}').replace('{0}', e?.message || e); return; }
   $('#libMsg').textContent = tr('Saved "{0}" as a starting point.').replace('{0}', name.trim()); renderLib();
 });
 $('#startList').addEventListener('click', async e => {
-  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const rec = await DB.get('projects', li.dataset.id); if (!rec) return;
+  const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const rec = await Store.get('projects', li.dataset.id); if (!rec) return;
   if (b.dataset.a === 'new') { if (S.decals.length && S.dirty && !confirm(tr('Start a new project from "{0}"? Changes that are not saved will be lost.').replace('{0}', rec.name))) return;
     S.dirty = false; $('#libDlg').close(); loadProject(rec.data, rec.name); S.project = { id: null, name: '', suggest: rec.name }; updateProjName(); }
-  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), rec.name); if (n && n.trim()) { rec.name = n.trim(); await DB.put('projects', rec); renderLib(); } }
+  if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), rec.name); if (n && n.trim()) { rec.name = n.trim(); await Store.put('projects', rec); renderLib(); } }
   if (b.dataset.a === 'dl') saveFile(rec.name.replace(/[^\w-]+/g, '_') + '.decals.json', rec.data, $('#libMsg'));
-  if (b.dataset.a === 'del' && confirm(tr('Delete the starting point "{0}"? Projects made from it stay.').replace('{0}', rec.name))) { await DB.del('projects', rec.id); renderLib(); }
+  if (b.dataset.a === 'del' && confirm(tr('Delete the starting point "{0}"? Projects made from it stay.').replace('{0}', rec.name))) { await Store.del('projects', rec.id); renderLib(); }
 });
 // the project's name in the top bar, with a dot while there are unsaved changes
 function updateProjName() { const n = S.project?.name; $('#projNameText').textContent = n || tr('Untitled project'); $('#projDirty').hidden = !(S.dirty && S.source); }
-$('#libBtn').addEventListener('click', () => { $('#libMsg').textContent = ''; $('#libDlg').showModal(); renderLib(); });
+$('#libBtn').addEventListener('click', async () => { $('#libMsg').textContent = ''; if (S.storeMode === 'folder' && FOLDER.handle && !FOLDER.ok) await folderPerm(true); $('#libDlg').showModal(); renderLib(); });
+$('#libFolder').addEventListener('click', pickFolder);
+$('#libReconnect').addEventListener('click', async () => { if (await folderPerm(true)) { updateWhere(); renderLib(); } });
+$('#libBrowserStore').addEventListener('click', useBrowserStore);
+$('#libCopy').addEventListener('click', copyBrowserToFolder);
 $('#libClose').addEventListener('click', () => $('#libDlg').close());
 $('#libSaveNew').addEventListener('click', async () => { if (await saveProject(true)) renderLib(); });
 $('#libDownload').addEventListener('click', () => { if (S.source) saveFile(baseName() + '.decals.json', projectJSON(), $('#libMsg')); });
 $('#libFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) { $('#libDlg').close(); openFile(f); } e.target.value = ''; });
-$('#tplExport').addEventListener('click', async () => { const ts = await DB.all('templates'); if (!ts.length) { $('#libMsg').textContent = tr('No templates to download yet.'); return; } saveFile('decal_templates.json', JSON.stringify({ app: 'decal-studio-templates', version: 1, templates: ts }), $('#libMsg')); });
+$('#tplExport').addEventListener('click', async () => { const ts = await Store.all('templates'); if (!ts.length) { $('#libMsg').textContent = tr('No templates to download yet.'); return; } saveFile('decal_templates.json', JSON.stringify({ app: 'decal-studio-templates', version: 1, templates: ts }), $('#libMsg')); });
 $('#tplFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try { const j = JSON.parse(await f.text()); if (j.app !== 'decal-studio-templates' || !Array.isArray(j.templates)) throw new Error(tr('not a templates file'));
-    let n = 0; for (const t of j.templates) { if (typeof t.d !== 'string' || !(t.w > 0) || !(t.h > 0) || !/^[MLCZ0-9 .,eE+-]*$/i.test(t.d)) continue; await DB.put('templates', { id: uid(), name: String(t.name || 'Template').slice(0, 80), created: Date.now(), w: +t.w, h: +t.h, d: t.d, mirror: !!t.mirror }); n++; }
+    let n = 0; for (const t of j.templates) { if (typeof t.d !== 'string' || !(t.w > 0) || !(t.h > 0) || !/^[MLCZ0-9 .,eE+-]*$/i.test(t.d)) continue; await Store.put('templates', { id: uid(), name: String(t.name || 'Template').slice(0, 80), created: Date.now(), w: +t.w, h: +t.h, d: t.d, mirror: !!t.mirror }); n++; }
     $('#libMsg').textContent = tr('Added {0} templates.').replace('{0}', n); renderLib(); }
   catch (err) { $('#libMsg').textContent = tr('That file could not be read: {0}').replace('{0}', err.message); } });
 // a decal's flat outline (with holes) as a template, in mm
@@ -2600,7 +2711,7 @@ async function saveTemplate(d) {
   const f = v => (Math.round(v * 100) / 100).toString(), P = q => f(q[0] - x0) + ' ' + f(q[1] - y0);
   const dd = rings.map(r => r.c ? `M${P(r.c[0][0])} ` + r.c.map(sg => `C${P(sg[1])} ${P(sg[2])} ${P(sg[3])}`).join(' ') + ' Z' : 'M' + r.p.map(P).join(' L') + ' Z').join(' ');
   const name = prompt(tr('Name for this template:'), d.name); if (name == null) return;
-  try { await DB.put('templates', { id: uid(), name: name.trim() || d.name, created: Date.now(), w: x1 - x0, h: y1 - y0, d: dd, mirror: !!d.mirror }); }
+  try { await Store.put('templates', { id: uid(), name: name.trim() || d.name, created: Date.now(), w: x1 - x0, h: y1 - y0, d: dd, mirror: !!d.mirror }); }
   catch (e) { flash(tr('Could not save in this browser: {0}').replace('{0}', e?.message || e)); return; }
   flash(tr('Saved "{0}" to your templates. Find it under Projects → Templates.').replace('{0}', name.trim() || d.name));
 }
@@ -2611,9 +2722,9 @@ function placeTemplate(t) {
   svgImport = { ...r, name: t.name, aspect: t.h / t.w, w: t.w, h: t.h, rot: 0, mode: 'wrap', mirror: !!t.mirror && S.mirrorDefault };
   startPlacing(); flash(tr('Move over the model and click to place "{0}".').replace('{0}', t.name));
 }
-setTimeout(() => DB.get('projects', 'autosave').then(r => { if (r && !S.dirty) flash(tr('Your last session was saved automatically ({0}). Open it from Projects.').replace('{0}', fmtDate(r.updated))); }).catch(() => {}), 2500);
+setTimeout(() => Store.get('projects', 'autosave').then(r => { if (r && !S.dirty) flash(tr('Your last session was saved automatically ({0}). Open it from Projects.').replace('{0}', fmtDate(r.updated))); }).catch(() => {}), 2500);
 // autosave: a copy of the work every half minute while something changed, offered again after a reload
-setInterval(() => { if (!S.dirty || !S.source || S.busy || press) return; const data = projectJSON(); DB.put('projects', { id: 'autosave', name: 'autosave', created: Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }).catch(() => {}); }, 30000);
+setInterval(() => { if (!S.dirty || !S.source || S.busy || press) return; const data = projectJSON(); Store.put('projects', { id: 'autosave', name: 'autosave', created: Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }).catch(() => {}); }, 30000);
 // ---------- size grading: the same decals on every size of a geometry chart ----------
 S.gradeEnds = true;
 const curPreset = () => { const n = S.source?.presetName; return n && S.source?.tubes ? allPresets().find(p => p.name === n && p.sizes?.length > 1) : null; };
@@ -6516,6 +6627,28 @@ $('#resetPanels').addEventListener('click', () => { layoutPresets = {}; layoutCu
 // ---------- language: English / Deutsch ----------
 // The interface is written in English; in German every visible text, tooltip and message is swapped through these tables.
 const DE = {
+  "The folder could not be opened here: {0}": "Der Ordner ließ sich hier nicht öffnen: {0}",
+  "Use a folder…": "Ordner verwenden …",
+  "Change folder…": "Ordner wechseln …",
+  "Reconnect": "Wieder verbinden",
+  "Copy browser projects here": "Browser-Projekte hierher kopieren",
+  "Use this browser": "Diesen Browser verwenden",
+  "Keep projects, starting points and templates as files in a folder you choose, for example on your company network": "Projekte, Startpunkte und Vorlagen als Dateien in einem Ordner deiner Wahl speichern, zum Beispiel im Firmennetz",
+  "Copy the projects saved in this browser into the folder": "Die in diesem Browser gespeicherten Projekte in den Ordner kopieren",
+  "Keep projects in this browser instead of the folder": "Projekte in diesem Browser statt im Ordner speichern",
+  "To keep projects in a folder, use Chrome or Edge. Here they stay in this browser; Download and Open move them as files.": "Um Projekte in einem Ordner zu speichern, nutze Chrome oder Edge. Hier bleiben sie in diesem Browser; mit Herunterladen und Öffnen bewegst du sie als Dateien.",
+  "This browser cannot work with folders. Use Chrome or Edge, or Download and Open project files.": "Dieser Browser kann nicht mit Ordnern arbeiten. Nutze Chrome oder Edge, oder Projektdateien herunterladen und öffnen.",
+  "Projects are now kept in the folder \"{0}\".": "Projekte werden jetzt im Ordner „{0}“ gespeichert.",
+  "Projects are kept in this browser again.": "Projekte werden wieder in diesem Browser gespeichert.",
+  "Copied {0} projects into the folder. They are still in this browser too.": "{0} Projekte in den Ordner kopiert. Sie sind auch weiterhin in diesem Browser.",
+  "Kept in the folder \"{0}\" on this computer.": "Gespeichert im Ordner „{0}“ auf diesem Computer.",
+  "Kept in the folder \"{0}\". Click Reconnect to let FitFlat use it again.": "Gespeichert im Ordner „{0}“. Klick auf Wieder verbinden, damit FitFlat ihn wieder nutzen darf.",
+  "Your saved projects and decal templates, kept in a folder on this computer": "Deine gespeicherten Projekte und Decal-Vorlagen, in einem Ordner auf diesem Computer",
+  "FitFlat may not use the folder. Open Projects and click Reconnect, or switch back to this browser.": "FitFlat darf den Ordner nicht nutzen. Öffne Projekte und klick auf Wieder verbinden, oder wechsle zurück zu diesem Browser.",
+  "Could not save in the folder: {0}": "Speichern im Ordner fehlgeschlagen: {0}",
+  "Saved \"{0}\" in the folder {1}.": "„{0}“ im Ordner {1} gespeichert.",
+  "The folder could not be read: {0}": "Der Ordner ließ sich nicht lesen: {0}",
+  "Delete \"{0}\" from the folder? This cannot be undone.": "„{0}“ aus dem Ordner löschen? Das lässt sich nicht rückgängig machen.",
   "Circle: click to place one of the size in the toolbar, or drag from the centre outwards (Shift drags from edge to edge).": "Kreis: Klick setzt einen in der Größe aus der Leiste, oder von der Mitte nach außen ziehen (Umschalt zieht von Rand zu Rand).",
   "Click to place one of the typed size, or drag from the centre (Shift: from edge to edge)": "Klick setzt einen in der eingegebenen Größe, oder von der Mitte aus ziehen (Umschalt: von Rand zu Rand)",
   "Circle diameter in mm: click on the model to place one at this size, or drag to draw any size": "Kreisdurchmesser in mm: Klick aufs Modell setzt einen in dieser Größe, oder zieh, um eine beliebige Größe zu zeichnen",
