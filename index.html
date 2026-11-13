@@ -2978,7 +2978,7 @@ function handleTargets() {
 // mirrored copies of points, editable like the originals
 function ghostsOf(d) {
   if (!d.mirror || d.ctrl.length < 2) return [];
-  if (d.mergedMap) return d.mergedMap.filter(m => m.map.m).map(m => ({ p: m.p, face: m.face, o: m.map.o }));
+  if (d.mergedMap) return [...d.mergedMap, ...(d.mergedMap.ring || [])].filter(m => m.map.m).map(m => ({ p: m.p, face: m.face, o: m.map.o }));
   const tc = d.twin?.ctrl || (d.ghostCache = d.ghostCache && d.ghostCache.n === d.ctrl.length && d.ghostCache.key === JSON.stringify(d.ctrl.map(c => c.p)) ? d.ghostCache : { n: d.ctrl.length, key: JSON.stringify(d.ctrl.map(c => c.p)), tc: twinCtrl(d) }).tc;
   return tc.map((c, i) => ({ p: c.p, face: c.face, o: i }));
 }
@@ -3177,21 +3177,50 @@ function joinOf(d, zero) {
   const free = zero.filter(pr => d.ctrl[pr[0]].seam !== true);
   return free.length ? free[d.seamFlip ? free.length - 1 : 0] : null;
 }
+// A half that meets the centre line twice makes a ring once mirrored. Round the tube (a band) it needs a seam.
+// On the surface (a ring lying on top of the tube, its middle open like a Subtract hole) it lies flat as it is:
+// the outer loop is the outline and the inner loop a hole. Told apart by where the loops cross the centre line:
+// a band's loop crosses on opposite sides of the tube, so the chord between its two crossings runs through the tube.
+function surfaceRing(d, full) {
+  const key = full.map(pr => d.ctrl[pr[0]].p.concat(d.ctrl[pr[1]].p).map(v => v.toFixed(3)).join(',')).join('|');
+  if (d._ringKey === key) return d._ring;
+  const { mesh, grid } = S.model;
+  const flat = full.every(([a, b]) => { const A = d.ctrl[a].p, B = d.ctrl[b].p, len = Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]);
+    if (len < 1e-6) return false;
+    return [0.25, 0.5, 0.75].every(t => { const m = A.map((v, k) => v + (B[k] - v) * t), h = Core.closestPoint(mesh, grid, m, 80); return h && Math.hypot(...h.point.map((v, k) => v - m[k])) < len * 0.12; }); });
+  d._ringKey = key; d._ring = flat; return flat;
+}
+// which centre-line stretches the two sides join along
+function joinedRuns(d, R) {
+  if (d.seamOpen || !R.zero.length || !R.full.length) return [];
+  if (R.zero.length === 2 && R.full.length === 2 && surfaceRing(d, R.full)) return R.zero.filter(pr => d.ctrl[pr[0]].seam !== true);
+  const g = joinOf(d, R.zero); return g ? [g] : [];
+}
 function mergedCtrl(d) {
   if (!d.mirror || !S.model || d.seamOpen) return null;
-  const n = d.ctrl.length, R = planeRuns(d);
+  const R = planeRuns(d);
   if (!R) return null;
   const { pairs, zero, full, cntOf } = R;
-  let best = null, band = false;
   if (zero.length && full.length) {
-    const g = joinOf(d, zero);
-    if (!g) return null; // every stretch is marked as a seam: two separate pieces
-    best = { a: g[1], b: g[0] }; band = zero.length > 1;
-  } else for (const pr of pairs) { const cnt = cntOf(pr); if (cnt >= 1 && (!best || cnt > best.cnt)) best = { a: pr[0], b: pr[1], cnt }; }
+    const J = joinedRuns(d, R);
+    if (!J.length) return null; // every stretch is marked as a seam: two separate pieces
+    const ring = zero.length === 2 && full.length === 2 && surfaceRing(d, full);
+    if (J.length === 2) { // a ring on the surface: outer loop is the outline, inner loop a hole
+      const L = full.map(pr => mirrorLoop(d, pr[0], pr[1])), sz = l => { const P = l.map(m => m.p), c = [0, 1, 2].map(k => P.reduce((a, p) => a + p[k], 0) / P.length); return P.reduce((a, p) => a + Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]), 0) / P.length; };
+      const o = sz(L[0]) >= sz(L[1]) ? 0 : 1, out = L[o]; out.ring = L[1 - o]; out.band = false; out.surf = true; return out;
+    }
+    const out = mirrorLoop(d, J[0][1], J[0][0]); out.band = zero.length > 1 && !ring; out.surf = ring; return out;
+  }
+  let best = null;
+  for (const pr of pairs) { const cnt = cntOf(pr); if (cnt >= 1 && (!best || cnt > best.cnt)) best = { a: pr[0], b: pr[1], cnt }; }
   if (!best) return null;
-  const half = []; for (let i = best.a; ; i = (i + 1) % n) { half.push(i); if (i === best.b) break; }
+  const out = mirrorLoop(d, best.a, best.b); out.band = false; return out;
+}
+// the outline from point a forward to point b (both on the centre line) plus its mirror image back
+function mirrorLoop(d, A, B) {
+  const n = d.ctrl.length;
+  const half = []; for (let i = A; ; i = (i + 1) % n) { half.push(i); if (i === B) break; }
   const { mesh, grid } = S.model, out = [];
-  out.band = band;
   const third = (a, b) => a.map((v, k) => v + (b[k] - v) / 3);
   half.forEach((i, q) => {
     const c = d.ctrl[i], m = { ...c, map: { o: i, m: false } };
@@ -3808,6 +3837,7 @@ function solveNow(d) {
   if (d.liveOf != null && !S.recomputing && !S.restoring && S.decals.includes(d)) applyCombo(d.liveOf, true);
   const mc = mergedCtrl(d), dir = d.seamDir || null;
   d.res = solveOne(mc || d.ctrl, d.flip, dir); d.merged = !!mc;
+  d.ringHole = mc?.ring ? { ctrl: mc.ring, res: solveOne(mc.ring, false), virtual: true } : null;
   if (mc) d.twin = null;
   else if (d.mirror) { const tc = twinCtrl(d), pl = mirrorPlane(), td = dir && pl ? dir.map((v, k) => k === pl.k ? -v : v) : dir; d.twin = { ctrl: tc, res: solveOne(tc, d.flip, td) }; } else d.twin = null;
   updateDecalVisual(d, false);
@@ -3888,7 +3918,7 @@ function addCurve(d, ctrl, res, preview, faint) {
   }
   if (!preview && res && !res.error && !d.holeOf && !(d.partOf && S.active !== d)) {
     // the fill only changes with the unwrap, the colour, stretch view and holes: rebuild it only then
-    const fk = [d.color, S.showStretch ? filmMax() : 0, faint ? 1 : 0, holesOf(d).map(h => `${h.res?._v || 0}.${h.twin?.res?._v || 0}.${(faint ? h.twinSamples : (h.samples || h.res?.samples))?.length || 0}`).join(',')].join('|');
+    const fk = [d.color, S.showStretch ? filmMax() : 0, faint ? 1 : 0, cutsOf(d).map(h => `${h.res?._v || 0}.${h.twin?.res?._v || 0}.${(faint ? h.twinSamples : (h.samples || h.res?.samples))?.length || 0}`).join(',')].join('|');
     const fc = res._fill && res._fill.get(fk);
     if (fc) { addFill(d, fc.pos, fc.col, faint); return samples; }
     const P = mesh.pos, T = mesh.tri, faces = res.insideFaces;
@@ -3899,7 +3929,7 @@ function addCurve(d, ctrl, res, preview, faint) {
     // holes (from Subtract, or loops cut out with the knife) stay empty: their outlines, laid into this decal's flat layout, are taken out of the fill
     const holeBox = [];
     if (outl) { const rings = [];
-      for (const h of holesOf(d)) { const hs = faint ? h.twinSamples : (h.samples || h.res?.samples); if (!hs || hs.length < 3) continue;
+      for (const h of cutsOf(d)) { const hs = faint ? h.twinSamples : (h.samples || h.res?.samples); if (!hs || hs.length < 3) continue;
         const ring = []; for (const q of hs) { const p = q.point || q.p, u = p && q.face != null ? res.uvOf(q.face, affineBary(p, q.face)) : null; if (!u) { ring.length = 0; break; } ring.push([u[0], u[1]]); }
         if (ring.length >= 3) { rings.push([ring]); const xs = ring.map(p => p[0]), ys = ring.map(p => p[1]); holeBox.push([Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)]); } }
       if (rings.length) { try { outl = polygonClipping.difference(outl, ...rings); } catch (e) {} } }
@@ -3940,7 +3970,9 @@ function updateDecalVisual(d, preview) {
   if (!S.model || !d.ctrl.length || !isShown(d)) { renderHandles(); return; }
   const mc = mergedCtrl(d);
   d.mergedMap = mc || null;
-  if (mc) { d.samples = addCurve({ ...d, closed: true, obj: d.obj }, mc, preview ? null : d.res, preview, false); renderHandles(); return; }
+  if (mc) { d.samples = addCurve({ ...d, closed: true, obj: d.obj }, mc, preview ? null : d.res, preview, false);
+    if (mc.ring) { const hr = !preview ? d.ringHole?.res || null : null; d.ringSamples = addCurve({ ...d, closed: true, obj: d.obj, holeOf: 1 }, mc.ring, hr, preview, false); } else d.ringSamples = null;
+    renderHandles(); return; }
   d.samples = addCurve(d, d.ctrl, d.res, preview, false);
   if (d.mirror && d.ctrl.length >= 2) {
     const tc = preview || !d.twin ? twinCtrl(d) : d.twin.ctrl;
@@ -4310,7 +4342,7 @@ function renderList() {
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
     const plain = !d.partOf && d.liveOf == null; // parts and live pieces get their own short set of actions
-    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || centreRuns(d).length > 1 ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, [d]); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
@@ -4341,7 +4373,7 @@ function solvedPieces() {
   for (const d of S.decals) {
     if (!d.closed) continue;
     if (d.holeOf || d.partOf) continue; // holes are cut as part of their parent piece; parts of a live combination are not cut on their own
-    const kids = holesOf(d);
+    const kids = cutsOf(d);
     const tol = Math.max(0.01, +S.sheet.tol || 0.1);
     const pkey = [d.res?._v, d.twin?.res?._v, d.mirror ? 1 : 0, d.name, tol, kids.map(k => `${k.res?._v}.${k.twin?.res?._v}.${(k.res?.samples || k.samples)?.length}`).join(',')].join('|');
     const pc = PIECES.get(d); if (pc && pc.key === pkey) { out.push(...pc.list); continue; }
@@ -5102,6 +5134,8 @@ function knifeCutAll(Ks, before, skip) {
 
 // ---------- holes and booleans ----------
 const holesOf = d => S.decals.filter(x => x.holeOf === d.id);
+// what is cut out of a decal: its holes, plus the open middle of a mirrored ring
+const cutsOf = d => { const h = holesOf(d); if (d.ringHole?.res && !d.ringHole.res.error && d.mergedMap?.ring) h.push(d.ringHole); return h; };
 function holeRings(parentRes, child, twin) { // a hole outline in its parent's flat layout
   const smp = twin ? (child.twin?.res?.samples) : (child.res?.samples || child.samples);
   if (!parentRes?.uvOf || !smp?.length) return null;
@@ -5487,8 +5521,8 @@ function askSeam(d) {
 function centreRuns(d) {
   if (!d || !d.mirror || !d.closed || !S.model || d.ctrl.length < 3 || d.holeOf) return [];
   const R = planeRuns(d); if (!R || !R.zero.length || !R.full.length) return [];
-  const g = joinOf(d, R.zero), n = d.ctrl.length;
-  return R.zero.map((pr, k) => { const idx = []; for (let i = pr[0]; ; i = (i + 1) % n) { idx.push(i); if (i === pr[1]) break; } return { no: k + 1, a: pr[0], b: pr[1], idx, joined: pr === g }; });
+  const J = joinedRuns(d, R), n = d.ctrl.length, ring = R.zero.length === 2 && R.full.length === 2 && surfaceRing(d, R.full);
+  return R.zero.map((pr, k) => { const idx = []; for (let i = pr[0]; ; i = (i + 1) % n) { idx.push(i); if (i === pr[1]) break; } return { no: k + 1, a: pr[0], b: pr[1], idx, joined: J.includes(pr), ring }; });
 }
 const RUNGEO = new WeakMap();
 function runPts(d, r) {
@@ -5549,7 +5583,7 @@ function drawSeamMarks() {
 function toggleRun(d, r) {
   if (!d) return;
   const runs = centreRuns(d), want = runs.map(x => x.a === r.a ? !x.joined : x.joined);
-  if (want.filter(Boolean).length > 1) { askRuns(d, runs.map(x => x.a === r.a), 'would close into a ring if edge {0} joined too, and a ring can’t lie flat. Tick the edges that stay open as seams; one stays joined.', r.no); return; }
+  if (want.filter(Boolean).length > 1 && !r.ring) { askRuns(d, runs.map(x => x.a === r.a), 'would close into a ring if edge {0} joined too, and a ring can’t lie flat. Tick the edges that stay open as seams; one stays joined.', r.no); return; }
   setRuns(d, runs, want);
 }
 function setRuns(d, runs, want) {
@@ -5559,7 +5593,7 @@ function setRuns(d, runs, want) {
   if (want.some(Boolean)) d.seamOpen = false;
   solve(d); renderHandles(); updateUI();
   const j = runs.findIndex((r, k) => want[k]);
-  flash(j < 0 ? tr('Every edge is open: two separate pieces that meet on the centre line.') : runs.length > 1 ? tr('Joined at edge {0}; the other edges stay open as seams.').replace('{0}', runs[j].no) : tr('Joined: both sides are one piece.'));
+  flash(j < 0 ? tr('Every edge is open: two separate pieces that meet on the centre line.') : runs[0].ring && want.every(Boolean) ? tr('Joined all round: one ring, the middle stays open like a hole.') : runs.length > 1 ? tr('Joined at edge {0}; the other edges stay open as seams.').replace('{0}', runs[j].no) : tr('Joined: both sides are one piece.'));
 }
 function askRuns(d, want, why, no) {
   const runs = centreRuns(d); if (!runs.length || !S.decals.includes(d) || document.querySelector('dialog[open]')) return;
@@ -6826,6 +6860,7 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Joined all round: one ring, the middle stays open like a hole.": "Rundum verbunden: ein Ring, die Mitte bleibt offen wie ein Loch.",
   "Done": "Fertig",
   "Seam placed: {0}.": "Naht gesetzt: {0}.",
   "Seam": "Naht",
