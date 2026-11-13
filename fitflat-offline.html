@@ -13167,7 +13167,7 @@ function handleTargets() {
 // mirrored copies of points, editable like the originals
 function ghostsOf(d) {
   if (!d.mirror || d.ctrl.length < 2) return [];
-  if (d.mergedMap) return [...d.mergedMap, ...(d.mergedMap.ring || [])].filter(m => m.map.m).map(m => ({ p: m.p, face: m.face, o: m.map.o }));
+  if (d.mergedMap) return [d.mergedMap, ...(d.mergedMap.holes || [])].flat().filter(m => m.map.m).map(m => ({ p: m.p, face: m.face, o: m.map.o }));
   const tc = d.twin?.ctrl || (d.ghostCache = d.ghostCache && d.ghostCache.n === d.ctrl.length && d.ghostCache.key === JSON.stringify(d.ctrl.map(c => c.p)) ? d.ghostCache : { n: d.ctrl.length, key: JSON.stringify(d.ctrl.map(c => c.p)), tc: twinCtrl(d) }).tc;
   return tc.map((c, i) => ({ p: c.p, face: c.face, o: i }));
 }
@@ -13366,25 +13366,62 @@ function joinOf(d, zero) {
   const free = zero.filter(pr => d.ctrl[pr[0]].seam !== true);
   return free.length ? free[d.seamFlip ? free.length - 1 : 0] : null;
 }
-// A half that meets the centre line twice makes a ring once mirrored. Round the tube (a band) it needs a seam.
-// On the surface (a ring lying on top of the tube, its middle open like a Subtract hole) it lies flat as it is:
-// the outer loop is the outline and the inner loop a hole. Told apart by where the loops cross the centre line:
-// a band's loop crosses on opposite sides of the tube, so the chord between its two crossings runs through the tube.
-function surfaceRing(d, full) {
-  const key = full.map(pr => d.ctrl[pr[0]].p.concat(d.ctrl[pr[1]].p).map(v => v.toFixed(3)).join(',')).join('|');
-  if (d._ringKey === key) return d._ring;
-  const { mesh, grid } = S.model;
-  const flat = full.every(([a, b]) => { const A = d.ctrl[a].p, B = d.ctrl[b].p, len = Math.hypot(A[0] - B[0], A[1] - B[1], A[2] - B[2]);
-    if (len < 1e-6) return false;
-    return [0.25, 0.5, 0.75].every(t => { const m = A.map((v, k) => v + (B[k] - v) * t), h = Core.closestPoint(mesh, grid, m, 80); return h && Math.hypot(...h.point.map((v, k) => v - m[k])) < len * 0.12; }); });
-  d._ringKey = key; d._ring = flat; return flat;
+// Where a half meets the centre line more than once, the user decides edge by edge what is joined and what is a seam.
+// Lying on the surface of the tube, any mix works: the openings between joined edges become holes (like Subtract).
+// Only a piece that really wraps round the tube can't be joined everywhere: then one edge has to stay open.
+// A part of the outline wraps round when it leaves the centre line on top and comes back on the other side of the tube:
+// the surface faces opposite ways at its two ends.
+function aroundTube(d, R) {
+  const key = R.full.map(pr => d.ctrl[pr[0]].face + ',' + d.ctrl[pr[1]].face).join('|');
+  if (d._aroundKey === key) return d._around;
+  const dot = (f, g) => { const a = fnorm(f), b = fnorm(g); return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]; };
+  const v = R.full.some(([a, b]) => dot(d.ctrl[a].face, d.ctrl[b].face) < 0);
+  d._aroundKey = key; d._around = v; return v;
 }
 // which centre-line stretches the two sides join along
 function joinedRuns(d, R) {
   if (d.seamOpen || !R.zero.length || !R.full.length) return [];
-  if (R.zero.length === 2 && R.full.length === 2 && surfaceRing(d, R.full)) return R.zero.filter(pr => d.ctrl[pr[0]].seam !== true);
+  if (!aroundTube(d, R)) return R.zero.filter(pr => d.ctrl[pr[0]].seam !== true);
   const g = joinOf(d, R.zero); return g ? [g] : [];
 }
+// the edges of the mirrored piece: walk the half forward and its mirror backward, crossing over at every joined stretch
+function mirrorWalk(d, R, J) {
+  const P = R.pairs, m = P.length, n = d.ctrl.length, isJ = k => J.includes(P[k]), seen = new Set(), loops = [];
+  const st = J.length ? (P.indexOf(J[0]) + 1) % m : 0; // start just after a joined stretch, as the outline always did
+  for (let r = 0; r < m; r++) for (const s0 of [0, 1]) { const k0 = (st + r) % m;
+    if (isJ(k0) || seen.has(k0 + ':' + s0)) continue;
+    const seq = []; let k = k0, s = s0, guard = 0;
+    do {
+      seen.add(k + ':' + s); const [a, b] = P[k];
+      if (s === 0) { for (let i = a; i !== b; i = (i + 1) % n) seq.push({ i, m: false }); const nk = (k + 1) % m; if (isJ(nk)) s = 1; else k = nk; }
+      else { for (let i = b; i !== a; i = (i - 1 + n) % n) seq.push({ i, m: true }); const pk = (k - 1 + m) % m; if (isJ(pk)) s = 0; else k = pk; }
+    } while (!(k === k0 && s === s0) && ++guard < 4 * m + 4);
+    loops.push(seq);
+  }
+  return loops;
+}
+// one walked loop as control points for the curve
+function loopCtrl(d, seq) {
+  const C = d.ctrl, N = seq.length, { mesh, grid } = S.model, out = [], origIn = new Set(seq.filter(x => !x.m).map(x => x.i));
+  const third = (a, b) => a.map((v, k) => v + (b[k] - v) / 3);
+  seq.forEach(({ i, m }, q) => {
+    const c = C[i];
+    if (!c.plane) {
+      if (!m) out.push({ ...c, map: { o: i, m: false } });
+      else { const h = Core.closestPoint(mesh, grid, reflect(c.p), 80); out.push({ p: h.point, face: h.face, type: c.type, broken: c.broken, hin: c.hout && reflect(c.hout), hout: c.hin && reflect(c.hin), map: { o: i, m: true } }); }
+      return;
+    }
+    const Pv = seq[(q - 1 + N) % N], Nx = seq[(q + 1) % N], pc = C[Pv.i], xc = C[Nx.i], e = { ...c, map: { o: i, m: m && origIn.has(i) } }; // a centre-line point counts as mirrored only where it shows up twice (along a seam)
+    // coming in from the mirrored side the point's handles are mirrored too; along the centre line the edge runs straight
+    if (pc.plane || xc.plane) {
+      const H = Core.handlesFor(C, i, d.closed); e.type = 'bezier'; e.broken = true;
+      e.hin = pc.plane ? third(c.p, pc.p) : (!Pv.m ? H[0] : reflect(H[1])); e.hout = xc.plane ? third(c.p, xc.p) : (!Nx.m ? H[1] : reflect(H[0]));
+    } else if (ptype(c) === 'bezier' && c.hin && c.hout) { e.hin = !Pv.m ? c.hin : reflect(c.hout); e.hout = !Nx.m ? c.hout : reflect(c.hin); }
+    out.push(e);
+  });
+  return out;
+}
+const loopSize = l => { const P = l.map(m => m.p), c = [0, 1, 2].map(k => P.reduce((a, p) => a + p[k], 0) / P.length); return P.reduce((a, p) => a + Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]), 0) / P.length; };
 function mergedCtrl(d) {
   if (!d.mirror || !S.model || d.seamOpen) return null;
   const R = planeRuns(d);
@@ -13393,12 +13430,11 @@ function mergedCtrl(d) {
   if (zero.length && full.length) {
     const J = joinedRuns(d, R);
     if (!J.length) return null; // every stretch is marked as a seam: two separate pieces
-    const ring = zero.length === 2 && full.length === 2 && surfaceRing(d, full);
-    if (J.length === 2) { // a ring on the surface: outer loop is the outline, inner loop a hole
-      const L = full.map(pr => mirrorLoop(d, pr[0], pr[1])), sz = l => { const P = l.map(m => m.p), c = [0, 1, 2].map(k => P.reduce((a, p) => a + p[k], 0) / P.length); return P.reduce((a, p) => a + Math.hypot(p[0] - c[0], p[1] - c[1], p[2] - c[2]), 0) / P.length; };
-      const o = sz(L[0]) >= sz(L[1]) ? 0 : 1, out = L[o]; out.ring = L[1 - o]; out.band = false; out.surf = true; return out;
-    }
-    const out = mirrorLoop(d, J[0][1], J[0][0]); out.band = zero.length > 1 && !ring; out.surf = ring; return out;
+    const L = mirrorWalk(d, R, J).filter(l => l.length >= 2).map(l => loopCtrl(d, l));
+    if (!L.length) return null;
+    // the biggest loop is the outline, any others are openings cut out of it
+    L.sort((x, y) => loopSize(y) - loopSize(x));
+    const out = L[0]; out.holes = L.slice(1); out.band = zero.length > 1 && aroundTube(d, R); return out;
   }
   let best = null;
   for (const pr of pairs) { const cnt = cntOf(pr); if (cnt >= 1 && (!best || cnt > best.cnt)) best = { a: pr[0], b: pr[1], cnt }; }
@@ -14026,7 +14062,7 @@ function solveNow(d) {
   if (d.liveOf != null && !S.recomputing && !S.restoring && S.decals.includes(d)) applyCombo(d.liveOf, true);
   const mc = mergedCtrl(d), dir = d.seamDir || null;
   d.res = solveOne(mc || d.ctrl, d.flip, dir); d.merged = !!mc;
-  d.ringHole = mc?.ring ? { ctrl: mc.ring, res: solveOne(mc.ring, false), virtual: true } : null;
+  d.ringHoles = mc?.holes?.length ? mc.holes.map(h => ({ ctrl: h, res: solveOne(h, false), virtual: true })) : null;
   if (mc) d.twin = null;
   else if (d.mirror) { const tc = twinCtrl(d), pl = mirrorPlane(), td = dir && pl ? dir.map((v, k) => k === pl.k ? -v : v) : dir; d.twin = { ctrl: tc, res: solveOne(tc, d.flip, td) }; } else d.twin = null;
   updateDecalVisual(d, false);
@@ -14160,7 +14196,7 @@ function updateDecalVisual(d, preview) {
   const mc = mergedCtrl(d);
   d.mergedMap = mc || null;
   if (mc) { d.samples = addCurve({ ...d, closed: true, obj: d.obj }, mc, preview ? null : d.res, preview, false);
-    if (mc.ring) { const hr = !preview ? d.ringHole?.res || null : null; d.ringSamples = addCurve({ ...d, closed: true, obj: d.obj, holeOf: 1 }, mc.ring, hr, preview, false); } else d.ringSamples = null;
+    d.ringSamples = (mc.holes || []).map((h, k) => addCurve({ ...d, closed: true, obj: d.obj, holeOf: 1 }, h, !preview ? d.ringHoles?.[k]?.res || null : null, preview, false));
     renderHandles(); return; }
   d.samples = addCurve(d, d.ctrl, d.res, preview, false);
   if (d.mirror && d.ctrl.length >= 2) {
@@ -15324,7 +15360,7 @@ function knifeCutAll(Ks, before, skip) {
 // ---------- holes and booleans ----------
 const holesOf = d => S.decals.filter(x => x.holeOf === d.id);
 // what is cut out of a decal: its holes, plus the open middle of a mirrored ring
-const cutsOf = d => { const h = holesOf(d); if (d.ringHole?.res && !d.ringHole.res.error && d.mergedMap?.ring) h.push(d.ringHole); return h; };
+const cutsOf = d => { const h = holesOf(d); if (d.mergedMap?.holes?.length) for (const r of d.ringHoles || []) if (r.res && !r.res.error) h.push(r); return h; };
 function holeRings(parentRes, child, twin) { // a hole outline in its parent's flat layout
   const smp = twin ? (child.twin?.res?.samples) : (child.res?.samples || child.samples);
   if (!parentRes?.uvOf || !smp?.length) return null;
@@ -15710,7 +15746,7 @@ function askSeam(d) {
 function centreRuns(d) {
   if (!d || !d.mirror || !d.closed || !S.model || d.ctrl.length < 3 || d.holeOf) return [];
   const R = planeRuns(d); if (!R || !R.zero.length || !R.full.length) return [];
-  const J = joinedRuns(d, R), n = d.ctrl.length, ring = R.zero.length === 2 && R.full.length === 2 && surfaceRing(d, R.full);
+  const J = joinedRuns(d, R), n = d.ctrl.length, ring = !aroundTube(d, R);
   return R.zero.map((pr, k) => { const idx = []; for (let i = pr[0]; ; i = (i + 1) % n) { idx.push(i); if (i === pr[1]) break; } return { no: k + 1, a: pr[0], b: pr[1], idx, joined: J.includes(pr), ring }; });
 }
 const RUNGEO = new WeakMap();
@@ -15782,7 +15818,7 @@ function setRuns(d, runs, want) {
   if (want.some(Boolean)) d.seamOpen = false;
   solve(d); renderHandles(); updateUI();
   const j = runs.findIndex((r, k) => want[k]);
-  flash(j < 0 ? tr('Every edge is open: two separate pieces that meet on the centre line.') : runs[0].ring && want.every(Boolean) ? tr('Joined all round: one ring, the middle stays open like a hole.') : runs.length > 1 ? tr('Joined at edge {0}; the other edges stay open as seams.').replace('{0}', runs[j].no) : tr('Joined: both sides are one piece.'));
+  flash(j < 0 ? tr('Every edge is open: two separate pieces that meet on the centre line.') : runs[0].ring && want.filter(Boolean).length > 1 ? tr('Joined: the openings between joined edges stay open like holes.') : runs.length > 1 ? tr('Joined at edge {0}; the other edges stay open as seams.').replace('{0}', runs[j].no) : tr('Joined: both sides are one piece.'));
 }
 function askRuns(d, want, why, no) {
   const runs = centreRuns(d); if (!runs.length || !S.decals.includes(d) || document.querySelector('dialog[open]')) return;
@@ -17049,7 +17085,7 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
-  "Joined all round: one ring, the middle stays open like a hole.": "Rundum verbunden: ein Ring, die Mitte bleibt offen wie ein Loch.",
+  "Joined: the openings between joined edges stay open like holes.": "Verbunden: die Öffnungen zwischen verbundenen Kanten bleiben offen wie Löcher.",
   "Done": "Fertig",
   "Seam placed: {0}.": "Naht gesetzt: {0}.",
   "Seam": "Naht",
