@@ -1742,12 +1742,18 @@ const Core = (() => {
         samples.forEach((s, i) => { const dd = (s.point[0]-p0[0])**2 + (s.point[1]-p0[1])**2 + (s.point[2]-p0[2])**2; if (dd < bd) { bd = dd; bi = i; } });
         const uvA = dc.A.map(l => [fl.u[l], fl.v[l]]), uvB = dc.B.map(l => [fl.u[l], fl.v[l]]), tipUV = uvA[uvA.length - 1];
         const a0 = uvA[0], b0 = uvB[0], ang = Math.acos(Math.max(-1, Math.min(1, ((a0[0]-tipUV[0])*(b0[0]-tipUV[0]) + (a0[1]-tipUV[1])*(b0[1]-tipUV[1])) / ((Math.hypot(a0[0]-tipUV[0], a0[1]-tipUV[1]) * Math.hypot(b0[0]-tipUV[0], b0[1]-tipUV[1])) || 1)))) * 180 / Math.PI;
-        dartInfo.push({ angle: ang }); ins.push({ i: bi, A: uvA, B: uvB }); });
+        dartInfo.push({ angle: ang }); ins.push({ i: bi, A: uvA, B: uvB, k }); });
       ins.sort((x, y) => y.i - x.i);
       // the outline already jumps across the opening where the dart meets it (samples on each side follow their own side):
       // put the tip into that jump, so the V on the sheet is two straight cuts meeting at the tip
-      for (const { i, A, B } of ins) {
+      const inPoly = (p, O) => { let c = false; for (let a = 0, b = O.length - 1; a < O.length; b = a++) { const [xi, yi] = O[a], [xj, yj] = O[b]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
+      for (const { i, A, B, k } of ins) {
         const N = outline.length, tip = A[A.length - 1], W = 12; let bj = -1, bg = 0;
+        // the V between both sides: open (no film there) is a V-notch; covered by film means the sides overlap: a slit
+        const cen = [(A[0][0] + B[0][0] + tip[0]) / 3, (A[0][1] + B[0][1] + tip[1]) / 3];
+        if (inPoly(cen, outline)) { const mid = [(A[0][0] + B[0][0]) / 2, (A[0][1] + B[0][1]) / 2]; let bi2 = 0, bd2 = 1e30;
+          outline.forEach((p, q) => { const dd = Math.hypot(p[0] - mid[0], p[1] - mid[1]); if (dd < bd2) { bd2 = dd; bi2 = q; } });
+          const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, tip, m2.slice()); if (dartInfo[k]) dartInfo[k].slit = true; continue; }
         for (let q = -W; q < W; q++) { const j = (i + q + N) % N, k = (j + 1) % N, g = Math.hypot(outline[k][0] - outline[j][0], outline[k][1] - outline[j][1]); if (g > bg) { bg = g; bj = j; } }
         const open = Math.hypot(A[0][0] - B[0][0], A[0][1] - B[0][1]);
         if (bj >= 0 && bg > open * 0.4) outline.splice(bj + 1, 0, tip);
@@ -4139,9 +4145,19 @@ function addFill(d, pos, col, faint) {
 // darts on the model: a line from the edge to the tip, where the film is cut and closes up when applied
 function drawDarts(d) {
   if (!d.darts?.length) return;
-  const k = hOff() * 1.4;
-  for (const p of d.darts) { const pts = p.map(q => { const h = Core.closestPoint(S.model.mesh, S.model.grid, q, 40); return h ? offsetPt(h.point, h.face, k) : null; }).filter(Boolean);
-    if (pts.length < 2) continue; const l = fatLine(pts, false, lineMat('#111111', 2.2, 0.95, false)); l.renderOrder = 6; decalGroup.add(l); d.obj.push(l); }
+  const k = hOff() * 1.4, info = d.res?.darts || [], ins = d.res?.insideSet, onD = ins ? f => ins.has(f) : null;
+  d.darts.forEach((p, di) => { const hs = p.map(q => Core.closestPoint(S.model.mesh, S.model.grid, q, 40)).filter(Boolean);
+    if (hs.length < 2) return;
+    const add = (pts, col, w, op) => { const l = fatLine(pts, false, lineMat(col, w, op, false)); l.renderOrder = 6; decalGroup.add(l); d.obj.push(l); };
+    add(hs.map(h => offsetPt(h.point, h.face, k)), '#111111', 2.2, 0.95);
+    // a slit opens on the bike: the film on both sides moves apart by the angle it had to give; show that gap as a V
+    const di0 = info[di]; if (!di0?.slit || !onD) return;
+    const E = hs[0], tip = hs[hs.length - 1], L = dist3(E.point, tip.point), dv = v3.sub(tip.point, E.point), nf = fnorm(E.face);
+    let sd = v3cross(nf, dv); const sl = v3.len(sd); if (sl < 1e-9) return; sd = v3.mul(sd, 1 / sl);
+    const half = Math.min(L * 0.4, L * Math.tan(Math.min(40, di0.angle || 0) * Math.PI / 360)); if (!(half > 0.2)) return;
+    for (const sg of [1, -1]) { const w = walkOn(E.point, E.face, v3.mul(sd, sg * half), onD, 0.5), e2 = w[w.length - 1];
+      add([offsetPt(tip.point, tip.face, k), offsetPt(e2.point, e2.face, k)], '#111111', 1.6, 0.8); }
+  });
 }
 function updateDecalVisual(d, preview) {
   if (d.stale) preview = true;
@@ -4416,6 +4432,25 @@ function angleDefect(faces) {
   return K;
 }
 let reliefCache = { key: '', map: new Map() };
+// the decal's flat triangles (for going from the sheet back to the frame)
+const FLATTRI = new WeakMap();
+function flatTris(r) {
+  let t = FLATTRI.get(r); if (t) return t;
+  const { mesh } = S.model, T = mesh.tri, P = mesh.pos; t = [];
+  for (const f of r.insideFaces) { const a = r.uvOf(f, [1, 0, 0]), b = r.uvOf(f, [0, 1, 0]), c = r.uvOf(f, [0, 0, 1]); if (!a || !b || !c) continue;
+    t.push({ f, a, b, c, x0: Math.min(a[0], b[0], c[0]), x1: Math.max(a[0], b[0], c[0]), y0: Math.min(a[1], b[1], c[1]), y1: Math.max(a[1], b[1], c[1]),
+      V: [0, 1, 2].map(k => [P[T[3*f+k]*3], P[T[3*f+k]*3+1], P[T[3*f+k]*3+2]]) }); }
+  FLATTRI.set(r, t); return t;
+}
+function flatTo3(tri, uv) {
+  const [x, y] = uv;
+  for (const q of tri) { if (x < q.x0 - 1e-6 || x > q.x1 + 1e-6 || y < q.y0 - 1e-6 || y > q.y1 + 1e-6) continue;
+    const { a, b, c } = q, d = (b[1] - c[1]) * (a[0] - c[0]) + (c[0] - b[0]) * (a[1] - c[1]); if (Math.abs(d) < 1e-12) continue;
+    const l1 = ((b[1] - c[1]) * (x - c[0]) + (c[0] - b[0]) * (y - c[1])) / d, l2 = ((c[1] - a[1]) * (x - c[0]) + (a[0] - c[0]) * (y - c[1])) / d, l3 = 1 - l1 - l2;
+    if (l1 < -1e-6 || l2 < -1e-6 || l3 < -1e-6) continue;
+    return { point: [0, 1, 2].map(k => l1 * q.V[0][k] + l2 * q.V[1][k] + l3 * q.V[2][k]), face: q.f }; }
+  return null;
+}
 // walk along the surface from C in the tangent direction v, staying on faces that pass ok; returns the points passed
 function walkOn(C, face, v, ok, step) {
   const { mesh, grid } = S.model, L = v3.len(v), out = [{ point: C, face }]; if (L < 1e-9) return out;
@@ -4442,31 +4477,27 @@ function reliefSuggest(d) {
     const cl = [...r.faceStretch].filter(([f, st]) => st >= reliefAt() * 0.5 && dist3(cen(f), pk.c) < sep * 0.8).map(([f]) => f);
     let ex = 0, de = 0; for (const f of cl) { const g = r.faceSig?.get(f); if (!g) continue; ex += topo.area[f] * Math.max(0, g[0] - 1); de += topo.area[f] * Math.max(0, 1 - g[1]); }
     const K = angleDefect(cl), kind = Math.abs(K) > 0.01 ? (K > 0 ? 'notch' : 'slit') : (ex >= de ? 'notch' : 'slit');
-    // where on the edge it starts: close to the spot, and rather underneath than on top
-    let bi = 0, bd = 1e30, bc = 1e30;
-    smp.forEach((q, i) => { const dd = dist3(q.point, pk.c), ny = fnorm(q.face)[1], c = dd * (1 + 0.6 * Math.max(0, ny)); if (c < bc) { bc = c; bd = dd; bi = i; } });
-    const E = smp[bi].point, toMid = dist3(E, mid); if (toMid < 4) return null;
-    const ins = r.insideSet || new Set(r.insideFaces), onDecal = f => ins.has(f), me = topo.medianEdge || 1, stepL = Math.max(0.5, Math.min(1.5, me));
-    // the edge direction at the start, and straight into the decal from there (as an installer cuts), bent a little towards the spot
-    const tg = v3.sub(smp[(bi + 2) % n].point, smp[(bi - 2 + n) % n].point), tn = v3.mul(tg, 1 / (v3.len(tg) || 1)), nE = fnorm(smp[bi].face);
-    let inw = v3cross(nE, tn); const toIn = v3.sub(bd > 2 ? pk.c : mid, E); if (v3.dot(inw, toIn) < 0) inw = v3.mul(inw, -1);
-    const tIn = v3.sub(toIn, v3.mul(nE, v3.dot(toIn, nE))), tl = v3.len(tIn) || 1, dir0 = v3.add(v3.mul(inw, 0.35), v3.mul(tIn, 0.65 / tl));
-    const len = Math.min(Math.max(bd * 1.2, toMid * 0.4, 5), toMid * 0.65, Math.max(8, Math.sqrt(r.area) * 0.3));
-    // follow the decal's own surface, step by step (a straight line pressed onto the surface jumps at junctions)
-    const pts = walkOn(E, smp[bi].face, v3.mul(dir0, len / (v3.len(dir0) || 1)), onDecal, stepL);
-    if (pts.length < 3) return null;
-    const clen = pts.reduce((a, q, i) => i ? a + dist3(q.point, pts[i - 1].point) : 0, 0); if (clen < len * 0.5) return null;
-    // a V opens by the curvature it has to take out; one cut can't take out more than about 25°: beyond that, split the decal
-    const thetaRaw = Math.abs(K) * 180 / Math.PI, theta = Math.min(25, Math.max(3, thetaRaw));
-    const mouth = Math.min(clen * 0.35, 2 * clen * Math.tan(theta * Math.PI / 360)), w = Math.max(2.5 * me, mouth); // a wedge narrower than the mesh would cut nothing
-    // the two sides of the V, each point pushed sideways along the surface from the cut line, narrowing to the tip
-    let vee = null; {
-      const sides = [1, -1].map(sg => { const o = []; for (let q = 0; q <= 8; q++) { const t = q / 8, i = Math.round(t * (pts.length - 1)), P0 = pts[i], P1 = pts[Math.min(pts.length - 1, i + 1)], P_ = pts[Math.max(0, i - 1)];
-        const dv = v3.sub(P1.point, P_.point), nf = fnorm(P0.face); let side = v3cross(nf, dv); const sl = v3.len(side); if (sl < 1e-9) continue; side = v3.mul(side, sg / sl);
-        const wlk = walkOn(P0.point, P0.face, v3.mul(side, (mouth / 2) * (1 - t)), onDecal, stepL / 2); o.push(wlk[wlk.length - 1]); } return o; });
-      if (sides.every(x => x.length >= 3)) vee = sides; }
-    const tipP = pts[pts.length - 1];
-    return { E, Eface: smp[bi].face, pts, tan: tn, st: pk.st, len: clen, kind, peak: pk.c, rad: sep * 0.8, vee, mouth, theta, big: thetaRaw > 25, w, under: fnorm(smp[bi].face)[1] < 0 };
+    // the cut is planned on the flat pattern, where the plotter cuts: a straight line in from the edge, at a right angle
+    // to it, towards the stretched spot; it's mapped back onto the frame only to show it there
+    const O = r.outline, P2 = r.uvOf(pk.f, [1/3, 1/3, 1/3]); if (!O || !P2) return null;
+    let j = 0, jd = 1e30; O.forEach((p, q) => { const dd = Math.hypot(p[0] - P2[0], p[1] - P2[1]); if (dd < jd) { jd = dd; j = q; } });
+    const No = O.length, a2 = O[(j - 2 + No) % No], b2 = O[(j + 2) % No], tl2 = Math.hypot(b2[0] - a2[0], b2[1] - a2[1]) || 1, t2 = [(b2[0] - a2[0]) / tl2, (b2[1] - a2[1]) / tl2];
+    const inO = p => { let c = false; for (let a = 0, b = No - 1; a < No; b = a++) { const [xi, yi] = O[a], [xj, yj] = O[b]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
+    let n2 = [-t2[1], t2[0]]; if (!inO([O[j][0] + n2[0], O[j][1] + n2[1]])) n2 = [-n2[0], -n2[1]]; // into the piece
+    let w0 = 1e9, w1 = -1e9, h0 = 1e9, h1 = -1e9; for (const [x, y] of O) { w0 = Math.min(w0, x); w1 = Math.max(w1, x); h0 = Math.min(h0, y); h1 = Math.max(h1, y); }
+    const span = Math.min(w1 - w0, h1 - h0), len = Math.min(Math.max(jd * 1.25, span * 0.3, 8), span * 0.45, 40);
+    if (len < 4) return null;
+    const tri = flatTris(r), to3 = uv => flatTo3(tri, uv), edge = [O[j][0] + n2[0] * 0.3, O[j][1] + n2[1] * 0.3];
+    const line2 = []; for (let q = 0; q <= 12; q++) line2.push([edge[0] + n2[0] * len * q / 12, edge[1] + n2[1] * len * q / 12]);
+    const pts = []; for (const uv of line2) { const h = to3(uv); if (!h) break; pts.push(h); }
+    if (pts.length < 6) return null;
+    const clen = len * (pts.length - 1) / 12, E = pts[0].point;
+    // a V-notch opens by the curvature it takes out, at most about 25° for one cut; a slit is a plain line
+    const thetaRaw = Math.abs(K) * 180 / Math.PI, theta = Math.min(25, Math.max(3, thetaRaw)), mouth = Math.min(clen * 0.35, 2 * clen * Math.tan(theta * Math.PI / 360));
+    let vee = null;
+    if (kind === 'notch') { const sides = [1, -1].map(sg => { const o = []; for (let q = 0; q <= 8; q++) { const t = q / 8, c2 = [edge[0] + n2[0] * clen * t + t2[0] * sg * (mouth / 2) * (1 - t), edge[1] + n2[1] * clen * t + t2[1] * sg * (mouth / 2) * (1 - t)], h = to3(c2); if (h) o.push(h); } return o; }); if (sides.every(x => x.length >= 5)) vee = sides; }
+    const tn = (() => { const h1 = to3([edge[0] + t2[0], edge[1] + t2[1]]); const v = h1 ? v3.sub(h1.point, E) : [1, 0, 0]; return v3.mul(v, 1 / (v3.len(v) || 1)); })(), w = 0;
+    return { E, Eface: pts[0].face, pts, tan: tn, st: pk.st, len: clen, kind, peak: pk.c, rad: sep * 0.8, vee, mouth, theta, big: thetaRaw > 25, w };
   }).filter(Boolean);
   if (reliefCache.map.size > 40) reliefCache.map.clear(); reliefCache.map.set(ck, out); return out;
 }
@@ -4503,7 +4534,7 @@ function drawReliefMarks() {
   const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta) + ':' + x.c.mouth.toFixed(1)).join(',');
   if (key !== reliefMarkKey) {
     reliefMarkKey = key; el.hidden = false;
-    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it')).replace('{0}', Math.round(x.c.theta)) + (x.c.big ? ' ' + tr('This spot curves more than one cut can take out: splitting the decal here with the Knife works better.') : ''))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '°' : tr('Slit')} · ${x.c.mouth < 10 ? x.c.mouth.toFixed(1) : Math.round(x.c.mouth)} mm</button>`).join('');
+    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film would have to stretch over a saddle here. A straight cut in from the edge, ending in a small round hole, lets it open. Click to cut it')).replace('{0}', Math.round(x.c.theta)) + (x.c.big ? ' ' + tr('This spot curves more than one cut can take out: splitting the decal here with the Knife works better.') : ''))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '° · ' + (x.c.mouth < 10 ? x.c.mouth.toFixed(1) : Math.round(x.c.mouth)) : tr('Slit') + ' · ' + Math.round(x.c.len)} mm</button>`).join('');
     el.querySelectorAll('button').forEach(b => {
       const it = () => items[+b.dataset.j];
       b.onclick = e => { e.stopPropagation(); const x = it(); if (x) applyRelief(x.d, [x.i]); };
@@ -4542,32 +4573,31 @@ function applyRelief(d, only) {
       for (const nd of r.made) { S.decals.push(nd); solveNow(nd); }
       return main;
     };
+    const holeAt = (tgt, poly, c) => { // the small round hole at the end of a cut
+      const tp = onS(poly[poly.length - 1]), inn0 = v3.sub(poly[poly.length - 1], poly[Math.max(0, poly.length - 3)]), il0 = v3.len(inn0) || 1;
+      const hc = tp ? holeCtrl(tp.point, tp.face, v3.mul(inn0, 1 / il0), c.tan, RELIEF_HOLE / 2) : null; return (hc && cutOut(tgt, hc)) || tgt; };
+    const polyOf = c => [c.E, ...c.pts.slice(1).map(h => h.point)].map(p => p.map(v => +v.toFixed(4)));
+    // cuts often only work together (around a saddle each one alone can make its own spot worse): try the whole set first
+    if (!only && cuts.length > 1) {
+      const snap0 = snapshot(), polys = cuts.map(polyOf);
+      target.darts = [...(target.darts || []), ...polys]; target.stale = false; solveNow(target);
+      if (target.res && !target.res.error && target.res.stretchMax < start * 0.9) {
+        cuts.forEach((c, i) => { if (S.decals.includes(target)) target = holeAt(target, polys[i], c); }); made = cuts.length; cuts = [];
+      } else { applySnapshot(snap0); target = S.decals.find(x => x.id === d.id) || d; }
+    }
     for (const c of cuts) {
       if (!S.decals.includes(target)) break;
       const snap = snapshot(), keepId = target.id, was = target.res && !target.res.error ? spotStretch(target.res, c.peak, c.rad) : 0, wasMean = target.res?.stretchMean || 0;
-      if (c.kind === 'notch') { // a dart: cut along the line, the sheet opens into a V
+      { // a cut along the line: on a bulge the sheet opens into a V, on a saddle it stays a slit
         const poly = [c.E, ...c.pts.slice(1).map(h => h.point)].map(p => p.map(v => +v.toFixed(4)));
         target.darts = [...(target.darts || []), poly]; target.stale = false; solveNow(target);
         const ok = target.res && !target.res.error && target.res.darts?.[target.darts.length - 1];
         const now = ok ? spotStretch(target.res, c.peak, c.rad) : 1;
-        if (ok && now < was * 0.9 && target.res.stretchMean <= wasMean * 1.05) {
-          const tp = onS(poly[poly.length - 1]), inn0 = v3.sub(poly[poly.length - 1], poly[Math.max(0, poly.length - 3)]), il0 = v3.len(inn0) || 1;
-          const hc = tp ? holeCtrl(tp.point, tp.face, v3.mul(inn0, 1 / il0), c.tan, RELIEF_HOLE / 2) : null, t3 = hc ? cutOut(target, hc) : null;
-          if (t3) target = t3; made++;
+        if (ok && now < was * (c.kind === 'notch' ? 0.9 : 0.97) && target.res.stretchMean <= wasMean * 1.05) {
+          target = holeAt(target, poly, c); made++;
         } else { applySnapshot(snap); target = S.decals.find(x => x.id === keepId) || target; dropped++; }
         continue;
       }
-      const tipH = c.pts[c.pts.length - 1], tip = tipH.point, inn = v3.sub(c.pts[Math.min(2, c.pts.length - 1)].point, c.E), il = v3.len(inn) || 1, out = v3.mul(inn, -2.5 / il);
-      const B = v3.add(c.E, out), b1 = onS(v3.add(B, v3.mul(c.tan, c.w / 2))), b2 = onS(v3.add(B, v3.mul(c.tan, -c.w / 2))), tp = onS(tip);
-      if (!b1 || !b2 || !tp) continue;
-      let t2 = cutOut(target, [b1, tp, b2].map(h => ({ p: h.point, face: h.face, type: 'corner' })));
-      if (!t2) { failed++; continue; }
-      // the round hole at the end
-      const ax = v3.mul(inn, 1 / il), hc = holeCtrl(tp.point, tp.face, ax, c.tan, RELIEF_HOLE / 2), t3 = hc ? cutOut(t2, hc) : null;
-      if (t3) t2 = t3;
-      const now = t2.res && !t2.res.error ? spotStretch(t2.res, c.peak, c.rad) : 1;
-      if (now < was * 0.9 && (t2.res.stretchMean <= wasMean * 1.05)) { target = t2; made++; }
-      else { applySnapshot(snap); target = S.decals.find(x => x.id === keepId) || target; dropped++; } // it didn't help: put it back
     }
     setBusy(false);
     if (made) { histPush(before, 'Relief cuts'); S.active = target; reliefCache.map.clear(); renderHandles(); updateUI();
@@ -4650,7 +4680,7 @@ function renderList() {
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
     const plain = !d.partOf && d.liveOf == null; // parts and live pieces get their own short set of actions
-    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut where the film stretches too much: V-notches where it would wrinkle, slits where it has to stretch. The tags on the model make one cut at a time">Relief cuts</button>' : ''}${d.darts?.length ? `<button data-a="undart" title="${esc(tr('Take the V-notch cuts out of this decal again'))}">${esc(tr('Remove V-notches'))} (${d.darts.length})</button>` : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut where the film stretches too much: V-notches where it would wrinkle, slits where it has to stretch. The tags on the model make one cut at a time">Relief cuts</button>' : ''}${d.darts?.length ? `<button data-a="undart" title="${esc(tr('Take the relief cuts (V-notches and slits) out of this decal again'))}">${esc(tr('Remove relief cuts'))} (${d.darts.length})</button>` : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, [d]); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
@@ -4661,7 +4691,7 @@ function renderList() {
         if (d.liveOf != null) applyCombo(d.liveOf, true); // a combined piece goes for good, the others stay
         const part = d.partOf?.cid; removeDecal(d); if (part != null) { recomputeCombo(part); } }
       if (b.dataset.a === 'relief') { applyRelief(d); return; }
-      if (b.dataset.a === 'undart') { pushHistory('Removed V-notches'); delete d.darts; solve(d); return; }
+      if (b.dataset.a === 'undart') { pushHistory('Removed relief cuts'); delete d.darts; solve(d); return; }
       if (b.dataset.a === 'dup') { duplicateDecal(d); return; }
       if (b.dataset.a === 'lock') { pushHistory(d.locked ? 'Unlocked' : 'Locked'); d.locked = !d.locked; if (d.locked && S.active === d) { S.active = null; S.sel = null; } renderHandles(); updateUI(); flash(d.locked ? `${d.name} is locked. You can draw over it now.` : `${d.name} is unlocked.`); }
       if (b.dataset.a === 'applymir') applyMirror(d);
@@ -7191,6 +7221,9 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Remove relief cuts": "Entlastungsschnitte entfernen",
+  "Take the relief cuts (V-notches and slits) out of this decal again": "Die Entlastungsschnitte (V-Kerben und Schlitze) aus diesem Decal wieder entfernen",
+  "Removed relief cuts": "Entlastungsschnitte entfernt",
   "This spot curves more than one cut can take out: splitting the decal here with the Knife works better.": "Diese Stelle ist stärker gewölbt, als ein Schnitt ausgleichen kann: das Decal hier mit dem Messer zu teilen, funktioniert besser.",
   "Like an installer pulls the film into place: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch) but never bigger, so the film goes on under tension instead of wrinkling": "Wie ein Folierer die Folie auf Spannung zieht: wo der Rahmen gewölbt ist, darf das Schnittteil etwas kleiner als die Fläche werden (bis 60 % der max. Dehnung), aber nie größer, damit die Folie unter Spannung sitzt statt Falten zu werfen",
   " Pull film tight (pattern may be a little smaller, never bigger)": " Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
@@ -7200,7 +7233,7 @@ const DE = {
   "That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.": "Diese V-Kerbe ließ sich hier nicht schneiden. Fang die Linie knapp außerhalb des Decal-Rands an und hör innen auf.",
   "V-notch cut: it opens {0}° on the sheet. Stretch {1}% → {2}%.": "V-Kerbe geschnitten: sie öffnet sich auf dem Bogen um {0}°. Dehnung {1} % → {2} %.",
   "V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it": "V-Kerbe, etwa {0}°: die Folie ist hier zu groß und würde Falten werfen. Sie bekommt einen Schnitt, der sich auf dem Bogen zum V öffnet und sich am Rahmen schließt. Klick zum Schneiden",
-  "Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it": "Schlitz: die Folie muss sich hier dehnen. Ein schmaler Keil (etwa {0}°) bleibt am Rahmen frei. Klick zum Schneiden",
+  "Slit: the film would have to stretch over a saddle here. A straight cut in from the edge, ending in a small round hole, lets it open. Click to cut it": "Schlitz: die Folie müsste sich hier über einen Sattel dehnen. Ein gerader Schnitt vom Rand mit einem kleinen runden Loch am Ende lässt sie aufgehen. Klick zum Schneiden",
   "Take the V-notch cuts out of this decal again": "Die V-Kerben aus diesem Decal wieder entfernen",
   "Remove V-notches": "V-Kerben entfernen",
   "Removed V-notches": "V-Kerben entfernt",
