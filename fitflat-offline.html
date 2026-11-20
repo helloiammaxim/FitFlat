@@ -337,6 +337,14 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 #seamMarks button.cut{ border-style:dashed; border-color:var(--ink); }
 #seamMarks button.join{ color:var(--accent); }
 #seamMarks button.back{ opacity:.45; }
+#cutMarks{ position:absolute; inset:0; pointer-events:none; z-index:4; }
+#cutMarks .h{ position:absolute; left:0; top:0; pointer-events:auto; width:14px; height:14px; border:2px solid #111; background:#fff; cursor:grab; box-shadow:0 1px 3px rgba(0,0,0,.35); touch-action:none; }
+#cutMarks .h.tip{ border-radius:50%; }
+#cutMarks .h.start{ border-radius:3px; }
+#cutMarks .h:hover, #cutMarks .h.drag{ border-color:#E5007E; }
+#cutMarks .x{ position:absolute; left:0; top:0; pointer-events:auto; width:18px; height:18px; border-radius:50%; border:0; background:#111; color:#fff; font:700 12px/18px inherit; text-align:center; cursor:pointer; padding:0; }
+#cutMarks .x:hover{ background:#E5007E; }
+#cutMarks .back{ opacity:.45; }
 #reliefMarks{ position:absolute; inset:0; pointer-events:none; z-index:3; }
 #reliefMarks button{ position:absolute; left:0; top:0; pointer-events:auto; height:22px; padding:0 8px; border-radius:11px; border:1.5px solid #FF3B30; background:var(--surface); color:#D2302A; font:700 11px/1 inherit; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.25); white-space:nowrap; }
 #reliefMarks button.slit{ border-color:#FF9500; color:#B86A00; }
@@ -763,6 +771,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div id="gizmo" hidden></div>
       <div id="seamMarks" hidden></div>
       <div id="reliefMarks" hidden></div>
+      <div id="cutMarks" hidden></div>
       <div class="refov" id="refOv" hidden><img id="refImg" alt="Reference image"><span class="rgrip" id="refMove" title="Drag to move the image"></span><span class="rsize" id="refSize" title="Drag to size the image; hold Alt to turn it"></span></div>
       <div class="placebar" id="placeBar" hidden>
         <strong>Place artwork</strong>
@@ -12268,7 +12277,7 @@ new MutationObserver(() => wake(600)).observe(document.body, { subtree: true, ch
 (function loop(){ const now = performance.now(); if (tween) { wake(); tween(); } controls.update();
   let pressing = false; try { pressing = !!press; } catch (e) {} // press is declared further down
   if (now > awakeUntil && !S.busy && !pressing && now - lastDraw < 1000) { requestAnimationFrame(loop); return; } lastDraw = now;
-  syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); drawSeamMarks(); drawReliefMarks(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
+  syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); drawSeamMarks(); drawReliefMarks(); drawCutMarks(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
   if (S.model && !camera.isOrthographicCamera) { const dd = camera.position.distanceTo(controls.target); const nn = Math.max(0.05, dd * 0.01); if (Math.abs(camera.near - nn) > nn * 0.2) { camera.near = nn; camera.updateProjectionMatrix(); } } renderer.render(scene, camera); requestAnimationFrame(loop); })();
 
 // ---------- model ----------
@@ -14768,6 +14777,58 @@ function drawReliefMarks() {
   items.forEach((x, j) => { const b = el.children[j]; if (!b) return; const tip = x.c.pts[0], q = screenOf(tip.point);
     b.style.transform = `translate(${Math.round(q.x - b.offsetWidth / 2)}px,${Math.round(q.y - b.offsetHeight - 6)}px)`;
     b.style.visibility = q.z > 1 ? 'hidden' : ''; b.classList.toggle('back', !facing(tip.point, tip.face)); });
+}
+// ---------- editing relief cuts: drag the start (square) or the end (round), × deletes ----------
+// on a joined mirrored decal a cut and its mirror image move and go together
+function dartPartner(d, i) {
+  if (!(d.mirror && d.mergedMap)) return -1; const P = d.darts[i], M = P.map(reflect);
+  return d.darts.findIndex((Q, j) => j !== i && Q.length === M.length && Q.every((q, k) => dist3(q, M[k]) < 4));
+}
+// a straight cut on the flat pattern between two points of the decal, as points on the frame
+function dartLine(d, a, b) {
+  const r = d.res, n = 12;
+  if (r && !r.error && r.uvOf) { const tri = flatTris(r), ua = uvAt(r, a.point, a.face), ub = uvAt(r, b.point, b.face);
+    if (ua && ub) { const pts = []; for (let q = 0; q <= n; q++) { const h = flatTo3(tri, [ua[0] + (ub[0] - ua[0]) * q / n, ua[1] + (ub[1] - ua[1]) * q / n]); if (h) pts.push(h.point); }
+      if (pts.length >= n * 0.7) return [a.point, ...pts.slice(1, -1), b.point].map(p => p.map(v => +v.toFixed(4))); } }
+  const out = []; for (let q = 0; q <= n; q++) { const h = Core.closestPoint(S.model.mesh, S.model.grid, v3.add(a.point, v3.mul(v3.sub(b.point, a.point), q / n)), 40); if (h) out.push(h.point.map(v => +v.toFixed(4))); }
+  return out;
+}
+let cutMarkKey = '', cutDrag = null;
+const cutTarget = () => { const d = S.active; return d && d.darts?.length && S.decals.includes(d) && !S.drawing && S.mode === 'edit' && isShown(d) ? d : null; };
+function drawCutMarks() {
+  const el = $('#cutMarks'); if (!el) return;
+  const d = cutTarget();
+  if (!d) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; cutMarkKey = ''; } return; }
+  // a mirror partner is edited through its pair: show the handles of one of the two
+  const shown = []; d.darts.forEach((p, i) => { const j = dartPartner(d, i); if (j < 0 || j > i) shown.push(i); });
+  const key = d.id + ':' + shown.join(',') + ':' + d.darts.length;
+  if (key !== cutMarkKey) {
+    cutMarkKey = key; el.hidden = false;
+    el.innerHTML = shown.map(i => `<div class="h start" data-i="${i}" data-e="0" title="${esc(tr('Drag to move where the cut starts at the edge'))}"></div><div class="h tip" data-i="${i}" data-e="1" title="${esc(tr('Drag to move the end of the cut'))}"></div><button type="button" class="x" data-i="${i}" title="${esc(tr('Delete this cut'))}">×</button>`).join('');
+    el.querySelectorAll('.x').forEach(b => b.onclick = e => { e.stopPropagation(); const d2 = cutTarget(); if (!d2) return; const i = +b.dataset.i, j = dartPartner(d2, i);
+      pushHistory('Deleted relief cut'); d2.darts = d2.darts.filter((_, k) => k !== i && k !== j); if (!d2.darts.length) delete d2.darts; reliefCache.map.clear(); solve(d2); });
+    el.querySelectorAll('.h').forEach(h => h.onpointerdown = e => {
+      e.stopPropagation(); e.preventDefault(); const d2 = cutTarget(); if (!d2) return;
+      cutDrag = { d: d2, i: +h.dataset.i, end: +h.dataset.e, before: snapshot(), el: h, moved: false }; h.classList.add('drag'); try { h.setPointerCapture(e.pointerId); } catch (er) {} });
+    el.querySelectorAll('.h').forEach(h => { h.onpointermove = e => {
+      if (!cutDrag || cutDrag.el !== h) return; const { d: d2, i, end } = cutDrag, r = canvas.getBoundingClientRect(), hit = pickAt(e.clientX - r.left, e.clientY - r.top); if (!hit) return;
+      let q = { point: hit.p, face: hit.face };
+      if (end === 0 && d2.res?.samples?.length) { let bq = null, bd = 1e30; for (const s2 of d2.res.samples) { const dd = dist3(s2.point, q.point); if (dd < bd) { bd = dd; bq = s2; } } if (bq) q = { point: bq.point, face: bq.face }; } // the start stays on the edge
+      const P = d2.darts[i], other = Core.closestPoint(S.model.mesh, S.model.grid, end ? P[0] : P[P.length - 1], 40); if (!other) return;
+      const np = end ? dartLine(d2, other, q) : dartLine(d2, q, other); if (np.length < 2) return;
+      const j = dartPartner(d2, i); d2.darts[i] = np; if (j >= 0) d2.darts[j] = np.map(p => reflect(p).map(v => +v.toFixed(4)));
+      cutDrag.moved = true; updateDecalVisual(d2, true); wake(); };
+      h.onpointerup = () => { if (!cutDrag || cutDrag.el !== h) return; const { d: d2, before, moved } = cutDrag; h.classList.remove('drag'); cutDrag = null;
+        if (moved) { histPush(before, 'Moved relief cut'); reliefCache.map.clear(); solve(d2); } }; });
+  }
+  const kids = el.children; let c = 0;
+  for (const i of shown) { const P = d.darts[i]; if (!P) continue; const a = P[0], b = P[P.length - 1], qa = screenOf(a), qb = screenOf(b), hs = kids[c], ht = kids[c + 1], hx = kids[c + 2]; c += 3;
+    if (!hs || !ht || !hx) continue;
+    const ca = Core.closestPoint(S.model.mesh, S.model.grid, a, 40), cb = Core.closestPoint(S.model.mesh, S.model.grid, b, 40), ba = ca && !facing(ca.point, ca.face), bb = cb && !facing(cb.point, cb.face);
+    hs.style.transform = `translate(${Math.round(qa.x - 7)}px,${Math.round(qa.y - 7)}px)`; ht.style.transform = `translate(${Math.round(qb.x - 7)}px,${Math.round(qb.y - 7)}px)`;
+    const dx = qb.x - qa.x, dy = qb.y - qa.y, l = Math.hypot(dx, dy) || 1; hx.style.transform = `translate(${Math.round(qb.x + dx / l * 14 - 9)}px,${Math.round(qb.y + dy / l * 14 - 9)}px)`;
+    hs.classList.toggle('back', !!ba); ht.classList.toggle('back', !!bb); hx.classList.toggle('back', !!bb);
+    for (const z of [hs, ht, hx]) z.style.visibility = qa.z > 1 || qb.z > 1 ? 'hidden' : ''; }
 }
 // a small round hole on the surface, as a closed outline of four smooth points
 function holeCtrl(p, face, a, b, rad) {
@@ -17483,6 +17544,11 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Drag to move where the cut starts at the edge": "Ziehen, um den Anfang des Schnitts am Rand zu verschieben",
+  "Drag to move the end of the cut": "Ziehen, um das Ende des Schnitts zu verschieben",
+  "Delete this cut": "Diesen Schnitt löschen",
+  "Deleted relief cut": "Entlastungsschnitt gelöscht",
+  "Moved relief cut": "Entlastungsschnitt verschoben",
   "{0}%+ folds": "{0} %+ Falten",
   "folds": "Falten",
   "The flat piece is bigger than the frame here: the film has too much material and may fold. A V-notch or Pull film tight helps": "Das flache Teil ist hier größer als der Rahmen: die Folie hat zu viel Material und kann Falten werfen. Eine V-Kerbe oder Folie auf Spannung hilft",
