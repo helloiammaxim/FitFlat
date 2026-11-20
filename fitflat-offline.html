@@ -317,6 +317,8 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 .runrow input{ width:18px; height:18px; accent-color:var(--accent); margin:0; }
 .runrow span{ color:var(--muted); }
 .runrow .st{ margin-left:auto; font-size:12px; }
+.stalenote{ margin:0 0 10px; padding:8px 10px; border-radius:10px; background:var(--fill); font-size:12.5px; display:flex; align-items:center; gap:8px; justify-content:space-between; }
+.badge.stale{ background:var(--fill2); color:var(--muted); }
 .runwarn{ margin:6px 2px 0; min-height:1.2em; font-size:12.5px; color:var(--muted); }
 .runwarn.bad{ color:#D2413A; }
 #seamMarks{ position:absolute; inset:0; pointer-events:none; z-index:3; }
@@ -612,6 +614,10 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <button class="btn tog" id="seamSnap" aria-pressed="true" title="Points near the centre plane snap onto it and join their mirror there (Q). Turn off to place points freely near the seam">Seam snap</button>
             <label class="clip" id="clipWrap" title="How close a point must be to the centre plane to snap onto it. 0 snaps only when you drag across the plane.">Snap <input type="number" id="clipDist" value="2" min="0" step="0.5"> mm</label>
           </div>
+          <div class="grp" aria-label="Unwrap">
+            <button class="btn tog" id="liveUnwrap" aria-pressed="true" title="Unwrap after every change (L). Turn off to shape the outline first, then press Unwrap">Live unwrap</button>
+            <button class="btn primary" id="unwrapNow" hidden title="Unwrap the decals you changed (U)">Unwrap</button>
+          </div>
 
         </div>
         <div class="viewbar" id="viewPanel" aria-label="View">
@@ -836,6 +842,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <p class="note warn" id="sheetWarn"></p>
       </div>
       <div class="export">
+        <p class="stalenote" id="staleNote" hidden><span></span> <button type="button" class="btn" id="staleUnwrap">Unwrap now</button></p>
         <div class="exprow"><button class="btn primary" id="export" disabled>Download SVG</button><button class="btn" id="exportDxf" disabled title="Download the cut sheet as DXF (millimetres), for cutter software that prefers it">DXF</button></div>
         <p class="note" id="exportNote">Cut lines are black paths in millimetres on a "cut" layer. Labels and the sheet outline sit on their own layers so you can hide them in the cutter software.</p>
       </div>
@@ -12904,6 +12911,7 @@ $('#tplFile').addEventListener('change', async e => { const f = e.target.files[0
   catch (err) { $('#libMsg').textContent = tr('That file could not be read: {0}').replace('{0}', err.message); } });
 // a decal's flat outline (with holes) as a template, in mm
 async function saveTemplate(d) {
+  flushStale();
   const pc = solvedPieces().find(p => p.id === 'd' + d.id); if (!pc) { flash('Unwrap this decal first.'); return; }
   let rings = pc.curves && pc.curves.every(Boolean) ? pc.curves.map(r => ({ c: r })) : [pc.poly, ...(pc.holes || [])].map(r => ({ p: r }));
   // lie it straight: the turn that gives the smallest box, long side across
@@ -12958,7 +12966,7 @@ function gradedPieces(pr, i) {
   for (const d of S.decals) { if (!d.closed || d.ctrl.length < 3) continue;
     const ctrl = d.ctrl.map(c => { const p = map(c.p); if (!p) return null; const h = Core.closestPoint(model.mesh, model.grid, p, 200); return h && { ...cloneC(c), p: h.point, face: h.face, hin: map(c.hin) || undefined, hout: map(c.hout) || undefined }; });
     if (ctrl.some(c => !c)) continue;
-    const n = { ...d, ctrl, res: null, twin: null, obj: [], samples: null, twinSamples: null, mergedMap: null }; idMap.set(d.id, n); copies.push(n); }
+    const n = { ...d, ctrl, res: null, stale: false, twin: null, obj: [], samples: null, twinSamples: null, mergedMap: null }; idMap.set(d.id, n); copies.push(n); }
   const keep = { model: S.model, decals: S.decals }; let pieces = [], failed = [];
   S.model = model; S.decals = copies;
   try {
@@ -13868,6 +13876,8 @@ window.addEventListener('keydown', e => {
   if ((e.key === '0' || e.code === 'Numpad0' || e.key === 'Home') && S.model) { fitView(); e.preventDefault(); }
   if (e.altKey && e.key.toLowerCase() === 'z' || e.code === 'KeyZ' && e.altKey) { setModelOpacity(S.modelOpacity < 1 ? 1 : S.lastXray); e.preventDefault(); return; }
   if (!mod && e.key.toLowerCase() === 'q' && S.model) { setSeamSnap(!S.seamSnap); e.preventDefault(); return; }
+  if (!mod && e.key.toLowerCase() === 'l' && S.model) { setLiveUnwrap(!S.liveUnwrap); e.preventDefault(); return; }
+  if (!mod && e.key.toLowerCase() === 'u' && S.model && staleDecals().length) { unwrapNow(); e.preventDefault(); return; }
   if (!mod && e.key.toLowerCase() === 'g' && S.model) { S.grid.show = !S.grid.show; gridKey = ''; renderGrid(); updateGridUI(); e.preventDefault(); return; }
   if ((e.key === '5' || e.code === 'Numpad5') && S.model) { setOrtho(!camera.isOrthographicCamera); e.preventDefault(); }
   const orb = { '4': ['yaw', -45], '6': ['yaw', 45], '8': ['pitch', -45], '2': ['pitch', 45] }[e.key];
@@ -14074,10 +14084,29 @@ function solveNow(d) {
 // wrapped all the way round; a seam that follows a slit drawn into the outline stays where it was drawn
 const isWrapped = d => !!((d.res?.seamEdges?.length && !d.res.slitSeam) || d.mergedMap?.band);
 const runsSet = d => !!(d.seamFlip || d.seamOpen || d.ctrl.some(c => typeof c.seam === 'boolean'));
+// With Live unwrap off, an edit only redraws the outline; the decal waits, marked stale, until Unwrap is pressed
+// (or something needs its flat shape: the sheet, export, combining, relief cuts)
 function solve(d) {
   S.dirty = true;
+  if (!S.liveUnwrap && !S.restoring && !S.recomputing) { d.stale = true; updateDecalVisual(d, true); updateUI(); return; }
+  d.stale = false;
   setBusy(d.mirror ? 'Unwrapping both sides…' : 'Unwrapping…');
   setTimeout(() => { solveNow(d); setBusy(false); updateUI(); }, 20);
+}
+
+S.liveUnwrap = true; try { S.liveUnwrap = localStorage.getItem('decal-studio-live') !== '0'; } catch (e) {}
+const staleDecals = () => S.decals.filter(d => d.stale);
+// unwrap everything still waiting, right now (callers that need the flat shapes use this)
+function flushStale() { const L = staleDecals(); if (!L.length) return false; for (const d of L) { d.stale = false; solveNow(d); } return true; }
+function unwrapNow() {
+  const n = staleDecals().length; if (!n) return;
+  setBusy(tr('Unwrapping…')); setTimeout(() => { flushStale(); setBusy(false); updateUI(); flash(n === 1 ? tr('Unwrapped.') : tr('Unwrapped {0} decals.').replace('{0}', n)); }, 20);
+}
+function setLiveUnwrap(on) {
+  S.liveUnwrap = on; try { localStorage.setItem('decal-studio-live', on ? '1' : '0'); } catch (e) {}
+  $('#liveUnwrap').setAttribute('aria-pressed', String(on));
+  if (on && staleDecals().length) unwrapNow(); else updateUI();
+  flash(on ? tr('Live unwrap on: every change unwraps right away.') : tr('Live unwrap off: shape the outline, then press Unwrap (U).'));
 }
 
 // ---------- film: how much stretch counts as too much ----------
@@ -14190,6 +14219,7 @@ function addFill(d, pos, col, faint) {
   m.renderOrder = 2; decalGroup.add(m); d.obj.push(m);
 }
 function updateDecalVisual(d, preview) {
+  if (d.stale) preview = true;
   for (const o of d.obj) disposeObj(o);
   d.obj = []; d._look = lookOf(d);
   if (!S.model || !d.ctrl.length || !isShown(d)) { renderHandles(); return; }
@@ -14364,6 +14394,10 @@ $('#mirror').addEventListener('click', () => {
 });
 function setSeamSnap(on) { S.seamSnap = on; $('#seamSnap').setAttribute('aria-pressed', String(on)); $('#clipWrap').classList.toggle('off', !on); flash(on ? 'Seam snap on: points near the centre plane snap onto it.' : 'Seam snap off: points stay where you put them; they only stop at the plane instead of crossing it.'); }
 $('#seamSnap').addEventListener('click', () => setSeamSnap(!S.seamSnap));
+$('#liveUnwrap').addEventListener('click', () => setLiveUnwrap(!S.liveUnwrap));
+$('#unwrapNow').addEventListener('click', unwrapNow);
+$('#staleUnwrap').addEventListener('click', unwrapNow);
+$('#liveUnwrap').setAttribute('aria-pressed', String(S.liveUnwrap));
 $('#clipDist').addEventListener('change', e => { const v = parseFloat(e.target.value); S.clipDist = v >= 0 ? v : 2; e.target.value = S.clipDist; S.dirty = true; flash(S.clipDist ? `Points within ${S.clipDist} mm of the centre plane snap to it.` : 'Points only snap to the centre plane when dragged across it.'); });
 $('#mirrorAxis').addEventListener('change', e => {
   S.mirrorAxis = e.target.value; renderHandles();
@@ -14472,6 +14506,7 @@ function renderRelief() {
 }
 // cut the suggested notches: a narrow V from just outside the edge to the end of each suggested line
 function applyRelief(d) {
+  flushStale();
   const cuts = reliefSuggest(d); if (!cuts.length) { flash(`${d.name} lies flat enough; no relief cuts needed.`); return; }
   const before = snapshot(); let target = d, made = 0;
   setBusy('Cutting…');
@@ -14538,6 +14573,9 @@ function updateUI() {
     const sd = S.sel?.decal; $('#splitBtn').disabled = !(sd && sd.closed && (L.length === 1 || L.length === 2)); $('#splitBtn').textContent = L.length === 1 ? 'Open here' : 'Split';
     $('#smoothBtn').textContent = L.length ? 'Smooth curve' : 'Smooth all'; $('#roundBtn').textContent = L.length ? 'Round corners' : 'Round all'; $('#simpBtn').textContent = L.length ? 'Simplify' : 'Simplify all';
   }
+  const st = S.decals.length ? staleDecals().length : 0;
+  $('#unwrapNow').hidden = !st; $('#unwrapNow').textContent = st > 1 ? tr('Unwrap ({0})').replace('{0}', st) : tr('Unwrap');
+  $('#staleNote').hidden = !st; if (st) $('#staleNote span').textContent = (st === 1 ? tr('1 decal is waiting to be unwrapped and is not on the sheet yet.') : tr('{0} decals are waiting to be unwrapped and are not on the sheet yet.').replace('{0}', st));
   renderSheet(); renderList();
 }
 
@@ -14563,6 +14601,7 @@ function renderList() {
     if (d.holeOf) { const par = S.decals.find(x => x.id === d.holeOf); info += `<div class="info"><span class="tw">Hole</span><span>cut out of ${par ? par.name.replace(/</g, '&lt;') : 'its piece'}</span></div>`; }
     else if (!d.closed) info += `<div class="info">${S.drawing === d ? 'Drawing' : 'Open line'}, ${d.ctrl.length} point${d.ctrl.length === 1 ? '' : 's'}${d.ctrl.length >= 3 ? '. Close shape to cut it' : ''}</div>`;
     else if (d.res?.error) info += `<div class="err">${d.res.error}</div>`;
+    else if (d.stale && !d.partOf) info += `<div class="info"><span class="badge stale" title="${esc(tr('Changed since the last unwrap. Press Unwrap (U) to update it'))}">${esc(tr('not unwrapped'))}</span></div>`;
     else if (d.res && !d.partOf) info += `<div class="info">${dims('d' + d.id, d.res)}</div>`;
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
@@ -14596,7 +14635,7 @@ const PIECES = new WeakMap();
 function solvedPieces() {
   const out = [];
   for (const d of S.decals) {
-    if (!d.closed) continue;
+    if (!d.closed || d.stale) continue;
     if (d.holeOf || d.partOf) continue; // holes are cut as part of their parent piece; parts of a live combination are not cut on their own
     const kids = cutsOf(d);
     const tol = Math.max(0.01, +S.sheet.tol || 0.1);
@@ -15690,7 +15729,7 @@ function halveSymmetric(d, src) {
   return d.ctrl.length >= 3;
 }
 function runBoolean(op, A, Bs) {
-  S.boolOp = null;
+  S.boolOp = null; flushStale();
   if (!Array.isArray(Bs)) Bs = [Bs];
   const up = d => d.holeOf ? S.decals.find(x => x.id === d.holeOf) || d : d;
   A = up(A); Bs = Bs.map(up).filter((B, i, all) => B !== A && all.indexOf(B) === i);
@@ -16813,10 +16852,12 @@ canvas.addEventListener('pointerleave', () => { $('#placeGhost').hidden = true; 
 let downloadsApi = null;
 if (window.claude?.use) window.claude.use('downloads').then(d => { downloadsApi = d; }).catch(() => {});
 $('#export').addEventListener('click', async () => {
+  if (flushStale()) updateUI();
   const pieces = solvedPieces(); if (!pieces.length) return; const sh = S.sheet, r = cutSheetSVG(pieces, S.source?.name);
   if (await saveFile(baseName() + '_cut_sheet.svg', r.svg, $('#exportNote'))) $('#exportNote').textContent += ` (${r.nodes} ${tr('nodes')}${sh.curves !== false ? ', ' + tr('smooth curves') : ''})`;
 });
 $('#exportDxf').addEventListener('click', async () => {
+  if (flushStale()) updateUI();
   const pieces = solvedPieces(); if (!pieces.length) return; const r = cutSheetSVG(pieces);
   await saveFile(baseName() + '_cut_sheet.dxf', cutSheetDXF(r.pk, S.sheet.w, r.names), $('#exportNote'));
 });
@@ -16829,7 +16870,7 @@ const PANEL_IDS = ['railPanel', 'topPanel']; // the View, Points and Decal panel
   // the decal list and history go into the Decals tab, the rest of the old sidebar stays under Sheet
   $('#slotDecals').appendChild($('#list').closest('.sec')); $('#slotHist').appendChild($('#secHist'));
   const tabs = [...document.querySelectorAll('.stabs [data-tab]')], panes = [...document.querySelectorAll('.tabpane')];
-  const show = t => { tabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t))); panes.forEach(p => p.hidden = p.dataset.pane !== t); try { localStorage.setItem('decal-studio-tab', t); } catch (e) {} if (t === 'sheet') renderSheet?.(); };
+  const show = t => { tabs.forEach(b => b.setAttribute('aria-selected', String(b.dataset.tab === t))); panes.forEach(p => p.hidden = p.dataset.pane !== t); try { localStorage.setItem('decal-studio-tab', t); } catch (e) {} if (t === 'sheet') { if (staleDecals().length) unwrapNow(); else renderSheet?.(); } };
   tabs.forEach(b => b.addEventListener('click', () => show(b.dataset.tab)));
   let t0 = 'decals'; try { t0 = localStorage.getItem('decal-studio-tab') || 'decals'; } catch (e) {}
   show(['decals', 'view', 'sheet'].includes(t0) ? t0 : 'decals');
@@ -17085,6 +17126,20 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Live unwrap": "Live-Abwicklung",
+  "Unwrap": "Abwickeln",
+  "Unwrap ({0})": "Abwickeln ({0})",
+  "Unwrap now": "Jetzt abwickeln",
+  "Unwrapped.": "Abgewickelt.",
+  "Unwrapped {0} decals.": "{0} Decals abgewickelt.",
+  "Live unwrap on: every change unwraps right away.": "Live-Abwicklung an: jede Änderung wird sofort abgewickelt.",
+  "Live unwrap off: shape the outline, then press Unwrap (U).": "Live-Abwicklung aus: erst die Kontur formen, dann Abwickeln drücken (U).",
+  "Unwrap after every change (L). Turn off to shape the outline first, then press Unwrap": "Nach jeder Änderung abwickeln (L). Ausschalten, um erst die Kontur zu formen und dann Abwickeln zu drücken",
+  "Unwrap the decals you changed (U)": "Die geänderten Decals abwickeln (U)",
+  "1 decal is waiting to be unwrapped and is not on the sheet yet.": "1 Decal wartet aufs Abwickeln und ist noch nicht auf dem Bogen.",
+  "{0} decals are waiting to be unwrapped and are not on the sheet yet.": "{0} Decals warten aufs Abwickeln und sind noch nicht auf dem Bogen.",
+  "not unwrapped": "nicht abgewickelt",
+  "Changed since the last unwrap. Press Unwrap (U) to update it": "Seit dem letzten Abwickeln geändert. Abwickeln (U) aktualisiert es",
   "Joined: the openings between joined edges stay open like holes.": "Verbunden: die Öffnungen zwischen verbundenen Kanten bleiben offen wie Löcher.",
   "Done": "Fertig",
   "Seam placed: {0}.": "Naht gesetzt: {0}.",
