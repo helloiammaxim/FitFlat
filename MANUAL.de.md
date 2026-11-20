@@ -253,7 +253,11 @@ Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Umkehren
 
 **Duplizieren** (oder **Strg+D**) kopiert das Decal mit seinen Löchern und der Spiegel-Einstellung und legt die Kopie direkt daneben auf die Fläche, auf derselben Seite der Spiegelebene. Die Kopie ist ausgewählt, du kannst sie also gleich mit dem Gizmo an ihren Platz ziehen. Weiteres Duplizieren reiht weitere Kopien auf.
 
-**Entlastungsschnitte** erscheint, wenn ein Decal zu stark gedehnt wird (rot). Es schneidet kleine V-Kerben vom Rand in die am stärksten gedehnten Bereiche, damit die Folie flach liegen kann. Schalte **Dehnung** in der Ansichtsleiste ein, um die vorgeschlagenen Schnitte vorher als rote gestrichelte Linien zu sehen. Bei stark gewölbten Flächen hilft oft mehr, das Decal mit dem Messer zu teilen.
+**Entlastungsschnitte** erscheint, wenn ein Decal zu stark gedehnt wird (rot). FitFlat liest jede überdehnte Stelle aus der Abwicklung und schlägt einen von zwei Schnitten vor, am ausgewählten Decal als gestrichelte Linie mit Schild:
+- **V-Kerbe** (rotes Schild, z. B. *V 9°*), wo die Folie zu groß ist und Falten werfen würde, typisch an Wölbungen und Rohrenden. Die Folie bekommt einen Schnitt vom Rand, der sich auf dem Schneidbogen zu einem sauberen V öffnet und sich am Rahmen wieder schließt; es bleibt nichts frei.
+- **Schlitz** (oranges Schild), wo sich die Folie über einen Sattel dehnen müsste, etwa an der Hohlkehle zwischen zwei Rohren. Am Rahmen bleibt ein schmaler Keil frei.
+
+Klick auf ein Schild setzt nur diesen Schnitt, **Entlastungsschnitte** probiert alle. Jeder Schnitt endet in einem kleinen runden Loch, damit die Folie nicht weiterreißt, und bleibt nur, wenn er die Dehnung an seiner Stelle wirklich senkt; die Meldung sagt, um wie viel, und welche Vorschläge weggelassen wurden. **V-Kerben entfernen** in der Liste nimmt die V-Kerben wieder heraus. An Sätteln helfen Schnitte oft wenig: teile dann das Decal mit dem Messer dort, wo das Rohr in die Muffe übergeht, oder nimm eine dehnbarere Folie.
 
 **Sperren** macht ein Decal auf dem Modell nicht mehr auswählbar und bearbeitbar, damit du darüber zeichnen kannst. Das Messer lässt gesperrte Decals in Ruhe.
 

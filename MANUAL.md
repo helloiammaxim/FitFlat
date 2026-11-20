@@ -253,7 +253,11 @@ Row buttons: **Mirror**, **Apply** (mirror), **Invert** (the film covers the are
 
 **Duplicate** (or **Ctrl+D**) copies the decal with its holes and mirror setting and puts the copy right next to it on the surface, on the same side of the mirror. The copy is selected, so you can drag it into place with the gizmo straight away. Duplicating again lines up further copies.
 
-**Relief cuts** appears when a decal stretches too much (red). It cuts small V-notches from the edge into the most stretched areas so the film can lie flat. Turn on **Stretch** in the view bar to see the suggested cuts as red dashed lines first. For strongly curved areas, splitting the decal with the Knife often helps more.
+**Relief cuts** appears when a decal stretches too much (red). FitFlat reads each over-stretched spot from the unwrap and suggests one of two cuts, shown on the selected decal as dashed lines with a tag:
+- **V-notch** (red tag, e.g. *V 9°*) where the film is too big and would wrinkle, typically on bulges and tube ends. The film gets a cut from the edge that opens into a clean V on the cut sheet and closes up again on the frame, so nothing is left uncovered.
+- **Slit** (orange tag) where the film would have to stretch over a saddle, like the fillet where two tubes meet. A narrow wedge is left uncovered on the frame.
+
+Click a tag to make just that cut, or press **Relief cuts** to try them all. Every cut ends in a small round hole so the film doesn't tear on, and a cut is only kept if it really lowers the stretch around its spot; the message tells you how much it changed and which suggestions were left out. **Remove V-notches** in the list takes the V-notches out again. On saddles, cuts often help little: then split the decal with the Knife where the tube turns into the lug, or use a film that stretches more.
 
 **Lock** makes a decal unselectable and uneditable on the model, so you can draw over it. The Knife leaves locked decals alone.
 
