@@ -1674,7 +1674,7 @@ const Core = (() => {
       bu.fill(0); bv.fill(0);
       const limAll = it >= warm && lo < 1;
       for (let f = 0; f < m; f++) {
-        const lim = limAll && !faceB[f]; // along the edge the film keeps its size: no pulling tight there
+        const lim = limAll; // edge triangles may shrink too: their length along the edge is still held by the edge weights
         let s00=0,s01=0,s10=0,s11=0,m00=0,m01=0,m11=0;
         for (let k = 0; k < 3; k++) {
           const a=(k+1)%3, b=(k+2)%3, i=lf[f][a], j=lf[f][b], w=wc(f,k);
@@ -1689,6 +1689,8 @@ const Core = (() => {
           // bigger than the frame: back to true size; smaller: only a weak pull back, so tension is cheap but never free
           const pull = q => { const c = Math.min(1, Math.max(lo, q)); return c + (1 - c) * 0.6; };
           if (sxF[f] < 0) { sxF[f] = pull(Q+R); syF[f] = pull(Q-R); }
+          // still coming out bigger than the frame (pushed by its neighbours): ask it to shrink more, down to the limit
+          else { if (Q+R > 1.002) sxF[f] = Math.max(lo, sxF[f] / (Q+R)); if (Q-R > 1.002) syF[f] = Math.max(lo, syF[f] / (Q-R)); }
           const sx = sxF[f], sy = syF[f], ct=Math.cos(th), st=Math.sin(th), cp=Math.cos(ph), sp=Math.sin(ph);
           T00 = cp*sx*ct - sp*sy*st; T01 = -cp*sx*st - sp*sy*ct; T10 = sp*sx*ct + cp*sy*st; T11 = -sp*sx*st + cp*sy*ct;
         }
