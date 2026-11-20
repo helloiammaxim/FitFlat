@@ -247,7 +247,9 @@ Each row shows the decal's name (click to rename), its flat size in mm and its *
 - amber — slight stretch, usually fine for film;
 - red — the film may wrinkle; add a relief cut or split the decal.
 
-**Stretch** in the view bar colours each decal on the model by how much the film has to stretch.
+- a purple **folds** badge — the flat piece is bigger than the frame somewhere: the film has too much material there and may fold or wrinkle.
+
+**Stretch** in the view bar colours each decal on the model, and each piece on the sheet, in two scales: green → yellow → red where the film has to **stretch**, green → light blue → dark blue where it has too much material and may **fold**. Folds count from half the stretch limit, because film handles them worse. Folds belong to bulges: a V-notch or **Pull film tight** takes them out.
 
 Row buttons: **Mirror**, **Apply** (mirror), **Invert** (the film covers the area outside the outline instead of inside, e.g. around a tube end), **Detach** (make a hole a separate piece), **Duplicate**, **🔒 Lock**, **Delete**.
 

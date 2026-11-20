@@ -111,7 +111,9 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .stage.dragging .drop{ display:grid; }
 .legend{ position:absolute; right:12px; bottom:12px; border-radius:10px; padding:6px 10px; font-size:12px; display:none; align-items:center; gap:8px; }
 .legend.on{ display:flex; }
-.legend .bar{ width:110px; height:8px; border-radius:4px; background:linear-gradient(90deg,#1FA67A,#F2C230 50%,#E0453A); }
+.legend .bar{ width:90px; height:8px; border-radius:4px; background:linear-gradient(90deg,#1FA67A,#F2C230 50%,#E0453A); }
+.legend .bar.fold{ background:linear-gradient(90deg,#1FA67A,#38A8F5 50%,#4B3BD6); }
+.badge.fold{ background:rgba(75,59,214,.16); color:#5B4BE6; }
 .measure{ position:absolute; z-index:6; pointer-events:none; background:rgba(20,22,26,.86); color:#fff; font:500 12px/1.35 ui-monospace,SFMono-Regular,Menlo,monospace; padding:5px 8px; border-radius:6px; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.25); }
 .measure b{ font-weight:600; color:#FF7AC0; }
 .measure span{ opacity:.7; }
@@ -270,6 +272,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .mat{ background:var(--mat); padding:12px; margin:12px; border-radius:14px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
 .mat svg{ display:block; width:100%; height:auto; max-height:280px; touch-action:none; cursor:grab; }
 .mat svg.panning{ cursor:grabbing; }
+#sheet path, #sheet rect, #sheet line, #sheet circle, #sheet polyline, #sheet polygon{ vector-effect:non-scaling-stroke; }
 .mat{ position:relative; }
 .matbar{ position:absolute; top:6px; right:6px; display:flex; gap:2px; z-index:2; background:rgba(0,0,0,.35); border-radius:8px; padding:2px; }
 .matbar button{ min-width:26px; height:24px; padding:0 6px; border:0; border-radius:6px; background:transparent; color:#fff; font:600 12px/1 inherit; cursor:pointer; }
@@ -773,7 +776,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       </div>
       <div class="hint" id="hintBox"><button class="hinttog" id="hintTog" aria-expanded="true" title="Hide the tips">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/></svg></button><span id="hint" role="status"></span></div>
-      <div class="legend" id="legend"><span>0%</span><span class="bar"></span><span>4%+ stretch</span></div>
+      <div class="legend" id="legend"><span>0%</span><span class="bar"></span><span id="legStretch">4%+ stretch</span><span class="bar fold"></span><span id="legFold">2%+ folds</span></div>
       <div class="busy" id="busy"><span>Working…</span></div>
       <div class="drop">Drop a .glb, .obj, .stl, project .json or .svg artwork</div>
     </section>
@@ -4059,10 +4062,24 @@ function setFilm(f, quiet) {
   try { localStorage.setItem('decal-studio-film', JSON.stringify(S.film)); } catch (e) {}
   $('#filmPreset').value = S.film.id; $('#filmMax').value = S.film.max;
   const fm = FILMS.find(x => x.id === S.film.id); $('#filmSum').textContent = `${tr(fm ? fm.name : 'Custom')} · ${S.film.max}%`;
-  const lg = $('#legend span:last-child'); if (lg) lg.textContent = tr('{0}%+ stretch').replace('{0}', S.film.max);
+  const lg = $('#legStretch'); if (lg) lg.textContent = tr('{0}%+ stretch').replace('{0}', S.film.max);
+  const lf = $('#legFold'); if (lf) lf.textContent = tr('{0}%+ folds').replace('{0}', +(S.film.max * 0.5).toFixed(2));
   if (!quiet && filmShrink() !== before && S.decals.length) { // the patterns change: unwrap again
     setBusy(tr('Unwrapping…')); setTimeout(() => { for (const d of S.decals) if (!d.stale && !d.partOf) solveNow(d); reliefCache.map.clear(); reliefKey = ''; setBusy(false); updateUI(); }, 20); return; }
   if (!quiet) { for (const d of S.decals) if (d.closed && d.res) updateDecalVisual(d, false); reliefKey = ''; renderRelief?.(); renderList(); renderSheet(); }
+}
+// where the flat piece is bigger than the frame the film has too much material and folds: shown in blue
+const foldAt = () => filmMax() * 0.5; // folds are worse than stretch: the blue scale tops out at half the stretch limit
+function foldOf(res) { if (res._fold != null) return res._fold; let m = 0; if (res.faceSig) for (const [, g] of res.faceSig) if (g[0] - 1 > m) m = g[0] - 1; return (res._fold = m); }
+function filmHeat(res, f) {
+  const g = res.faceSig?.get(f); if (!g) return heat(res.faceStretch?.get(f) || 0);
+  const ten = Math.max(0, 1 - g[1]), fold = Math.max(0, g[0] - 1);
+  return fold > ten ? foldHeat(fold) : heat(ten);
+}
+function foldHeat(t) {
+  t = Math.min(Math.max(t / foldAt(), 0), 1);
+  const a = new THREE.Color('#1FA67A'), b = new THREE.Color('#38A8F5'), c = new THREE.Color('#4B3BD6');
+  return t < 0.5 ? a.lerp(b, t * 2) : b.lerp(c, (t - 0.5) * 2);
 }
 function heat(t) {
   t = Math.min(Math.max(t / filmMax(), 0), 1);
@@ -4127,7 +4144,7 @@ function addCurve(d, ctrl, res, preview, faint) {
     const pushTri = (A, B, C, c) => { pos.push(...A, ...B, ...C); for (let q = 0; q < 3; q++) col.push(c.r, c.g, c.b); };
     for (const f of faces) {
       // lifted a hair off the surface along the face normal, so it never flickers through the model on long thin triangles
-      const c = S.showStretch ? heat(res.faceStretch.get(f) || 0) : base, nf = fnorm(f), V = [0, 1, 2].map(q => { const v = T[3*f+q]; return [P[3*v] + nf[0]*lift, P[3*v+1] + nf[1]*lift, P[3*v+2] + nf[2]*lift]; });
+      const c = S.showStretch ? filmHeat(res, f) : base, nf = fnorm(f), V = [0, 1, 2].map(q => { const v = T[3*f+q]; return [P[3*v] + nf[0]*lift, P[3*v+1] + nf[1]*lift, P[3*v+2] + nf[2]*lift]; });
       if (!outl || (core && core.has(f) && !holeBox.length)) { pushTri(V[0], V[1], V[2], c); continue; }
       const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b));
       if (U.some(u => !u)) { pushTri(V[0], V[1], V[2], c); continue; }
@@ -4670,6 +4687,8 @@ function updateUI() {
   renderSheet(); renderList();
 }
 
+function foldBadge(r) { const v = foldOf(r) * 100, lim = foldAt() * 100; if (v < lim * 0.5) return '';
+  return `<span class="badge fold" title="${esc(tr('The flat piece is bigger than the frame here: the film has too much material and may fold. A V-notch or Pull film tight helps'))}">${v.toFixed(1)}% ${esc(tr('folds'))}</span>`; }
 function stretchBadge(r) {
   const pct = r.stretchMax * 100, lim = filmMax() * 100, cls = pct < lim * 0.25 ? 'ok' : pct < lim * 0.75 ? 'warn' : 'bad';
   const tip = cls === 'ok' ? 'Lies flat without stretching' : cls === 'warn' ? 'Slight stretch. Usually fine for film' : 'Film may wrinkle here. Add a relief cut or split the decal';
@@ -4679,7 +4698,7 @@ function stretchBadge(r) {
 function renderList() {
   const ul = $('#list'); ul.innerHTML = '';
   if (!S.decals.length) { ul.innerHTML = `<li class="empty">${S.model ? 'No decals yet. Click on the model to place the first point.' : 'Load a model to begin.'}</li>`; return; }
-  const dims = (pid, r) => { const pc = S.packing?.placed.find(p => p.id === pid); return pc && r && !r.error ? `<span>${Math.round(pc.w)} × ${Math.round(pc.h)} mm</span>${stretchBadge(r)}` : ''; };
+  const dims = (pid, r) => { const pc = S.packing?.placed.find(p => p.id === pid); return pc && r && !r.error ? `<span>${Math.round(pc.w)} × ${Math.round(pc.h)} mm</span>${stretchBadge(r)}${foldBadge(r)}` : ''; };
   // parts of a live combination are listed under its result, and only while it is selected
   const order = [];
   for (const d of S.decals) { if (d.partOf) continue; order.push(d);
@@ -4796,7 +4815,13 @@ function cutSheetDXF(pk, W, names) {
   out.push('0', 'ENDSEC', '0', 'EOF'); return out.join('\r\n') + '\r\n';
 }
 // ---------- zoom and pan on the sheet ----------
-function sheetVB() { const v = S.sheetView || S.sheetFull; if (v) $('#sheet').setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`); }
+function sheetVB() {
+  const v = S.sheetView || S.sheetFull, svg = $('#sheet'); if (!v) return;
+  svg.setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`);
+  // the grid is a pattern, which doesn't keep its line weight by itself: set it from the zoom
+  const r = svg.getBoundingClientRect(), mmPx = Math.max(v.w / Math.max(1, r.width), v.h / Math.max(1, r.height));
+  svg.querySelectorAll('pattern').forEach((p, i) => p.querySelectorAll('path').forEach(q => q.setAttribute('stroke-width', (mmPx * (i === 0 ? 0.5 : 0.9)).toFixed(4))));
+}
 function sheetPt(cx, cy) { const svg = $('#sheet'), m = svg.getScreenCTM(); if (!m) return null; const p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(m.inverse()); }
 function sheetZoom(k, cx, cy) {
   const F = S.sheetFull; if (!F) return; const v = S.sheetView || { ...F }, r = $('#sheet').getBoundingClientRect();
@@ -4830,11 +4855,10 @@ function renderSheet() {
   if (!S.sheetFull || S.sheetFull.w !== full.w || S.sheetFull.h !== full.h) S.sheetView = null; // the sheet changed size: show all of it
   S.sheetFull = full; sheetVB();
   const step = sh.w > 2000 ? 50 : 10;
-  let s = `<defs><pattern id="g1" width="${step}" height="${step}" patternUnits="userSpaceOnUse"><path d="M${step} 0H0V${step}" fill="none" style="stroke:var(--mat-grid)" stroke-width="${sh.w/900}"/></pattern><pattern id="g5" width="${step*5}" height="${step*5}" patternUnits="userSpaceOnUse"><rect width="${step*5}" height="${step*5}" fill="url(#g1)"/><path d="M${step*5} 0H0V${step*5}" fill="none" style="stroke:var(--mat-grid-strong)" stroke-width="${sh.w/500}"/></pattern></defs>`;
-  for (let i = 0; i < n; i++) s += `<rect x="0" y="${i*(SH+gapY)}" width="${sh.w}" height="${SH}" fill="url(#g5)" stroke="#CFE3DA" stroke-width="${sh.w/600}" stroke-dasharray="${sh.roll ? 'none' : `${sh.w/150} ${sh.w/150}`}"/>`;
+  let s = `<defs><pattern id="g1" width="${step}" height="${step}" patternUnits="userSpaceOnUse"><path d="M${step} 0H0V${step}" fill="none" style="stroke:var(--mat-grid)" stroke-width="0.6"/></pattern><pattern id="g5" width="${step*5}" height="${step*5}" patternUnits="userSpaceOnUse"><rect width="${step*5}" height="${step*5}" fill="url(#g1)"/><path d="M${step*5} 0H0V${step*5}" fill="none" style="stroke:var(--mat-grid-strong)" stroke-width="1.4"/></pattern></defs>`;
+  for (let i = 0; i < n; i++) s += `<rect x="0" y="${i*(SH+gapY)}" width="${sh.w}" height="${SH}" fill="url(#g5)" stroke="#CFE3DA" stroke-width="1.4" stroke-dasharray="${sh.roll ? 'none' : `${sh.w/150} ${sh.w/150}`}"/>`;
   if (sh.reg) for (let i = 0; i < n; i++) for (const [x, y] of [[8, 8], [sh.w - 8, 8], [8, SH - 8]]) s += `<circle cx="${x}" cy="${i*(SH+gapY) + y}" r="${Math.max(2.5, sh.w/300)}" fill="#FFFFFF" fill-opacity=".9"/>`;
   let area = 0;
-  const heatBins = Array.from({ length: 6 }, () => []);
   for (const p of S.packing.placed) {
     const info = S.pieceInfo[p.id], d = info.decal, oy = p.sheet * (SH + gapY);
     const mf = sh.mirror ? ([x, y]) => [2*p.x + p.w - x, y] : q => q;
@@ -4843,17 +4867,21 @@ function renderSheet() {
     area += ringA(pts) - hl.reduce((t, h) => t + ringA(h), 0);
     // with Stretch on, the flat pieces show where the film stretches, in the same colours as the model
     const res = p.id[0] === 'm' ? d.twin?.res : d.res;
+    const pBins = Array.from({ length: 12 }, () => []);
     if (S.showStretch && res?.uvOf && res.faceStretch && p.tf) for (const f of res.insideFaces) {
       const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b)); if (U.some(u => !u)) continue;
-      const st = res.faceStretch.get(f) || 0, bin = Math.min(5, Math.floor(Math.min(1, st / filmMax()) * 5.999));
-      heatBins[bin].push('M' + U.map(u => { const q = mf(p.tf([u[0], -u[1]])); return `${q[0].toFixed(1)} ${(q[1] + oy).toFixed(1)}`; }).join('L') + 'Z');
+      const g = res.faceSig?.get(f), ten = g ? Math.max(0, 1 - g[1]) : (res.faceStretch.get(f) || 0), fold = g ? Math.max(0, g[0] - 1) : 0;
+      const bin = fold > ten ? 6 + Math.min(5, Math.floor(Math.min(1, fold / foldAt()) * 5.999)) : Math.min(5, Math.floor(Math.min(1, ten / filmMax()) * 5.999));
+      pBins[bin].push('M' + U.map(u => { const q = mf(p.tf([u[0], -u[1]])); return `${q[0].toFixed(1)} ${(q[1] + oy).toFixed(1)}`; }).join('L') + 'Z');
     }
-    s += `<path data-id="${d.id}" fill-rule="evenodd" d="${[pts, ...hl].map(r => 'M' + r.map(([x,y]) => `${x.toFixed(1)} ${(y+oy).toFixed(1)}`).join('L') + 'Z').join(' ')}" fill="${d.color}" fill-opacity="${S.showStretch ? 0 : act ? 0.45 : 0.22}" stroke="${act ? '#FFFFFF' : 'rgba(255,255,255,.65)'}" stroke-width="${sh.w/(act ? 380 : 650)}" style="cursor:pointer"/>`;
-    if (sh.weed) { const g2 = Math.max(1, sh.gap) / 2; s += `<rect x="${p.x - g2}" y="${oy + p.y - g2}" width="${p.w + 2*g2}" height="${p.h + 2*g2}" fill="none" stroke="#7FB6FF" stroke-width="${sh.w/900}" pointer-events="none"/>`; }
+    const pd = [pts, ...hl].map(r => 'M' + r.map(([x,y]) => `${x.toFixed(1)} ${(y+oy).toFixed(1)}`).join('L') + 'Z').join(' ');
+    // the colours stay inside the piece: the triangles along the edge reach past the outline
+    if (pBins.some(b => b.length)) { const cid = 'hc' + p.id.replace(/[^\w-]/g, ''); s += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${pd}"/></clipPath><g clip-path="url(#${cid})" pointer-events="none">` + pBins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="#${(i < 6 ? heat(filmMax() * (i + 0.5) / 5) : foldHeat(foldAt() * (i - 6 + 0.5) / 5)).getHexString()}"/>` : '').join('') + '</g>'; }
+    s += `<path data-id="${d.id}" fill-rule="evenodd" d="${pd}" fill="${d.color}" fill-opacity="${S.showStretch ? 0 : act ? 0.45 : 0.22}" stroke="${act ? '#FFFFFF' : 'rgba(255,255,255,.65)'}" stroke-width="${act ? 2 : 1.2}" style="cursor:pointer"/>`;
+    if (sh.weed) { const g2 = Math.max(1, sh.gap) / 2; s += `<rect x="${p.x - g2}" y="${oy + p.y - g2}" width="${p.w + 2*g2}" height="${p.h + 2*g2}" fill="none" stroke="#7FB6FF" stroke-width="0.6" pointer-events="none"/>`; }
     if (sh.labels) { const fs = Math.max(sh.w/160, Math.min(sh.w/60, p.h/4)); s += `<text x="${p.x + p.w/2}" y="${oy + p.y + p.h/2 + fs*0.35}" font-size="${fs}" text-anchor="middle" fill="#FFFFFF" font-family="Barlow, Arial, sans-serif" pointer-events="none">${esc(info.name)}</text>`; }
   }
-  if (S.showStretch) { const hs = heatBins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="#${heat(filmMax() * (i + 0.5) / 5).getHexString()}" pointer-events="none"/>` : '').join(''); s = s.replace(/(<path data-id=)/, hs + '$1'); }
-  svg.innerHTML = s;
+  svg.innerHTML = s; sheetVB();
   svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => setActive(S.decals.find(d => d.id === +el.dataset.id))));
   const filmM2 = sh.w * (n * SH) / 1e6, use = filmM2 ? area / 1e6 / filmM2 * 100 : 0;
   $('#matSize').textContent = sh.roll ? `${tr('Roll')} ${sh.w} mm × ${Math.round(SH)} mm` : `${sh.w} × ${sh.h} mm${n > 1 ? `, ${n} ${tr('sheets')}` : ''}`;
@@ -7266,6 +7294,9 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "{0}%+ folds": "{0} %+ Falten",
+  "folds": "Falten",
+  "The flat piece is bigger than the frame here: the film has too much material and may fold. A V-notch or Pull film tight helps": "Das flache Teil ist hier größer als der Rahmen: die Folie hat zu viel Material und kann Falten werfen. Eine V-Kerbe oder Folie auf Spannung hilft",
   "Zoom out": "Verkleinern",
   "Zoom in (or scroll over the sheet)": "Vergrößern (oder über dem Bogen scrollen)",
   "Show the whole sheet (double-click)": "Ganzen Bogen zeigen (Doppelklick)",

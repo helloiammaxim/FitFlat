@@ -247,7 +247,9 @@ Jede Zeile zeigt den Namen des Decals (anklicken zum Umbenennen), seine flache G
 - gelb — leichte Dehnung, für Folie meist kein Problem;
 - rot — die Folie kann Falten werfen; setze einen Entlastungsschnitt oder teile das Decal.
 
-**Dehnung** in der Ansichtsleiste färbt jedes Decal auf dem Modell danach, wie stark sich die Folie dehnen muss.
+- ein lila **Falten**-Etikett — das flache Teil ist irgendwo größer als der Rahmen: dort hat die Folie zu viel Material und kann Falten werfen.
+
+**Dehnung** in der Ansichtsleiste färbt jedes Decal auf dem Modell und jedes Teil auf dem Bogen in zwei Skalen: grün → gelb → rot, wo sich die Folie **dehnen** muss, grün → hellblau → dunkelblau, wo sie zu viel Material hat und **Falten** werfen kann. Falten zählen ab der halben Dehnungsgrenze, weil Folie sie schlechter verträgt. Falten gehören zu Wölbungen: eine V-Kerbe oder **Folie auf Spannung** nimmt sie heraus.
 
 Schaltflächen in der Zeile: **Spiegeln**, **Anwenden** (Spiegelung), **Umkehren** (die Folie deckt die Fläche außerhalb der Kontur statt innerhalb, z. B. um ein Rohrende), **Lösen** (ein Loch zu einem eigenen Teil machen), **Duplizieren**, **🔒 Sperren**, **Löschen**.
 
