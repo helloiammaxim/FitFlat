@@ -11751,7 +11751,7 @@ const Core = (() => {
     const [s0, s1] = vers.get(start), A = side(s0), B = side(s1);
     return A && B ? { A, B } : null;
   }
-  function flatten(mesh, faces, hintFn, seamDir, darts, shrink) {
+  function flatten(mesh, faces, hintFn, seamDir, darts, shrink, keepFaces) {
     const P = mesh.pos, T = mesh.tri;
     const lv = new Map(), gv = [], lf = [];
     for (const f of faces) { const t = []; for (let k=0;k<3;k++){ const v=T[3*f+k]; let l=lv.get(v); if(l===undefined){ l=gv.length; lv.set(v,l); gv.push(v);} t.push(l);} lf.push(t); }
@@ -11787,11 +11787,19 @@ const Core = (() => {
         cot[f*3+k] = (u[0]*v[0]+u[1]*v[1]) / cross;
       }
     }
+    // the outline (and both sides of every cut) keeps its true length: on the sheet it has to match the line on the frame,
+    // so its edges are held much harder than the inside, which takes the distortion instead
+    const BW = 40, bE = new Set(); for (const [a, b] of bnd) bE.add(a < b ? K(a, b) : K(b, a));
+    const faceB = new Uint8Array(m);
+    for (let f = 0; f < m; f++) { if (keepFaces && keepFaces.has(faces[f])) faceB[f] = 1; else for (let k = 0; k < 3; k++) { const a = lf[f][k], b = lf[f][(k+1)%3]; if (bE.has(a < b ? K(a, b) : K(b, a))) faceB[f] = 1; } }
+    // every edge of a triangle the outline runs through, or that lies on the border, is held
+    const vB = new Uint8Array(n); for (let f = 0; f < m; f++) if (faceB[f]) for (const v of lf[f]) vB[v] = 1;
+    const isB = (i, j) => vB[i] && vB[j];
     const buildEdges = (clamp) => {
       const em = new Map();
       for (let f = 0; f < m; f++) for (let k = 0; k < 3; k++) {
         const i = lf[f][(k+1)%3], j = lf[f][(k+2)%3];
-        let w = cot[f*3+k] / 2; if (clamp) w = Math.min(Math.max(w, 0.005), 50);
+        let w = cot[f*3+k] / 2; if (clamp) w = Math.min(Math.max(w, 0.005), 50) * (isB(i, j) ? BW : 1);
         const key = i<j?K(i,j):K(j,i); em.set(key, (em.get(key)||0) + w);
       }
       const E = new Float64Array(em.size*3); let q = 0;
@@ -11839,16 +11847,20 @@ const Core = (() => {
     const applyL = (s, y) => { y.fill(0); for (let q = 0; q < E1.length; q += 3) { const i=E1[q], j=E1[q+1], w=E1[q+2], dd=s[i]-s[j]; y[i]+=w*dd; y[j]-=w*dd; } };
     const freeA = new Uint8Array(n).fill(1); freeA[pa] = 0;
     const bu = new Float64Array(n), bv = new Float64Array(n);
-    const wc = (f,k) => Math.min(Math.max(cot[f*3+k]/2, 0.005), 50);
+    const wc = (f,k) => Math.min(Math.max(cot[f*3+k]/2, 0.005), 50) * (isB(lf[f][(k+1)%3], lf[f][(k+2)%3]) ? BW : 1);
     // ARAP: each triangle wants its own shape back (a rotation of it). With shrink, film is pulled tight like on the bike:
     // a triangle may come out smaller than on the frame, by up to `shrink` in any direction, but never bigger; so the
     // curvature goes into tension (the installer stretches it into place) instead of extra film that wrinkles
-    const lo = shrink > 0 ? 1 - shrink : 1, warm = shrink > 0 ? 4 : 0;
+    const lo = shrink > 0 ? 1 - shrink : 1, warm = shrink > 0 ? 6 : 0;
+    // how much each triangle may shrink is decided once, from the plain unwrap, and then kept: letting it follow its own
+    // result each round lets the inside creep smaller and smaller against the held edge
+    const sxF = new Float64Array(m).fill(-1), syF = new Float64Array(m);
     const iters = (n > 20000 ? 8 : 18) + (shrink > 0 ? 8 : 0);
     for (let it = 0; it < iters; it++) {
       bu.fill(0); bv.fill(0);
-      const lim = it >= warm && lo < 1;
+      const limAll = it >= warm && lo < 1;
       for (let f = 0; f < m; f++) {
+        const lim = limAll && !faceB[f]; // along the edge the film keeps its size: no pulling tight there
         let s00=0,s01=0,s10=0,s11=0,m00=0,m01=0,m11=0;
         for (let k = 0; k < 3; k++) {
           const a=(k+1)%3, b=(k+2)%3, i=lf[f][a], j=lf[f][b], w=wc(f,k);
@@ -11861,7 +11873,9 @@ const Core = (() => {
           const det = m00*m11 - m01*m01 || 1e-12, a = (s00*m11 - s01*m01)/det, b = (s01*m00 - s00*m01)/det, c = (s10*m11 - s11*m01)/det, d = (s11*m00 - s10*m01)/det;
           const E=(a+d)/2, F=(a-d)/2, G=(c+b)/2, H=(c-b)/2, Q=Math.hypot(E,H), R=Math.hypot(F,G), a1=Math.atan2(G,F), a2=Math.atan2(H,E), th=(a2-a1)/2, ph=(a2+a1)/2;
           // bigger than the frame: back to true size; smaller: only a weak pull back, so tension is cheap but never free
-          const pull = q => { const c = Math.min(1, Math.max(lo, q)); return c + (1 - c) * 0.6; }, sx = pull(Q+R), sy = pull(Q-R), ct=Math.cos(th), st=Math.sin(th), cp=Math.cos(ph), sp=Math.sin(ph);
+          const pull = q => { const c = Math.min(1, Math.max(lo, q)); return c + (1 - c) * 0.6; };
+          if (sxF[f] < 0) { sxF[f] = pull(Q+R); syF[f] = pull(Q-R); }
+          const sx = sxF[f], sy = syF[f], ct=Math.cos(th), st=Math.sin(th), cp=Math.cos(ph), sp=Math.sin(ph);
           T00 = cp*sx*ct - sp*sy*st; T01 = -cp*sx*st - sp*sy*ct; T10 = sp*sx*ct + cp*sy*st; T11 = -sp*sx*st + cp*sy*ct;
         }
         for (let k = 0; k < 3; k++) {
@@ -11913,7 +11927,7 @@ const Core = (() => {
       return out.length >= 2 ? out : null;
     };
     let hint = null;
-    const fl = flatten(mesh, reg.faces, () => (hint = slit()), seamDir, darts, shrink || 0);
+    const fl = flatten(mesh, reg.faces, () => (hint = slit()), seamDir, darts, shrink || 0, new Set(samples.map(q => q.face)));
     if (fl.error) return { error: fl.error, samples };
     const uvFace = (f, b) => { const t = fl.lf[fl.localFace.get(f)]; return [b[0]*fl.u[t[0]] + b[1]*fl.u[t[1]] + b[2]*fl.u[t[2]], b[0]*fl.v[t[0]] + b[1]*fl.v[t[1]] + b[2]*fl.v[t[2]]]; };
     let outline = samples.map(s => uvFace(s.face, s.bary));
@@ -11953,7 +11967,8 @@ const Core = (() => {
         samples.forEach((s, i) => { const dd = (s.point[0]-p0[0])**2 + (s.point[1]-p0[1])**2 + (s.point[2]-p0[2])**2; if (dd < bd) { bd = dd; bi = i; } });
         const uvA = dc.A.map(l => [fl.u[l], fl.v[l]]), uvB = dc.B.map(l => [fl.u[l], fl.v[l]]), tipUV = uvA[uvA.length - 1];
         const a0 = uvA[0], b0 = uvB[0], ang = Math.acos(Math.max(-1, Math.min(1, ((a0[0]-tipUV[0])*(b0[0]-tipUV[0]) + (a0[1]-tipUV[1])*(b0[1]-tipUV[1])) / ((Math.hypot(a0[0]-tipUV[0], a0[1]-tipUV[1]) * Math.hypot(b0[0]-tipUV[0], b0[1]-tipUV[1])) || 1)))) * 180 / Math.PI;
-        dartInfo.push({ angle: ang }); ins.push({ i: bi, A: uvA, B: uvB, k }); });
+        const pl = P => P.reduce((t, q, z) => z ? t + Math.hypot(q[0] - P[z-1][0], q[1] - P[z-1][1]) : 0, 0), d3 = darts[k].reduce((t, q, z) => z ? t + Math.hypot(q[0] - darts[k][z-1][0], q[1] - darts[k][z-1][1], q[2] - darts[k][z-1][2]) : 0, 0);
+        dartInfo.push({ angle: ang, sideA: Math.hypot(uvA[0][0] - tipUV[0], uvA[0][1] - tipUV[1]), sideB: Math.hypot(uvB[0][0] - tipUV[0], uvB[0][1] - tipUV[1]), len3: d3 }); ins.push({ i: bi, A: uvA, B: uvB, k }); });
       ins.sort((x, y) => y.i - x.i);
       // the outline already jumps across the opening where the dart meets it (samples on each side follow their own side):
       // put the tip into that jump, so the V on the sheet is two straight cuts meeting at the tip

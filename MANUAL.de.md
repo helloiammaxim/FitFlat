@@ -286,6 +286,8 @@ Ist ein Teil größer als der Bogen, vergrößere den Bogen oder teile das Decal
 ### Folie
 Wähle unter **Folie** deine Folie (PPF glänzend oder matt, gegossene oder kalandrierte Folie, oder Eigene) und stell die **Max. Dehnung** ein. Die Dehnungsfarben, die Etiketten in der Liste und die Vorschläge für Entlastungsschnitte nutzen diese Grenze. Die Voreinstellungen sind Startwerte; prüfe das Datenblatt deiner Folie.
 
+Die **Kontur behält ihre echte Länge** auf dem Bogen, ebenso beide Seiten jedes Entlastungsschnitts: der Rand eines Teils passt zur Linie, der er am Rahmen folgt, und die Verzerrung, die eine gewölbte Stelle braucht, geht stattdessen ins Innere des Teils.
+
 **Folie auf Spannung** (standardmäßig an) wickelt so ab, wie ein Folierer die Folie aufbringt: wo der Rahmen gewölbt ist, darf das Schnittteil etwas kleiner als die Fläche werden (bis 60 % der max. Dehnung), nie größer. Die Wölbung geht dann in Spannung, die die Folie verträgt, statt in überschüssige Folie, die Falten wirft. Gerade Rohre bleiben maßhaltig. Ausschalten für exakte Maße überall.
 
 ### Größen (Gradierung)
