@@ -4416,6 +4416,18 @@ function angleDefect(faces) {
   return K;
 }
 let reliefCache = { key: '', map: new Map() };
+// walk along the surface from C in the tangent direction v, staying on faces that pass ok; returns the points passed
+function walkOn(C, face, v, ok, step) {
+  const { mesh, grid } = S.model, L = v3.len(v), out = [{ point: C, face }]; if (L < 1e-9) return out;
+  let x = C, dir = v3.mul(v, 1 / L), rem = L;
+  while (rem > 1e-9) {
+    const st = Math.min(step, rem), h = Core.closestPoint(mesh, grid, v3.add(x, v3.mul(dir, st)), Math.max(2, st * 3), ok);
+    if (!h || dist3(h.point, x) > st * 2.5 || dist3(h.point, x) < st * 0.05) break;
+    x = h.point; rem -= st; out.push({ point: x, face: h.face });
+    const nf = fnorm(h.face), t = v3.sub(dir, v3.mul(nf, v3.dot(dir, nf))), tl = v3.len(t); if (tl > 1e-9) dir = v3.mul(t, 1 / tl);
+  }
+  return out;
+}
 function reliefSuggest(d) {
   const r = d.res; if (!r || r.error || !r.faceStretch || !(r.stretchMax >= reliefAt()) || !r.samples?.length) return [];
   const ck = d.id + ':' + (r._v || 0) + ':' + S.film.max; if (reliefCache.map.has(ck)) return reliefCache.map.get(ck);
@@ -4434,19 +4446,27 @@ function reliefSuggest(d) {
     let bi = 0, bd = 1e30, bc = 1e30;
     smp.forEach((q, i) => { const dd = dist3(q.point, pk.c), ny = fnorm(q.face)[1], c = dd * (1 + 0.6 * Math.max(0, ny)); if (c < bc) { bc = c; bd = dd; bi = i; } });
     const E = smp[bi].point, toMid = dist3(E, mid); if (toMid < 4) return null;
-    const dir = bd > 2 ? v3.sub(pk.c, E) : v3.sub(mid, E), dl = v3.len(dir) || 1, len = Math.min(Math.max(bd * 1.3, toMid * 0.45, 5), toMid * 0.7);
-    // the cut stays on the decal: at a junction the nearest surface can be the other tube, so only the decal's own faces count
-    const ins = r.insideSet || new Set(r.insideFaces), onDecal = f => ins.has(f);
-    const pts = []; for (let i = 0; i <= 10; i++) { const h = Core.closestPoint(mesh, S.model.grid, v3.add(E, v3.mul(dir, len / dl * i / 10)), 80, onDecal); if (h && (!pts.length || dist3(h.point, pts[pts.length - 1].point) > 1e-6)) pts.push(h); }
+    const ins = r.insideSet || new Set(r.insideFaces), onDecal = f => ins.has(f), me = topo.medianEdge || 1, stepL = Math.max(0.5, Math.min(1.5, me));
+    // the edge direction at the start, and straight into the decal from there (as an installer cuts), bent a little towards the spot
+    const tg = v3.sub(smp[(bi + 2) % n].point, smp[(bi - 2 + n) % n].point), tn = v3.mul(tg, 1 / (v3.len(tg) || 1)), nE = fnorm(smp[bi].face);
+    let inw = v3cross(nE, tn); const toIn = v3.sub(bd > 2 ? pk.c : mid, E); if (v3.dot(inw, toIn) < 0) inw = v3.mul(inw, -1);
+    const tIn = v3.sub(toIn, v3.mul(nE, v3.dot(toIn, nE))), tl = v3.len(tIn) || 1, dir0 = v3.add(v3.mul(inw, 0.35), v3.mul(tIn, 0.65 / tl));
+    const len = Math.min(Math.max(bd * 1.2, toMid * 0.4, 5), toMid * 0.65, Math.max(8, Math.sqrt(r.area) * 0.3));
+    // follow the decal's own surface, step by step (a straight line pressed onto the surface jumps at junctions)
+    const pts = walkOn(E, smp[bi].face, v3.mul(dir0, len / (v3.len(dir0) || 1)), onDecal, stepL);
     if (pts.length < 3) return null;
-    // a path that doubles back or jumps is no cut
-    for (let i = 1; i < pts.length; i++) if (dist3(pts[i].point, pts[i - 1].point) > len * 0.4) return null;
-    const tg = v3.sub(smp[(bi + 2) % n].point, smp[(bi - 2 + n) % n].point);
-    // a notch opens by the curvature it has to take out (at least 3°, at most 40°); a slit is a hair-thin cut
-    const theta = Math.min(40, Math.max(3, Math.abs(K) * 180 / Math.PI)), me = topo.medianEdge || 1, w = Math.min(len * 0.6, Math.max(2.5 * me, 2 * len * Math.tan(theta * Math.PI / 360))); // a wedge narrower than the mesh would cut nothing
-    const tn = v3.mul(tg, 1 / (v3.len(tg) || 1)), tipP = pts[pts.length - 1], mouth = Math.min(len * 0.6, 2 * len * Math.tan(theta * Math.PI / 360)); // how wide the V opens at the edge
-    let vee = null; { const sides = [1, -1].map(sg => { const out = []; for (let q = 0; q <= 8; q++) { const t = q / 8, base = v3.add(pts[Math.round(t * (pts.length - 1))].point, v3.mul(tn, sg * (mouth / 2) * (1 - t))), h = Core.closestPoint(mesh, S.model.grid, base, 80, onDecal); if (h) out.push(h); } return out; }); if (sides.every(x => x.length >= 2)) vee = sides; }
-    return { E, Eface: smp[bi].face, pts, tan: tn, st: pk.st, len, kind, peak: pk.c, rad: sep * 0.8, vee, mouth, theta, w, under: fnorm(smp[bi].face)[1] < 0 };
+    const clen = pts.reduce((a, q, i) => i ? a + dist3(q.point, pts[i - 1].point) : 0, 0); if (clen < len * 0.5) return null;
+    // a V opens by the curvature it has to take out; one cut can't take out more than about 25°: beyond that, split the decal
+    const thetaRaw = Math.abs(K) * 180 / Math.PI, theta = Math.min(25, Math.max(3, thetaRaw));
+    const mouth = Math.min(clen * 0.35, 2 * clen * Math.tan(theta * Math.PI / 360)), w = Math.max(2.5 * me, mouth); // a wedge narrower than the mesh would cut nothing
+    // the two sides of the V, each point pushed sideways along the surface from the cut line, narrowing to the tip
+    let vee = null; {
+      const sides = [1, -1].map(sg => { const o = []; for (let q = 0; q <= 8; q++) { const t = q / 8, i = Math.round(t * (pts.length - 1)), P0 = pts[i], P1 = pts[Math.min(pts.length - 1, i + 1)], P_ = pts[Math.max(0, i - 1)];
+        const dv = v3.sub(P1.point, P_.point), nf = fnorm(P0.face); let side = v3cross(nf, dv); const sl = v3.len(side); if (sl < 1e-9) continue; side = v3.mul(side, sg / sl);
+        const wlk = walkOn(P0.point, P0.face, v3.mul(side, (mouth / 2) * (1 - t)), onDecal, stepL / 2); o.push(wlk[wlk.length - 1]); } return o; });
+      if (sides.every(x => x.length >= 3)) vee = sides; }
+    const tipP = pts[pts.length - 1];
+    return { E, Eface: smp[bi].face, pts, tan: tn, st: pk.st, len: clen, kind, peak: pk.c, rad: sep * 0.8, vee, mouth, theta, big: thetaRaw > 25, w, under: fnorm(smp[bi].face)[1] < 0 };
   }).filter(Boolean);
   if (reliefCache.map.size > 40) reliefCache.map.clear(); reliefCache.map.set(ck, out); return out;
 }
@@ -4483,7 +4503,7 @@ function drawReliefMarks() {
   const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta) + ':' + x.c.mouth.toFixed(1)).join(',');
   if (key !== reliefMarkKey) {
     reliefMarkKey = key; el.hidden = false;
-    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it')).replace('{0}', Math.round(x.c.theta)))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '°' : tr('Slit')} · ${x.c.mouth < 10 ? x.c.mouth.toFixed(1) : Math.round(x.c.mouth)} mm</button>`).join('');
+    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it')).replace('{0}', Math.round(x.c.theta)) + (x.c.big ? ' ' + tr('This spot curves more than one cut can take out: splitting the decal here with the Knife works better.') : ''))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '°' : tr('Slit')} · ${x.c.mouth < 10 ? x.c.mouth.toFixed(1) : Math.round(x.c.mouth)} mm</button>`).join('');
     el.querySelectorAll('button').forEach(b => {
       const it = () => items[+b.dataset.j];
       b.onclick = e => { e.stopPropagation(); const x = it(); if (x) applyRelief(x.d, [x.i]); };
@@ -7171,6 +7191,7 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "This spot curves more than one cut can take out: splitting the decal here with the Knife works better.": "Diese Stelle ist stärker gewölbt, als ein Schnitt ausgleichen kann: das Decal hier mit dem Messer zu teilen, funktioniert besser.",
   "Like an installer pulls the film into place: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch) but never bigger, so the film goes on under tension instead of wrinkling": "Wie ein Folierer die Folie auf Spannung zieht: wo der Rahmen gewölbt ist, darf das Schnittteil etwas kleiner als die Fläche werden (bis 60 % der max. Dehnung), aber nie größer, damit die Folie unter Spannung sitzt statt Falten zu werfen",
   " Pull film tight (pattern may be a little smaller, never bigger)": " Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
   "Pull film tight (pattern may be a little smaller, never bigger)": "Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
