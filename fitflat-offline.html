@@ -14501,6 +14501,7 @@ $('#mirrorAxis').addEventListener('change', e => {
 function hintText() {
   if (!S.model) return 'Open a model or start a new file.';
   if (S.active && S.picked.length) return `${S.picked.length + 1} decals selected. Union joins them, Subtract cuts the blue ones out of ${S.active.name}, Intersect keeps only where all of them overlap. Shift-click another decal to add it, or a blue one to drop it.`;
+  if (S.active && !S.drawing && S.mode !== 'knife' && reliefTargets().includes(S.active) && reliefSuggest(S.active).length) return tr('{0} stretches too much. Click a ✂ tag on the model to cut there: a V-notch closes up on the frame, a slit leaves a narrow gap. Or press Relief cuts in the list to try them all. You can also draw your own V-notch with the Knife: start outside the decal and stop inside it.').replace('{0}', S.active.name);
   if (S.boolOp) return `${BOOL_NAMES[S.boolOp.op]}: click the second decal (on the model or in the list)${S.boolOp.op === 'difference' ? ' to cut away from ' + S.boolOp.a.name : ''}. Esc cancels.`;
   if (S.placing) return S.placeHit ? 'Check the orange preview. Alt + scroll resizes, Ctrl + scroll rotates (Shift for bigger steps). Apply (Enter) adds it; click elsewhere to move it.' : 'Move over the model to see the artwork, click to place a preview. Alt + scroll resizes, Ctrl + scroll rotates. Esc cancels.';
   if (S.mode === 'draw' && S.vline) return S.vline.pts.length < 3 ? 'Outline in the view: click on or off the model to add points, or drag to draw freehand. Where the line runs off the model, the decal follows the edge of the surface. Space + drag turns the view. Backspace removes the last point, Esc cancels.' : 'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.';
@@ -14603,8 +14604,12 @@ function reliefSuggest(d) {
     smp.forEach((q, i) => { const dd = dist3(q.point, pk.c), ny = fnorm(q.face)[1], c = dd * (1 + 0.6 * Math.max(0, ny)); if (c < bc) { bc = c; bd = dd; bi = i; } });
     const E = smp[bi].point, toMid = dist3(E, mid); if (toMid < 4) return null;
     const dir = bd > 2 ? v3.sub(pk.c, E) : v3.sub(mid, E), dl = v3.len(dir) || 1, len = Math.min(Math.max(bd * 1.3, toMid * 0.45, 5), toMid * 0.7);
-    const pts = []; for (let i = 0; i <= 10; i++) { const h = Core.closestPoint(mesh, S.model.grid, v3.add(E, v3.mul(dir, len / dl * i / 10)), 80, f => topo.piece[f] === piece); if (h) pts.push(h); }
-    if (pts.length < 2) return null;
+    // the cut stays on the decal: at a junction the nearest surface can be the other tube, so only the decal's own faces count
+    const ins = r.insideSet || new Set(r.insideFaces), onDecal = f => ins.has(f);
+    const pts = []; for (let i = 0; i <= 10; i++) { const h = Core.closestPoint(mesh, S.model.grid, v3.add(E, v3.mul(dir, len / dl * i / 10)), 80, onDecal); if (h && (!pts.length || dist3(h.point, pts[pts.length - 1].point) > 1e-6)) pts.push(h); }
+    if (pts.length < 3) return null;
+    // a path that doubles back or jumps is no cut
+    for (let i = 1; i < pts.length; i++) if (dist3(pts[i].point, pts[i - 1].point) > len * 0.4) return null;
     const tg = v3.sub(smp[(bi + 2) % n].point, smp[(bi - 2 + n) % n].point);
     // a notch opens by the curvature it has to take out (at least 3°, at most 40°); a slit is a hair-thin cut
     const theta = Math.min(40, Math.max(3, Math.abs(K) * 180 / Math.PI)), me = topo.medianEdge || 1, w = Math.min(len * 0.6, Math.max(2.5 * me, 2 * len * Math.tan(theta * Math.PI / 360))); // a wedge narrower than the mesh would cut nothing
@@ -14623,8 +14628,12 @@ function renderRelief() {
   const grp = new THREE.Group(), k = hOff() * 1.6;
   for (const d of L) reliefSuggest(d).forEach((c, i) => {
     const hot = S.reliefHover === d.id + ':' + i;
-    const l = fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat(hot ? '#E5007E' : c.kind === 'notch' ? '#FF3B30' : '#FF9500', hot ? 4 : 2.5, 1, false));
-    l.material.dashed = true; l.material.dashSize = 2; l.material.gapSize = 1.5; l.material.needsUpdate = true; l.computeLineDistances(); grp.add(l);
+    const col = hot ? '#E5007E' : c.kind === 'notch' ? '#FF3B30' : '#FF9500';
+    grp.add(fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, hot ? 3.5 : 2, 1, false)));
+    // the tear-stop hole at the tip
+    const tp = c.pts[c.pts.length - 1], nf = fnorm(tp.face), ax = Math.abs(nf[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], u0 = v3cross(nf, ax), u = v3.mul(u0, 1 / (v3.len(u0) || 1)), w = v3cross(nf, u), rr = RELIEF_HOLE / 2;
+    const ring = []; for (let q = 0; q <= 16; q++) { const a = q / 16 * Math.PI * 2; ring.push(offsetPt(v3.add(tp.point, v3.add(v3.mul(u, Math.cos(a) * rr), v3.mul(w, Math.sin(a) * rr))), tp.face, k)); }
+    grp.add(fatLine(ring, false, lineMat(col, hot ? 3.5 : 2, 1, false)));
   });
   grp.children.forEach(o => o.renderOrder = 11); scene.add(grp); reliefObj = grp;
 }
@@ -14638,7 +14647,7 @@ function drawReliefMarks() {
   const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta)).join(',');
   if (key !== reliefMarkKey) {
     reliefMarkKey = key; el.hidden = false;
-    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it')).replace('{0}', Math.round(x.c.theta)))}">${x.c.kind === 'notch' ? 'V ' + Math.round(x.c.theta) + '°' : tr('Slit')}</button>`).join('');
+    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it')).replace('{0}', Math.round(x.c.theta)))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '°' : tr('Slit')}</button>`).join('');
     el.querySelectorAll('button').forEach(b => {
       const it = () => items[+b.dataset.j];
       b.onclick = e => { e.stopPropagation(); const x = it(); if (x) applyRelief(x.d, [x.i]); };
@@ -14646,7 +14655,7 @@ function drawReliefMarks() {
       b.onpointerleave = () => { S.reliefHover = null; renderRelief(); wake(); };
     });
   }
-  items.forEach((x, j) => { const b = el.children[j]; if (!b) return; const tip = x.c.pts[x.c.pts.length - 1], q = screenOf(tip.point);
+  items.forEach((x, j) => { const b = el.children[j]; if (!b) return; const tip = x.c.pts[0], q = screenOf(tip.point);
     b.style.transform = `translate(${Math.round(q.x - b.offsetWidth / 2)}px,${Math.round(q.y - b.offsetHeight - 6)}px)`;
     b.style.visibility = q.z > 1 ? 'hidden' : ''; b.classList.toggle('back', !facing(tip.point, tip.face)); });
 }
@@ -15532,12 +15541,30 @@ function applyKnife() {
         if (r3) r = r ? { cuts: r.cuts + r3.cuts, mirrored: true } : { ...r3, mirrored: true };
       }
     }
+    if (!r && knifeDart(before)) { setBusy(false); return; }
     if (!r) { setBusy(false); flash(S.knifeThrough ? 'The knife line has to cross a decal outline twice. Draw it past the edges.' : 'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
     resymmetrize();
     setBusy(false);
     histPush(before, 'Knife cut'); clearKnife(); S.active = null; renderHandles(); updateUI();
     flash(`Made ${r.cuts} cut${r.cuts === 1 ? '' : 's'}${r.mirrored ? ', mirrored to the other side' : ''}.`);
   }, 20);
+}
+// a knife line that starts outside a decal and stops inside it: a V-notch (dart) there, from the edge to where the line ends
+function knifeDart(before) {
+  const K = knifeSamples().filter(Boolean); if (K.length < 2) return false;
+  const end = K[K.length - 1];
+  const d = S.decals.find(x => x.closed && !x.holeOf && !x.partOf && x.liveOf == null && isShown(x) && x.res && !x.res.error && insideDecal(x, end));
+  if (!d) return false;
+  let k = K.length - 1; while (k > 0 && insideDecal(d, K[k - 1])) k--;
+  if (k === 0) return false; // the line has to come in from outside
+  const poly = [K[k - 1], ...K.slice(k)].map(q => q.point.map(v => +v.toFixed(4)));
+  const was = d.res.stretchMax;
+  d.darts = [...(d.darts || []), poly]; d.stale = false; solveNow(d);
+  const info = d.res?.darts?.[d.darts.length - 1];
+  if (!d.res || d.res.error || !info) { applySnapshot(before); flash(tr('That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.')); return true; }
+  histPush(before, 'V-notch'); clearKnife(); S.active = d; reliefCache.map.clear(); renderHandles(); updateUI();
+  flash(tr('V-notch cut: it opens {0}° on the sheet. Stretch {1}% → {2}%.').replace('{0}', info.angle.toFixed(1)).replace('{1}', (was * 100).toFixed(1)).replace('{2}', (d.res.stretchMax * 100).toFixed(1)));
+  return true;
 }
 // the knife lines plus their mirror images; a cut that starts or ends at the centre line continues across it as one symmetric cut
 function withMirror(Ks) {
@@ -17307,6 +17334,10 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "{0} stretches too much. Click a ✂ tag on the model to cut there: a V-notch closes up on the frame, a slit leaves a narrow gap. Or press Relief cuts in the list to try them all. You can also draw your own V-notch with the Knife: start outside the decal and stop inside it.": "{0} dehnt sich zu stark. Klick auf ein ✂-Schild am Modell, um dort zu schneiden: eine V-Kerbe schließt sich am Rahmen, ein Schlitz lässt einen schmalen Spalt. Oder drück Entlastungsschnitte in der Liste, um alle zu probieren. Eigene V-Kerben zeichnest du mit dem Messer: außerhalb des Decals anfangen und innen aufhören.",
+  "V-notch": "V-Kerbe",
+  "That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.": "Diese V-Kerbe ließ sich hier nicht schneiden. Fang die Linie knapp außerhalb des Decal-Rands an und hör innen auf.",
+  "V-notch cut: it opens {0}° on the sheet. Stretch {1}% → {2}%.": "V-Kerbe geschnitten: sie öffnet sich auf dem Bogen um {0}°. Dehnung {1} % → {2} %.",
   "V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it": "V-Kerbe, etwa {0}°: die Folie ist hier zu groß und würde Falten werfen. Sie bekommt einen Schnitt, der sich auf dem Bogen zum V öffnet und sich am Rahmen schließt. Klick zum Schneiden",
   "Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it": "Schlitz: die Folie muss sich hier dehnen. Ein schmaler Keil (etwa {0}°) bleibt am Rahmen frei. Klick zum Schneiden",
   "Take the V-notch cuts out of this decal again": "Die V-Kerben aus diesem Decal wieder entfernen",
