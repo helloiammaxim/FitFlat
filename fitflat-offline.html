@@ -270,7 +270,14 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .panel .viewbar .vgrid select{ max-width:none; flex:1; padding-right:26px; }
 .panel{ border-left:1px solid var(--line); background:var(--paper); display:flex; flex-direction:column; min-height:0; overflow:auto; }
 .mat{ background:var(--mat); padding:12px; margin:12px; border-radius:14px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
-.mat svg{ display:block; width:100%; height:auto; max-height:280px; }
+.mat svg{ display:block; width:100%; height:auto; max-height:280px; touch-action:none; cursor:grab; }
+.mat svg.panning{ cursor:grabbing; }
+.mat{ position:relative; }
+.matbar{ position:absolute; top:6px; right:6px; display:flex; gap:2px; z-index:2; background:rgba(0,0,0,.35); border-radius:8px; padding:2px; }
+.matbar button{ min-width:26px; height:24px; padding:0 6px; border:0; border-radius:6px; background:transparent; color:#fff; font:600 12px/1 inherit; cursor:pointer; }
+.matbar button:hover, .matbar button[aria-pressed="true"]{ background:rgba(255,255,255,.18); }
+.mat.big{ position:fixed; z-index:60; left:16px; right:16px; top:64px; bottom:16px; margin:0; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.45); }
+.mat.big svg{ flex:1; min-height:0; max-height:none; height:100%; }
 .matmeta{ display:flex; justify-content:space-between; color:#CFE3DA; font-size:12.5px; margin-top:8px; font-variant-numeric:tabular-nums; }
 .matmeta strong{ color:#fff; font-weight:600; }
 .sec{ margin:0 12px 12px; padding:12px; background:var(--surface); border-radius:14px; }
@@ -788,7 +795,8 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <div class="paneslot" id="slotHist"></div>
       </div>
       <div class="tabpane" data-pane="sheet">
-      <div class="mat">
+      <div class="mat" id="matBox">
+        <div class="matbar" role="group" aria-label="Sheet zoom"><button type="button" id="shOut" title="Zoom out">−</button><button type="button" id="shIn" title="Zoom in (or scroll over the sheet)">+</button><button type="button" id="shFit" title="Show the whole sheet (double-click)">Fit</button><button type="button" id="shBig" title="Big view (Esc closes)" aria-pressed="false">⤢</button></div>
         <svg id="sheet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut sheet preview"></svg>
         <div class="matmeta"><span id="matSize"></span><span id="matCount"></span></div>
       </div>
@@ -11935,6 +11943,9 @@ const Core = (() => {
       ins.sort((x, y) => y.i - x.i);
       // the outline already jumps across the opening where the dart meets it (samples on each side follow their own side):
       // put the tip into that jump, so the V on the sheet is two straight cuts meeting at the tip
+      // the end of a cut: the line reaches the tip, goes once round a small hole there, and comes back from the tip
+      const hr = (darts.hole || 0.8), tipHole = (from, tip) => { const a0 = Math.atan2(from[1] - tip[1], from[0] - tip[0]), out = [], cx = tip[0] - Math.cos(a0) * hr, cy = tip[1] - Math.sin(a0) * hr;
+        for (let q = 0; q <= 16; q++) { const a = a0 + q / 16 * Math.PI * 2; out.push([cx + Math.cos(a) * hr, cy + Math.sin(a) * hr]); } return out; };
       const inPoly = (p, O) => { let c = false; for (let a = 0, b = O.length - 1; a < O.length; b = a++) { const [xi, yi] = O[a], [xj, yj] = O[b]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
       for (const { i, A, B, k } of ins) {
         const N = outline.length, tip = A[A.length - 1], W = 12; let bj = -1, bg = 0;
@@ -11942,12 +11953,12 @@ const Core = (() => {
         const cen = [(A[0][0] + B[0][0] + tip[0]) / 3, (A[0][1] + B[0][1] + tip[1]) / 3];
         if (inPoly(cen, outline)) { const mid = [(A[0][0] + B[0][0]) / 2, (A[0][1] + B[0][1]) / 2]; let bi2 = 0, bd2 = 1e30;
           outline.forEach((p, q) => { const dd = Math.hypot(p[0] - mid[0], p[1] - mid[1]); if (dd < bd2) { bd2 = dd; bi2 = q; } });
-          const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, tip, m2.slice()); if (dartInfo[k]) dartInfo[k].slit = true; continue; }
+          const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, ...tipHole(m2, tip), m2.slice()); if (dartInfo[k]) dartInfo[k].slit = true; continue; }
         for (let q = -W; q < W; q++) { const j = (i + q + N) % N, k = (j + 1) % N, g = Math.hypot(outline[k][0] - outline[j][0], outline[k][1] - outline[j][1]); if (g > bg) { bg = g; bj = j; } }
         const open = Math.hypot(A[0][0] - B[0][0], A[0][1] - B[0][1]);
-        if (bj >= 0 && bg > open * 0.4) outline.splice(bj + 1, 0, tip);
+        if (bj >= 0 && bg > open * 0.4) outline.splice(bj + 1, 0, ...tipHole(outline[bj], tip));
         else { const pv = outline[(i - 1 + N) % N], nx = outline[(i + 1) % N], dd = (p, q) => Math.hypot(p[0]-q[0], p[1]-q[1]);
-          outline.splice(i, 1, ...(dd(pv, A[0]) + dd(B[0], nx) <= dd(pv, B[0]) + dd(A[0], nx) ? [A[0], tip, B[0]] : [B[0], tip, A[0]])); }
+          const [p0, p1] = dd(pv, A[0]) + dd(B[0], nx) <= dd(pv, B[0]) + dd(A[0], nx) ? [A[0], B[0]] : [B[0], A[0]]; outline.splice(i, 1, p0, ...tipHole(p0, tip), p1); }
       }
     }
     // stats over inside + outline faces
@@ -14167,7 +14178,7 @@ function solveOne(ctrl, flip, dir, darts) {
   const sh = filmShrink(), key = (sh ? 'T' + sh.toFixed(4) : '') + solveKey(ctrl, flip, dir, darts), hit = SOLVES.get(key);
   if (hit && hit.model === S.model) { SOLVES.delete(key); SOLVES.set(key, hit); return hit.r; }
   let r;
-  try { r = Core.solveDecal(S.model, ctrl, flip, dir, darts?.length ? darts : null, sh); if (!r.error) r.insideSet = new Set(r.insideFaces); }
+  try { r = Core.solveDecal(S.model, ctrl, flip, dir, darts?.length ? Object.assign(darts.slice(), { hole: RELIEF_HOLE / 2 }) : null, sh); if (!r.error) r.insideSet = new Set(r.insideFaces); }
   catch (e) { console.error(e); return { error: 'Unwrapping failed: ' + e.message }; }
   r._v = ++RESV;
   SOLVES.set(key, { model: S.model, r }); if (SOLVES.size > 80) SOLVES.delete(SOLVES.keys().next().value);
@@ -14657,7 +14668,10 @@ function reliefSuggest(d) {
   const ck = d.id + ':' + (r._v || 0) + ':' + S.film.max; if (reliefCache.map.has(ck)) return reliefCache.map.get(ck);
   const { mesh, topo } = S.model, T = mesh.tri, P = mesh.pos, cen = f => [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3);
   const inside = r.insideFaces.map(cen), mid = [0, 1, 2].map(k => inside.reduce((a, c) => a + c[k], 0) / inside.length);
-  const hot = [...r.faceStretch].filter(([, st]) => st >= reliefAt()).sort((a, b) => b[1] - a[1]);
+  // a joined mirrored decal: plan on the drawn half only; every cut gets its mirror image
+  const pl = d.mirror && d.mergedMap ? mirrorPlane() : null, own = pl ? (() => { const q = d.ctrl.find(c => !c.plane); return q ? Math.sign(q.p[pl.k] - pl.c) || 1 : 1; })() : 0;
+  const ownSide = f => !pl || Math.sign(cen(f)[pl.k] - pl.c) !== -own;
+  const hot = [...r.faceStretch].filter(([f, st]) => st >= reliefAt() && ownSide(f)).sort((a, b) => b[1] - a[1]);
   const sep = Math.max(12, Math.sqrt(r.area) * 0.3), peaks = []; // the worst spots, kept apart
   for (const [f, st] of hot) { const c = cen(f); if (peaks.every(p => dist3(p.c, c) > sep)) peaks.push({ f, st, c }); if (peaks.length >= 6) break; }
   const smp = r.samples, n = smp.length, piece = topo.piece[smp[0].face];
@@ -14702,6 +14716,9 @@ function renderRelief() {
   for (const d of L) reliefSuggest(d).forEach((c, i) => {
     const hot = S.reliefHover === d.id + ':' + i;
     const col = hot ? '#E5007E' : c.kind === 'notch' ? '#FF3B30' : '#FF9500';
+    const mir = d.mirror && d.mergedMap ? (pts => pts.map(h => { const q = Core.closestPoint(S.model.mesh, S.model.grid, reflect(h.point), 40); return q || h; })) : null;
+    if (mir) { const mp = mir(c.pts); if (c.vee) for (const side of c.vee) grp.add(fatLine(mir(side).map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, hot ? 3.5 : 2, 0.8, false)));
+      else grp.add(fatLine(mp.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, hot ? 3.5 : 2, 0.8, false))); }
     if (c.vee) { // the V of film the cut takes out: tip to both sides of the mouth
       for (const side of c.vee) grp.add(fatLine(side.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, hot ? 3.5 : 2, 1, false)));
       grp.add(fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, 1, 0.45, false)));
@@ -14762,14 +14779,14 @@ function applyRelief(d, only) {
       for (const nd of r.made) { S.decals.push(nd); solveNow(nd); }
       return main;
     };
-    const holeAt = (tgt, poly, c) => { // the small round hole at the end of a cut
-      const tp = onS(poly[poly.length - 1]), inn0 = v3.sub(poly[poly.length - 1], poly[Math.max(0, poly.length - 3)]), il0 = v3.len(inn0) || 1;
-      const hc = tp ? holeCtrl(tp.point, tp.face, v3.mul(inn0, 1 / il0), c.tan, RELIEF_HOLE / 2) : null; return (hc && cutOut(tgt, hc)) || tgt; };
+    const holeAt = tgt => tgt; // the round hole at the end is part of each cut's line on the sheet
+    const pair = poly => { if (!(d.mirror && d.mergedMap)) return [poly]; const m = poly.map(p => reflect(p).map(v => +v.toFixed(4)));
+      return poly.every((p, i) => dist3(p, m[i]) < 4) ? [poly] : [poly, m]; }; // a cut on the centre line is its own mirror
     const polyOf = c => [c.E, ...c.pts.slice(1).map(h => h.point)].map(p => p.map(v => +v.toFixed(4)));
     // cuts often only work together (around a saddle each one alone can make its own spot worse): try the whole set first
     if (!only && cuts.length > 1) {
       const snap0 = snapshot(), polys = cuts.map(polyOf);
-      target.darts = [...(target.darts || []), ...polys]; target.stale = false; solveNow(target);
+      target.darts = [...(target.darts || []), ...polys.flatMap(pair)]; target.stale = false; solveNow(target);
       if (target.res && !target.res.error && target.res.stretchMax < start * 0.9) {
         cuts.forEach((c, i) => { if (S.decals.includes(target)) target = holeAt(target, polys[i], c); }); made = cuts.length; cuts = [];
       } else { applySnapshot(snap0); target = S.decals.find(x => x.id === d.id) || d; }
@@ -14779,7 +14796,7 @@ function applyRelief(d, only) {
       const snap = snapshot(), keepId = target.id, was = target.res && !target.res.error ? spotStretch(target.res, c.peak, c.rad) : 0, wasMean = target.res?.stretchMean || 0;
       { // a cut along the line: on a bulge the sheet opens into a V, on a saddle it stays a slit
         const poly = [c.E, ...c.pts.slice(1).map(h => h.point)].map(p => p.map(v => +v.toFixed(4)));
-        target.darts = [...(target.darts || []), poly]; target.stale = false; solveNow(target);
+        target.darts = [...(target.darts || []), ...pair(poly)]; target.stale = false; solveNow(target);
         const ok = target.res && !target.res.error && target.res.darts?.[target.darts.length - 1];
         const now = ok ? spotStretch(target.res, c.peak, c.rad) : 1;
         if (ok && now < was * (c.kind === 'notch' ? 0.9 : 0.97) && target.res.stretchMean <= wasMean * 1.05) {
@@ -14967,12 +14984,40 @@ function cutSheetDXF(pk, W, names) {
     if (sh.labels && names[p.id]) out.push('0', 'TEXT', '8', 'LABELS', '10', f(p.x + p.w / 2), '20', f(Y(oy + p.y + p.h / 2)), '30', '0', '40', f(Math.max(2.5, Math.min(8, p.h / 5))), '1', String(names[p.id]).replace(/[\r\n]/g, ' '), '72', '1', '11', f(p.x + p.w / 2), '21', f(Y(oy + p.y + p.h / 2)), '31', '0'); }
   out.push('0', 'ENDSEC', '0', 'EOF'); return out.join('\r\n') + '\r\n';
 }
+// ---------- zoom and pan on the sheet ----------
+function sheetVB() { const v = S.sheetView || S.sheetFull; if (v) $('#sheet').setAttribute('viewBox', `${v.x} ${v.y} ${v.w} ${v.h}`); }
+function sheetPt(cx, cy) { const svg = $('#sheet'), m = svg.getScreenCTM(); if (!m) return null; const p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(m.inverse()); }
+function sheetZoom(k, cx, cy) {
+  const F = S.sheetFull; if (!F) return; const v = S.sheetView || { ...F }, r = $('#sheet').getBoundingClientRect();
+  const p = cx == null ? { x: v.x + v.w / 2, y: v.y + v.h / 2 } : sheetPt(cx, cy) || { x: v.x + v.w / 2, y: v.y + v.h / 2 };
+  const w = Math.min(F.w * 1.5, Math.max(F.w / 60, v.w * k)), kk = w / v.w;
+  S.sheetView = { x: p.x - (p.x - v.x) * kk, y: p.y - (p.y - v.y) * kk, w, h: v.h * kk };
+  if (w >= F.w * 0.999 && kk > 1) S.sheetView = null; sheetVB(); void r;
+}
+{
+  const svg = $('#sheet'); let pan = null, moved = false;
+  svg.addEventListener('wheel', e => { e.preventDefault(); sheetZoom(Math.exp(e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
+  svg.addEventListener('pointerdown', e => { if (e.button !== 0 || !S.sheetFull) return; pan = { x: e.clientX, y: e.clientY, v: { ...(S.sheetView || S.sheetFull) } }; moved = false; });
+  window.addEventListener('pointermove', e => { if (!pan) return; const dx = e.clientX - pan.x, dy = e.clientY - pan.y; if (!moved && Math.hypot(dx, dy) < 4) return;
+    if (!moved) { moved = true; svg.classList.add('panning'); try { svg.setPointerCapture(e.pointerId); } catch (er) {} }
+    const r = svg.getBoundingClientRect(), sc = Math.min(r.width / pan.v.w, r.height / pan.v.h) || 1; S.sheetView = { ...pan.v, x: pan.v.x - dx / sc, y: pan.v.y - dy / sc }; sheetVB(); });
+  window.addEventListener('pointerup', () => { if (pan) { pan = null; svg.classList.remove('panning'); } });
+  svg.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
+  svg.addEventListener('dblclick', () => { S.sheetView = null; sheetVB(); });
+  $('#shIn').addEventListener('click', () => sheetZoom(1 / 1.5)); $('#shOut').addEventListener('click', () => sheetZoom(1.5));
+  $('#shFit').addEventListener('click', () => { S.sheetView = null; sheetVB(); });
+  const big = on => { $('#matBox').classList.toggle('big', on); $('#shBig').setAttribute('aria-pressed', String(on)); S.sheetView = null; sheetVB(); };
+  $('#shBig').addEventListener('click', () => big(!$('#matBox').classList.contains('big')));
+  window.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#matBox').classList.contains('big')) { big(false); e.stopPropagation(); } }, true);
+}
 function renderSheet() {
   const sh = S.sheet, svg = $('#sheet');
   const pieces = solvedPieces(); S.pieceInfo = Object.fromEntries(pieces.map(p => [p.id, p]));
   S.packing = packSheet(pieces); const SH = S.packing.H;
   const n = S.packing.sheets, gapY = Math.max(SH * 0.06, 20), H = n * SH + (n - 1) * gapY;
-  svg.setAttribute('viewBox', `${-8} ${-8} ${sh.w + 16} ${H + 16}`);
+  const full = { x: -8, y: -8, w: sh.w + 16, h: H + 16 };
+  if (!S.sheetFull || S.sheetFull.w !== full.w || S.sheetFull.h !== full.h) S.sheetView = null; // the sheet changed size: show all of it
+  S.sheetFull = full; sheetVB();
   const step = sh.w > 2000 ? 50 : 10;
   let s = `<defs><pattern id="g1" width="${step}" height="${step}" patternUnits="userSpaceOnUse"><path d="M${step} 0H0V${step}" fill="none" style="stroke:var(--mat-grid)" stroke-width="${sh.w/900}"/></pattern><pattern id="g5" width="${step*5}" height="${step*5}" patternUnits="userSpaceOnUse"><rect width="${step*5}" height="${step*5}" fill="url(#g1)"/><path d="M${step*5} 0H0V${step*5}" fill="none" style="stroke:var(--mat-grid-strong)" stroke-width="${sh.w/500}"/></pattern></defs>`;
   for (let i = 0; i < n; i++) s += `<rect x="0" y="${i*(SH+gapY)}" width="${sh.w}" height="${SH}" fill="url(#g5)" stroke="#CFE3DA" stroke-width="${sh.w/600}" stroke-dasharray="${sh.roll ? 'none' : `${sh.w/150} ${sh.w/150}`}"/>`;
@@ -15635,7 +15680,7 @@ function knifeDart(before) {
   if (k === 0) return false; // the line has to come in from outside
   const poly = [K[k - 1], ...K.slice(k)].map(q => q.point.map(v => +v.toFixed(4)));
   const was = d.res.stretchMax;
-  d.darts = [...(d.darts || []), poly]; d.stale = false; solveNow(d);
+  d.darts = [...(d.darts || []), poly, ...(d.mirror && d.mergedMap ? [poly.map(p => reflect(p).map(v => +v.toFixed(4)))] : [])]; d.stale = false; solveNow(d);
   const info = d.res?.darts?.[d.darts.length - 1];
   if (!d.res || d.res.error || !info) { applySnapshot(before); flash(tr('That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.')); return true; }
   histPush(before, 'V-notch'); clearKnife(); S.active = d; reliefCache.map.clear(); renderHandles(); updateUI();
@@ -17410,6 +17455,11 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Zoom out": "Verkleinern",
+  "Zoom in (or scroll over the sheet)": "Vergrößern (oder über dem Bogen scrollen)",
+  "Show the whole sheet (double-click)": "Ganzen Bogen zeigen (Doppelklick)",
+  "Big view (Esc closes)": "Große Ansicht (Esc schließt)",
+  "Fit": "Alles",
   "Remove relief cuts": "Entlastungsschnitte entfernen",
   "Take the relief cuts (V-notches and slits) out of this decal again": "Die Entlastungsschnitte (V-Kerben und Schlitze) aus diesem Decal wieder entfernen",
   "Removed relief cuts": "Entlastungsschnitte entfernt",
