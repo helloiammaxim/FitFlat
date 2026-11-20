@@ -257,7 +257,7 @@ Row buttons: **Mirror**, **Apply** (mirror), **Invert** (the film covers the are
 - **V-notch** (red tag, e.g. *V 9°*) where the film is too big and would wrinkle, typically on bulges and tube ends. The film gets a cut from the edge that opens into a clean V on the cut sheet and closes up again on the frame, so nothing is left uncovered.
 - **Slit** (orange tag) where the film would have to stretch over a saddle, like the fillet where two tubes meet. A narrow wedge is left uncovered on the frame.
 
-Click a tag (✂) to make just that cut, or press **Relief cuts** to try them all. To place a V-notch yourself, take the **Knife** and draw a line that starts just outside the decal and stops inside it, then press Apply cut (Enter): instead of splitting the decal it cuts a V-notch along your line. Every cut ends in a small round hole so the film doesn't tear on, and a cut is only kept if it really lowers the stretch around its spot; the message tells you how much it changed and which suggestions were left out. **Remove V-notches** in the list takes the V-notches out again. On saddles, cuts often help little: then split the decal with the Knife where the tube turns into the lug, or use a film that stretches more.
+Each tag shows the V's opening in degrees and how wide it is at the edge in mm, and the V is drawn on the model. Click a tag (✂) to make just that cut, or press **Relief cuts** to try them all. To place a V-notch yourself, take the **Knife** and draw a line that starts just outside the decal and stops inside it, then press Apply cut (Enter): instead of splitting the decal it cuts a V-notch along your line. Every cut ends in a small round hole so the film doesn't tear on, and a cut is only kept if it really lowers the stretch around its spot; the message tells you how much it changed and which suggestions were left out. **Remove V-notches** in the list takes the V-notches out again. On saddles, cuts often help little: then split the decal with the Knife where the tube turns into the lug, or use a film that stretches more.
 
 **Lock** makes a decal unselectable and uneditable on the model, so you can draw over it. The Knife leaves locked decals alone.
 
@@ -282,6 +282,8 @@ If a piece is larger than the sheet, increase the sheet or split the decal.
 
 ### Film
 Pick your film in **Film** (PPF gloss or matte, cast or calendered vinyl, or Custom) and set its **Max stretch**. The stretch colours, the badges in the list and the relief-cut suggestions all use this limit. The presets are starting points; check your film's data sheet.
+
+**Pull film tight** (on by default) unwraps the way an installer applies film: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch), never bigger. The curve then goes into tension, which the film handles, instead of extra film that wrinkles. Straight tubes stay true to size. Turn it off for exact sizes everywhere.
 
 ### Sizes (grading)
 For frames built from a geometry preset or chart with several sizes, **Sizes** lists them. Draw the decals once on one size; they are moved onto the other sizes along each tube — **keeping the gap to the nearer tube end** (decals stay put at the joints) or **scaling with the tube length**. **Show size** loads another size with the decals moved onto it. **Download all sizes** unwraps the decals on every ticked size and saves one SVG with a labelled block per size, or **one file per size**.

@@ -824,6 +824,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <label class="field span2">Film<select id="filmPreset"></select></label>
           <label class="field" title="Stretch above this is shown red, gets a warning and a relief-cut suggestion">Max stretch (%)<input id="filmMax" type="number" min="0.5" max="20" step="0.5"></label>
         </div>
+        <label class="chk" title="Like an installer pulls the film into place: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch) but never bigger, so the film goes on under tension instead of wrinkling"><input type="checkbox" id="filmTension" checked> Pull film tight (pattern may be a little smaller, never bigger)</label>
         <p class="note">Stretch colours, warnings and relief cuts use this limit. The presets are starting points; check your film's data sheet.</p>
       </details>
       <div class="sec">
@@ -1539,7 +1540,7 @@ const Core = (() => {
     const [s0, s1] = vers.get(start), A = side(s0), B = side(s1);
     return A && B ? { A, B } : null;
   }
-  function flatten(mesh, faces, hintFn, seamDir, darts) {
+  function flatten(mesh, faces, hintFn, seamDir, darts, shrink) {
     const P = mesh.pos, T = mesh.tri;
     const lv = new Map(), gv = [], lf = [];
     for (const f of faces) { const t = []; for (let k=0;k<3;k++){ const v=T[3*f+k]; let l=lv.get(v); if(l===undefined){ l=gv.length; lv.set(v,l); gv.push(v);} t.push(l);} lf.push(t); }
@@ -1628,21 +1629,34 @@ const Core = (() => {
     const freeA = new Uint8Array(n).fill(1); freeA[pa] = 0;
     const bu = new Float64Array(n), bv = new Float64Array(n);
     const wc = (f,k) => Math.min(Math.max(cot[f*3+k]/2, 0.005), 50);
-    const iters = n > 20000 ? 8 : 18;
+    // ARAP: each triangle wants its own shape back (a rotation of it). With shrink, film is pulled tight like on the bike:
+    // a triangle may come out smaller than on the frame, by up to `shrink` in any direction, but never bigger; so the
+    // curvature goes into tension (the installer stretches it into place) instead of extra film that wrinkles
+    const lo = shrink > 0 ? 1 - shrink : 1, warm = shrink > 0 ? 4 : 0;
+    const iters = (n > 20000 ? 8 : 18) + (shrink > 0 ? 8 : 0);
     for (let it = 0; it < iters; it++) {
       bu.fill(0); bv.fill(0);
+      const lim = it >= warm && lo < 1;
       for (let f = 0; f < m; f++) {
-        let s00=0,s01=0,s10=0,s11=0;
+        let s00=0,s01=0,s10=0,s11=0,m00=0,m01=0,m11=0;
         for (let k = 0; k < 3; k++) {
           const a=(k+1)%3, b=(k+2)%3, i=lf[f][a], j=lf[f][b], w=wc(f,k);
           const du=u[i]-u[j], dv=v[i]-v[j], dx=X[f*6+2*a]-X[f*6+2*b], dy=X[f*6+2*a+1]-X[f*6+2*b+1];
-          s00+=w*du*dx; s01+=w*du*dy; s10+=w*dv*dx; s11+=w*dv*dy;
+          s00+=w*du*dx; s01+=w*du*dy; s10+=w*dv*dx; s11+=w*dv*dy; m00+=w*dx*dx; m01+=w*dx*dy; m11+=w*dy*dy;
         }
-        const th = Math.atan2(s10 - s01, s00 + s11), c = Math.cos(th), s = Math.sin(th);
+        let T00, T01, T10, T11;
+        if (!lim) { const th = Math.atan2(s10 - s01, s00 + s11), c = Math.cos(th), s = Math.sin(th); T00 = c; T01 = -s; T10 = s; T11 = c; }
+        else { // best linear fit J, then its stretch factors limited to [lo, 1]
+          const det = m00*m11 - m01*m01 || 1e-12, a = (s00*m11 - s01*m01)/det, b = (s01*m00 - s00*m01)/det, c = (s10*m11 - s11*m01)/det, d = (s11*m00 - s10*m01)/det;
+          const E=(a+d)/2, F=(a-d)/2, G=(c+b)/2, H=(c-b)/2, Q=Math.hypot(E,H), R=Math.hypot(F,G), a1=Math.atan2(G,F), a2=Math.atan2(H,E), th=(a2-a1)/2, ph=(a2+a1)/2;
+          // bigger than the frame: back to true size; smaller: only a weak pull back, so tension is cheap but never free
+          const pull = q => { const c = Math.min(1, Math.max(lo, q)); return c + (1 - c) * 0.6; }, sx = pull(Q+R), sy = pull(Q-R), ct=Math.cos(th), st=Math.sin(th), cp=Math.cos(ph), sp=Math.sin(ph);
+          T00 = cp*sx*ct - sp*sy*st; T01 = -cp*sx*st - sp*sy*ct; T10 = sp*sx*ct + cp*sy*st; T11 = -sp*sx*st + cp*sy*ct;
+        }
         for (let k = 0; k < 3; k++) {
           const a=(k+1)%3, b=(k+2)%3, i=lf[f][a], j=lf[f][b], w=wc(f,k);
           const dx=X[f*6+2*a]-X[f*6+2*b], dy=X[f*6+2*a+1]-X[f*6+2*b+1];
-          const rx = c*dx - s*dy, ry = s*dx + c*dy;
+          const rx = T00*dx + T01*dy, ry = T10*dx + T11*dy;
           bu[i]+=w*rx; bv[i]+=w*ry; bu[j]-=w*rx; bv[j]-=w*ry;
         }
       }
@@ -1668,7 +1682,7 @@ const Core = (() => {
   }
 
   // ---------- full decal solve ----------
-  function solveDecal(model, ctrl, flip, seamDir, darts) {
+  function solveDecal(model, ctrl, flip, seamDir, darts, shrink) {
     const { mesh, topo, grid } = model;
     if (ctrl.length < 3) return { error: 'A decal needs at least three points.' };
     const step = Math.min(Math.min(grid.L, topo.medianEdge) * 0.5, 1.0);
@@ -1688,7 +1702,7 @@ const Core = (() => {
       return out.length >= 2 ? out : null;
     };
     let hint = null;
-    const fl = flatten(mesh, reg.faces, () => (hint = slit()), seamDir, darts);
+    const fl = flatten(mesh, reg.faces, () => (hint = slit()), seamDir, darts, shrink || 0);
     if (fl.error) return { error: fl.error, samples };
     const uvFace = (f, b) => { const t = fl.lf[fl.localFace.get(f)]; return [b[0]*fl.u[t[0]] + b[1]*fl.u[t[1]] + b[2]*fl.u[t[2]], b[0]*fl.v[t[0]] + b[1]*fl.v[t[1]] + b[2]*fl.v[t[2]]]; };
     let outline = samples.map(s => uvFace(s.face, s.bary));
@@ -3955,10 +3969,10 @@ function clearStrokePreview() { if (strokeLine) { scene.remove(strokeLine); stro
 const SOLVES = new Map(); let RESV = 0;
 const solveKey = (ctrl, flip, dir, darts) => (darts?.length ? 'D' + darts.map(p => p.map(q => q.map(x => x.toFixed(3)).join(',')).join(';')).join('/') + '#' : '') + (flip ? 'f' : '') + (dir ? dir.map(v => v.toFixed(3)).join(',') + '#' : '') + ctrl.map(c => [c.p, c.face, c.type || 'auto', c.hin, c.hout, c.broken ? 1 : 0, c.plane ? 1 : 0].map(v => Array.isArray(v) ? v.map(x => +x.toFixed(5)).join(',') : v ?? '').join(';')).join('|');
 function solveOne(ctrl, flip, dir, darts) {
-  const key = solveKey(ctrl, flip, dir, darts), hit = SOLVES.get(key);
+  const sh = filmShrink(), key = (sh ? 'T' + sh.toFixed(4) : '') + solveKey(ctrl, flip, dir, darts), hit = SOLVES.get(key);
   if (hit && hit.model === S.model) { SOLVES.delete(key); SOLVES.set(key, hit); return hit.r; }
   let r;
-  try { r = Core.solveDecal(S.model, ctrl, flip, dir, darts?.length ? darts : null); if (!r.error) r.insideSet = new Set(r.insideFaces); }
+  try { r = Core.solveDecal(S.model, ctrl, flip, dir, darts?.length ? darts : null, sh); if (!r.error) r.insideSet = new Set(r.insideFaces); }
   catch (e) { console.error(e); return { error: 'Unwrapping failed: ' + e.message }; }
   r._v = ++RESV;
   SOLVES.set(key, { model: S.model, r }); if (SOLVES.size > 80) SOLVES.delete(SOLVES.keys().next().value);
@@ -4018,13 +4032,19 @@ const FILMS = [
 S.film = { id: 'ppf-gloss', max: 4 };
 try { const f = JSON.parse(localStorage.getItem('decal-studio-film') || 'null'); if (f && f.max > 0) S.film = f; } catch (e) {}
 const filmMax = () => Math.max(0.005, (+S.film.max || 4) / 100); // as a fraction
-const reliefAt = () => filmMax() * 0.75; // the red stretch level, where relief cuts are suggested
+const reliefAt = () => filmMax() * 0.75;
+// pull the film tight: the pattern may come out smaller than the frame by up to 60% of the film's stretch limit
+const filmShrink = () => S.film.tension === false ? 0 : filmMax() * 0.6; // the red stretch level, where relief cuts are suggested
 function setFilm(f, quiet) {
-  S.film = { id: f.id, max: +f.max };
+  const before = filmShrink();
+  S.film = { id: f.id, max: +f.max, tension: f.tension ?? S.film?.tension ?? true };
+  if ($('#filmTension')) $('#filmTension').checked = S.film.tension !== false;
   try { localStorage.setItem('decal-studio-film', JSON.stringify(S.film)); } catch (e) {}
   $('#filmPreset').value = S.film.id; $('#filmMax').value = S.film.max;
   const fm = FILMS.find(x => x.id === S.film.id); $('#filmSum').textContent = `${tr(fm ? fm.name : 'Custom')} · ${S.film.max}%`;
   const lg = $('#legend span:last-child'); if (lg) lg.textContent = tr('{0}%+ stretch').replace('{0}', S.film.max);
+  if (!quiet && filmShrink() !== before && S.decals.length) { // the patterns change: unwrap again
+    setBusy(tr('Unwrapping…')); setTimeout(() => { for (const d of S.decals) if (!d.stale && !d.partOf) solveNow(d); reliefCache.map.clear(); reliefKey = ''; setBusy(false); updateUI(); }, 20); return; }
   if (!quiet) { for (const d of S.decals) if (d.closed && d.res) updateDecalVisual(d, false); reliefKey = ''; renderRelief?.(); renderList(); renderSheet(); }
 }
 function heat(t) {
@@ -4409,7 +4429,7 @@ function reliefSuggest(d) {
     // the spot: stretched faces around the peak
     const cl = [...r.faceStretch].filter(([f, st]) => st >= reliefAt() * 0.5 && dist3(cen(f), pk.c) < sep * 0.8).map(([f]) => f);
     let ex = 0, de = 0; for (const f of cl) { const g = r.faceSig?.get(f); if (!g) continue; ex += topo.area[f] * Math.max(0, g[0] - 1); de += topo.area[f] * Math.max(0, 1 - g[1]); }
-    const kind = ex >= de ? 'notch' : 'slit', K = angleDefect(cl);
+    const K = angleDefect(cl), kind = Math.abs(K) > 0.01 ? (K > 0 ? 'notch' : 'slit') : (ex >= de ? 'notch' : 'slit');
     // where on the edge it starts: close to the spot, and rather underneath than on top
     let bi = 0, bd = 1e30, bc = 1e30;
     smp.forEach((q, i) => { const dd = dist3(q.point, pk.c), ny = fnorm(q.face)[1], c = dd * (1 + 0.6 * Math.max(0, ny)); if (c < bc) { bc = c; bd = dd; bi = i; } });
@@ -4424,7 +4444,9 @@ function reliefSuggest(d) {
     const tg = v3.sub(smp[(bi + 2) % n].point, smp[(bi - 2 + n) % n].point);
     // a notch opens by the curvature it has to take out (at least 3°, at most 40°); a slit is a hair-thin cut
     const theta = Math.min(40, Math.max(3, Math.abs(K) * 180 / Math.PI)), me = topo.medianEdge || 1, w = Math.min(len * 0.6, Math.max(2.5 * me, 2 * len * Math.tan(theta * Math.PI / 360))); // a wedge narrower than the mesh would cut nothing
-    return { E, Eface: smp[bi].face, pts, tan: v3.mul(tg, 1 / (v3.len(tg) || 1)), st: pk.st, len, kind, peak: pk.c, rad: sep * 0.8, theta, w, under: fnorm(smp[bi].face)[1] < 0 };
+    const tn = v3.mul(tg, 1 / (v3.len(tg) || 1)), tipP = pts[pts.length - 1], mouth = Math.min(len * 0.6, 2 * len * Math.tan(theta * Math.PI / 360)); // how wide the V opens at the edge
+    let vee = null; { const sides = [1, -1].map(sg => { const out = []; for (let q = 0; q <= 8; q++) { const t = q / 8, base = v3.add(pts[Math.round(t * (pts.length - 1))].point, v3.mul(tn, sg * (mouth / 2) * (1 - t))), h = Core.closestPoint(mesh, S.model.grid, base, 80, onDecal); if (h) out.push(h); } return out; }); if (sides.every(x => x.length >= 2)) vee = sides; }
+    return { E, Eface: smp[bi].face, pts, tan: tn, st: pk.st, len, kind, peak: pk.c, rad: sep * 0.8, vee, mouth, theta, w, under: fnorm(smp[bi].face)[1] < 0 };
   }).filter(Boolean);
   if (reliefCache.map.size > 40) reliefCache.map.clear(); reliefCache.map.set(ck, out); return out;
 }
@@ -4440,7 +4462,10 @@ function renderRelief() {
   for (const d of L) reliefSuggest(d).forEach((c, i) => {
     const hot = S.reliefHover === d.id + ':' + i;
     const col = hot ? '#E5007E' : c.kind === 'notch' ? '#FF3B30' : '#FF9500';
-    grp.add(fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, hot ? 3.5 : 2, 1, false)));
+    if (c.vee) { // the V of film the cut takes out: tip to both sides of the mouth
+      for (const side of c.vee) grp.add(fatLine(side.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, hot ? 3.5 : 2, 1, false)));
+      grp.add(fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, 1, 0.45, false)));
+    } else grp.add(fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat(col, hot ? 3.5 : 2, 1, false)));
     // the tear-stop hole at the tip
     const tp = c.pts[c.pts.length - 1], nf = fnorm(tp.face), ax = Math.abs(nf[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0], u0 = v3cross(nf, ax), u = v3.mul(u0, 1 / (v3.len(u0) || 1)), w = v3cross(nf, u), rr = RELIEF_HOLE / 2;
     const ring = []; for (let q = 0; q <= 16; q++) { const a = q / 16 * Math.PI * 2; ring.push(offsetPt(v3.add(tp.point, v3.add(v3.mul(u, Math.cos(a) * rr), v3.mul(w, Math.sin(a) * rr))), tp.face, k)); }
@@ -4455,10 +4480,10 @@ function drawReliefMarks() {
   const L = S.model && !press && !S.drawing ? reliefTargets() : [], items = [];
   for (const d of L) reliefSuggest(d).forEach((c, i) => items.push({ d, c, i }));
   if (!items.length) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; reliefMarkKey = ''; } return; }
-  const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta)).join(',');
+  const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta) + ':' + x.c.mouth.toFixed(1)).join(',');
   if (key !== reliefMarkKey) {
     reliefMarkKey = key; el.hidden = false;
-    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it')).replace('{0}', Math.round(x.c.theta)))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '°' : tr('Slit')}</button>`).join('');
+    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film has to stretch here. A narrow wedge (about {0}°) is left uncovered on the frame. Click to cut it')).replace('{0}', Math.round(x.c.theta)))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '°' : tr('Slit')} · ${x.c.mouth < 10 ? x.c.mouth.toFixed(1) : Math.round(x.c.mouth)} mm</button>`).join('');
     el.querySelectorAll('button').forEach(b => {
       const it = () => items[+b.dataset.j];
       b.onclick = e => { e.stopPropagation(); const x = it(); if (x) applyRelief(x.d, [x.i]); };
@@ -4744,6 +4769,7 @@ function renderSheet() {
 
 for (const [id, k] of [['#sw','w'],['#shh','h'],['#sgap','gap']]) $(id).addEventListener('change', e => { const v = parseFloat(e.target.value); if (v > 0 || (k === 'gap' && v >= 0)) S.sheet[k] = v; else e.target.value = S.sheet[k]; renderSheet(); renderList(); });
 $('#filmPreset').innerHTML = FILMS.map(f => `<option value="${f.id}">${f.name}</option>`).join('');
+$('#filmTension').addEventListener('change', e => setFilm({ ...S.film, tension: e.target.checked }));
 $('#filmPreset').addEventListener('change', e => { const f = FILMS.find(x => x.id === e.target.value); setFilm({ id: f.id, max: f.id === 'custom' ? S.film.max : f.max }); });
 $('#filmMax').addEventListener('change', e => { const v = parseFloat(e.target.value); if (!(v > 0)) { e.target.value = S.film.max; return; } const f = FILMS.find(x => x.id === S.film.id); setFilm({ id: f && f.id !== 'custom' && f.max === v ? f.id : 'custom', max: v }); });
 setTimeout(() => setFilm(S.film, true)); // after the language tables are ready
@@ -7145,6 +7171,9 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Like an installer pulls the film into place: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch) but never bigger, so the film goes on under tension instead of wrinkling": "Wie ein Folierer die Folie auf Spannung zieht: wo der Rahmen gewölbt ist, darf das Schnittteil etwas kleiner als die Fläche werden (bis 60 % der max. Dehnung), aber nie größer, damit die Folie unter Spannung sitzt statt Falten zu werfen",
+  " Pull film tight (pattern may be a little smaller, never bigger)": " Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
+  "Pull film tight (pattern may be a little smaller, never bigger)": "Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
   "{0} stretches too much. Click a ✂ tag on the model to cut there: a V-notch closes up on the frame, a slit leaves a narrow gap. Or press Relief cuts in the list to try them all. You can also draw your own V-notch with the Knife: start outside the decal and stop inside it.": "{0} dehnt sich zu stark. Klick auf ein ✂-Schild am Modell, um dort zu schneiden: eine V-Kerbe schließt sich am Rahmen, ein Schlitz lässt einen schmalen Spalt. Oder drück Entlastungsschnitte in der Liste, um alle zu probieren. Eigene V-Kerben zeichnest du mit dem Messer: außerhalb des Decals anfangen und innen aufhören.",
   "V-notch": "V-Kerbe",
   "That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.": "Diese V-Kerbe ließ sich hier nicht schneiden. Fang die Linie knapp außerhalb des Decal-Rands an und hör innen auf.",
