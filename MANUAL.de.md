@@ -271,6 +271,7 @@ Jedes Schild zeigt die Öffnung des V in Grad und seine Breite am Rand in mm, un
 ## 12. Bogen und Export
 
 - **Breite, Höhe, Abstand** des Bogens in mm. Die Vorschau zeigt, wie die Teile angeordnet sind und wie viele es sind.
+- **Auf dem Bogen schneiden (✂):** mit aktiver Schere vom Rand eines Teils hineinziehen setzt dort einen Entlastungsschnitt, oder klick einen der gestrichelten Vorschläge an. FitFlat schneidet am Rahmen, wickelt neu ab und zeigt das Ergebnis auf dem Bogen und am Modell, wo du ihn im Bearbeiten-Modus mit seinen Griffen anpassen kannst. Strg+Z macht ihn rückgängig.
 - **Zoom:** über der Vorschau scrollen zoomt dort, wo der Zeiger ist, Ziehen verschiebt, Doppelklick (oder **Alles**) zeigt wieder den ganzen Bogen. **⤢** öffnet eine große Ansicht über den Bildschirm; Esc schließt sie.
 - **Namen beschriften**, **Bogenumriss**, **Teile spiegeln** (zum Schneiden von der Rückseite).
 - **Saubere Kurven** exportiert glatte Bézierkurven mit wenigen Knoten. **±** legt fest, wie weit exportierte Kurven von der abgewickelten Kontur abweichen dürfen (Standard 0,1 mm); höher ergibt weniger, glattere Knoten.

@@ -272,6 +272,9 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .mat{ background:var(--mat); padding:12px; margin:12px; border-radius:14px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
 .mat svg{ display:block; width:100%; height:auto; max-height:280px; touch-action:none; cursor:grab; }
 .mat svg.panning{ cursor:grabbing; }
+.mat svg.cutting{ cursor:crosshair; }
+#sheet .ssug{ cursor:pointer; }
+#sheet .ssug:hover line:first-child{ stroke:#E5007E; }
 #sheet path, #sheet rect, #sheet line, #sheet circle, #sheet polyline, #sheet polygon{ vector-effect:non-scaling-stroke; }
 .mat{ position:relative; }
 .matbar{ position:absolute; top:6px; right:6px; display:flex; gap:2px; z-index:2; background:rgba(0,0,0,.35); border-radius:8px; padding:2px; }
@@ -806,7 +809,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       </div>
       <div class="tabpane" data-pane="sheet">
       <div class="mat" id="matBox">
-        <div class="matbar" role="group" aria-label="Sheet zoom"><button type="button" id="shOut" title="Zoom out">−</button><button type="button" id="shIn" title="Zoom in (or scroll over the sheet)">+</button><button type="button" id="shFit" title="Show the whole sheet (double-click)">Fit</button><button type="button" id="shBig" title="Big view (Esc closes)" aria-pressed="false">⤢</button></div>
+        <div class="matbar" role="group" aria-label="Sheet zoom"><button type="button" id="shOut" title="Zoom out">−</button><button type="button" id="shIn" title="Zoom in (or scroll over the sheet)">+</button><button type="button" id="shFit" title="Show the whole sheet (double-click)">Fit</button><button type="button" id="shCut" title="Cut on the sheet: drag from the edge of a piece into it. The cut is wrapped back onto the frame" aria-pressed="false">✂</button><button type="button" id="shBig" title="Big view (Esc closes)" aria-pressed="false">⤢</button></div>
         <svg id="sheet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut sheet preview"></svg>
         <div class="matmeta"><span id="matSize"></span><span id="matCount"></span></div>
       </div>
@@ -4619,7 +4622,7 @@ function reliefSuggest(d) {
     let vee = null;
     if (kind === 'notch') { const sides = [1, -1].map(sg => { const o = []; for (let q = 0; q <= 8; q++) { const t = q / 8, c2 = [edge[0] + n2[0] * clen * t + t2[0] * sg * (mouth / 2) * (1 - t), edge[1] + n2[1] * clen * t + t2[1] * sg * (mouth / 2) * (1 - t)], h = to3(c2); if (h) o.push(h); } return o; }); if (sides.every(x => x.length >= 5)) vee = sides; }
     const tn = (() => { const h1 = to3([edge[0] + t2[0], edge[1] + t2[1]]); const v = h1 ? v3.sub(h1.point, E) : [1, 0, 0]; return v3.mul(v, 1 / (v3.len(v) || 1)); })(), w = 0;
-    return { E, Eface: pts[0].face, pts, tan: tn, st: pk.st, len: clen, kind, peak: pk.c, rad: sep * 0.8, vee, mouth, theta, big: thetaRaw > 25, w };
+    return { E, Eface: pts[0].face, pts, tan: tn, st: pk.st, len: clen, kind, peak: pk.c, rad: sep * 0.8, vee, mouth, theta, big: thetaRaw > 25, w, uv: [edge, [edge[0] + n2[0] * clen, edge[1] + n2[1] * clen]] };
   }).filter(Boolean);
   if (reliefCache.map.size > 40) reliefCache.map.clear(); reliefCache.map.set(ck, out); return out;
 }
@@ -4976,11 +4979,15 @@ function sheetZoom(k, cx, cy) {
 {
   const svg = $('#sheet'); let pan = null, moved = false;
   svg.addEventListener('wheel', e => { e.preventDefault(); sheetZoom(Math.exp(e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
-  svg.addEventListener('pointerdown', e => { if (e.button !== 0 || !S.sheetFull) return; pan = { x: e.clientX, y: e.clientY, v: { ...(S.sheetView || S.sheetFull) } }; moved = false; });
-  window.addEventListener('pointermove', e => { if (!pan) return; const dx = e.clientX - pan.x, dy = e.clientY - pan.y; if (!moved && Math.hypot(dx, dy) < 4) return;
+  svg.addEventListener('pointerdown', e => { if (e.button !== 0 || !S.sheetFull) return;
+    if (S.sheetCut) { sheetCutStart(e); return; }
+    pan = { x: e.clientX, y: e.clientY, v: { ...(S.sheetView || S.sheetFull) } }; moved = false; });
+  window.addEventListener('pointermove', e => { if (S.sheetCutDrag) { sheetCutMove(e); return; } if (!pan) return; const dx = e.clientX - pan.x, dy = e.clientY - pan.y; if (!moved && Math.hypot(dx, dy) < 4) return;
     if (!moved) { moved = true; svg.classList.add('panning'); try { svg.setPointerCapture(e.pointerId); } catch (er) {} }
     const r = svg.getBoundingClientRect(), sc = Math.min(r.width / pan.v.w, r.height / pan.v.h) || 1; S.sheetView = { ...pan.v, x: pan.v.x - dx / sc, y: pan.v.y - dy / sc }; sheetVB(); });
-  window.addEventListener('pointerup', () => { if (pan) { pan = null; svg.classList.remove('panning'); } });
+  window.addEventListener('pointerup', e => { if (S.sheetCutDrag) { sheetCutEnd(e); return; } if (pan) { pan = null; svg.classList.remove('panning'); } });
+  $('#shCut').addEventListener('click', () => { S.sheetCut = !S.sheetCut; $('#shCut').setAttribute('aria-pressed', String(S.sheetCut)); svg.classList.toggle('cutting', S.sheetCut);
+    renderSheet(); if (S.sheetCut) flash(tr('Cut on the sheet: drag from the edge of a piece into it, or click a dashed suggestion. FitFlat cuts it on the frame and unwraps again.')); });
   svg.addEventListener('click', e => { if (moved) { e.stopPropagation(); e.preventDefault(); moved = false; } }, true);
   svg.addEventListener('dblclick', () => { S.sheetView = null; sheetVB(); });
   $('#shIn').addEventListener('click', () => sheetZoom(1 / 1.5)); $('#shOut').addEventListener('click', () => sheetZoom(1.5));
@@ -4988,6 +4995,52 @@ function sheetZoom(k, cx, cy) {
   const big = on => { $('#matBox').classList.toggle('big', on); $('#shBig').setAttribute('aria-pressed', String(on)); S.sheetView = null; sheetVB(); };
   $('#shBig').addEventListener('click', () => big(!$('#matBox').classList.contains('big')));
   window.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#matBox').classList.contains('big')) { big(false); e.stopPropagation(); } }, true);
+}
+// ---------- cutting on the sheet: a straight cut drawn on a flat piece, wrapped back onto the frame as a relief cut ----------
+function sheetToPiece(sx, sy) {
+  const sh = S.sheet, P = S.packing; if (!P) return null; const SH = P.H, gapY = Math.max(SH * 0.06, 20);
+  for (const p of P.placed) { const oy = p.sheet * (SH + gapY); let x = sx; const y = sy - oy; if (sh.mirror) x = 2 * p.x + p.w - x;
+    if (x < p.x - 3 || x > p.x + p.w + 3 || y < p.y - 3 || y > p.y + p.h + 3) continue;
+    const A = p.tf([0, 0]), B = p.tf([1, 0]), C = p.tf([0, 1]), ex = [B[0] - A[0], B[1] - A[1]], ey = [C[0] - A[0], C[1] - A[1]], det = ex[0] * ey[1] - ex[1] * ey[0]; if (!det) continue;
+    const rx = x - A[0], ry = y - A[1], a = (rx * ey[1] - ry * ey[0]) / det, b = (ex[0] * ry - ex[1] * rx) / det;
+    return { p, uv: [a, -b] }; }
+  return null;
+}
+function sheetCutStart(e) {
+  const q = sheetPt(e.clientX, e.clientY); if (!q) return; const hit = sheetToPiece(q.x, q.y);
+  if (!hit) { flash(tr('Start the cut on a piece, at its edge.')); return; }
+  S.sheetCutDrag = { a: [q.x, q.y], hit }; const svg = $('#sheet'); try { svg.setPointerCapture(e.pointerId); } catch (er) {}
+  const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line'); ln.id = 'sheetCutLine'; ln.setAttribute('stroke', '#FF3B30'); ln.setAttribute('stroke-width', '2'); ln.setAttribute('pointer-events', 'none');
+  for (const k of ['x1', 'x2']) ln.setAttribute(k, q.x); for (const k of ['y1', 'y2']) ln.setAttribute(k, q.y); svg.appendChild(ln);
+}
+function sheetCutMove(e) { const q = sheetPt(e.clientX, e.clientY), ln = $('#sheetCutLine'); if (q && ln) { ln.setAttribute('x2', q.x); ln.setAttribute('y2', q.y); } }
+function sheetCutEnd(e) {
+  const C = S.sheetCutDrag; S.sheetCutDrag = null; $('#sheetCutLine')?.remove();
+  const q = sheetPt(e.clientX, e.clientY); if (!q || Math.hypot(q.x - C.a[0], q.y - C.a[1]) < 2) return;
+  const { p } = C.hit, end = sheetToPiece(q.x, q.y);
+  // the end in the same piece's coordinates (it may lie outside the piece's box)
+  const A = p.tf([0, 0]), B = p.tf([1, 0]), Cc = p.tf([0, 1]), ex = [B[0] - A[0], B[1] - A[1]], ey = [Cc[0] - A[0], Cc[1] - A[1]], det = ex[0] * ey[1] - ex[1] * ey[0];
+  const SH = S.packing.H, oy = p.sheet * (SH + Math.max(SH * 0.06, 20)); let x = q.x; if (S.sheet.mirror) x = 2 * p.x + p.w - x; const rx = x - A[0], ry = q.y - oy - A[1];
+  const uvB = end && end.p === p ? end.uv : [(rx * ey[1] - ry * ey[0]) / det, -((ex[0] * ry - ex[1] * rx) / det)];
+  makeSheetCut(p, C.hit.uv, uvB);
+}
+function makeSheetCut(p, uvA, uvB) {
+  const info = S.pieceInfo[p.id], d = info?.decal; if (!d) return;
+  const twin = p.id[0] === 'm', res = twin ? d.twin?.res : d.res; if (!res || res.error || !res.outline) return;
+  const O = res.outline, N = O.length, inO = pt => { let c = false; for (let a = 0, b = N - 1; a < N; b = a++) { const [xi, yi] = O[a], [xj, yj] = O[b]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
+  // the cut starts on the edge: the outline point nearest to where you started
+  let j = 0, jd = 1e30; O.forEach((o, i) => { const dd = Math.hypot(o[0] - uvA[0], o[1] - uvA[1]); if (dd < jd) { jd = dd; j = i; } });
+  if (jd > 6 && inO(uvA)) { flash(tr('Start the cut at the edge of the piece (or just outside it), then drag inwards.')); return; }
+  const s0 = O[j], dir = [uvB[0] - s0[0], uvB[1] - s0[1]], L = Math.hypot(...dir); if (L < 2) return;
+  const tri = flatTris(res), pts = [];
+  for (let k = 0; k <= 16; k++) { const t = 0.3 / L + (1 - 0.3 / L) * k / 16, h = flatTo3(tri, [s0[0] + dir[0] * t, s0[1] + dir[1] * t]); if (!h) break; pts.push(h.point.map(v => +v.toFixed(4))); }
+  if (pts.length < 4) { flash(tr('Draw the cut from the edge of a piece into it.')); return; }
+  let poly = pts; if (twin) poly = poly.map(q => reflect(q).map(v => +v.toFixed(4))); // the mirrored piece: cut its original side, the mirror follows
+  pushHistory('Relief cut on the sheet');
+  const pair = d.mirror && d.mergedMap ? (() => { const m = poly.map(q => reflect(q).map(v => +v.toFixed(4))); return poly.every((q, i) => dist3(q, m[i]) < 4) ? [poly] : [poly, m]; })() : [poly];
+  const was = d.res?.stretchMax || 0; d.darts = [...(d.darts || []), ...pair]; d.stale = false;
+  setBusy(tr('Unwrapping…')); setTimeout(() => { solveNow(d); reliefCache.map.clear(); setBusy(false); S.active = d; renderHandles(); updateUI();
+    flash(tr('Cut made on the frame. Stretch {0}% → {1}%. Drag its handles on the model (Edit mode) to adjust it, or undo.').replace('{0}', (was * 100).toFixed(1)).replace('{1}', ((d.res?.stretchMax || 0) * 100).toFixed(1))); }, 20);
 }
 function renderSheet() {
   const sh = S.sheet, svg = $('#sheet');
@@ -5002,6 +5055,7 @@ function renderSheet() {
   for (let i = 0; i < n; i++) s += `<rect x="0" y="${i*(SH+gapY)}" width="${sh.w}" height="${SH}" fill="url(#g5)" stroke="#CFE3DA" stroke-width="1.4" stroke-dasharray="${sh.roll ? 'none' : `${sh.w/150} ${sh.w/150}`}"/>`;
   if (sh.reg) for (let i = 0; i < n; i++) for (const [x, y] of [[8, 8], [sh.w - 8, 8], [8, SH - 8]]) s += `<circle cx="${x}" cy="${i*(SH+gapY) + y}" r="${Math.max(2.5, sh.w/300)}" fill="#FFFFFF" fill-opacity=".9"/>`;
   let area = 0;
+  let sugg = '';
   for (const p of S.packing.placed) {
     const info = S.pieceInfo[p.id], d = info.decal, oy = p.sheet * (SH + gapY);
     const mf = sh.mirror ? ([x, y]) => [2*p.x + p.w - x, y] : q => q;
@@ -5017,6 +5071,10 @@ function renderSheet() {
       const bin = fold > ten ? 6 + Math.min(5, Math.floor(Math.min(1, fold / foldAt()) * 5.999)) : Math.min(5, Math.floor(Math.min(1, ten / filmMax()) * 5.999));
       pBins[bin].push('M' + U.map(u => { const q = mf(p.tf([u[0], -u[1]])); return `${q[0].toFixed(1)} ${(q[1] + oy).toFixed(1)}`; }).join('L') + 'Z');
     }
+    // suggested relief cuts, on the flat piece: click one to make it
+    if ((S.sheetCut || S.showStretch) && p.id[0] === 'd' && p.tf && reliefTargets().includes(d) || (S.sheetCut && p.id[0] === 'd' && p.tf && d.closed && !d.holeOf && !d.stale)) {
+      reliefSuggest(d).forEach((c, ci) => { if (!c.uv) return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
+        sugg += `<g class="ssug" data-d="${d.id}" data-i="${ci}"><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="2" stroke-dasharray="4 3"/><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="transparent" stroke-width="12"><title>${esc(tr('Suggested cut: click to make it'))}</title></line></g>`; }); }
     const pd = [pts, ...hl].map(r => 'M' + r.map(([x,y]) => `${x.toFixed(1)} ${(y+oy).toFixed(1)}`).join('L') + 'Z').join(' ');
     // the colours stay inside the piece: the triangles along the edge reach past the outline
     if (pBins.some(b => b.length)) { const cid = 'hc' + p.id.replace(/[^\w-]/g, ''); s += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${pd}"/></clipPath><g clip-path="url(#${cid})" pointer-events="none">` + pBins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="#${(i < 6 ? heat(filmMax() * (i + 0.5) / 5) : foldHeat(foldAt() * (i - 6 + 0.5) / 5)).getHexString()}"/>` : '').join('') + '</g>'; }
@@ -5024,7 +5082,8 @@ function renderSheet() {
     if (sh.weed) { const g2 = Math.max(1, sh.gap) / 2; s += `<rect x="${p.x - g2}" y="${oy + p.y - g2}" width="${p.w + 2*g2}" height="${p.h + 2*g2}" fill="none" stroke="#7FB6FF" stroke-width="0.6" pointer-events="none"/>`; }
     if (sh.labels) { const fs = Math.max(sh.w/160, Math.min(sh.w/60, p.h/4)); s += `<text x="${p.x + p.w/2}" y="${oy + p.y + p.h/2 + fs*0.35}" font-size="${fs}" text-anchor="middle" fill="#FFFFFF" font-family="Barlow, Arial, sans-serif" pointer-events="none">${esc(info.name)}</text>`; }
   }
-  svg.innerHTML = s; sheetVB();
+  svg.innerHTML = s + sugg; sheetVB();
+  svg.querySelectorAll('.ssug').forEach(g => g.addEventListener('click', e => { e.stopPropagation(); const d = S.decals.find(x => x.id === +g.dataset.d); if (d) applyRelief(d, [+g.dataset.i]); }));
   svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => setActive(S.decals.find(d => d.id === +el.dataset.id))));
   const filmM2 = sh.w * (n * SH) / 1e6, use = filmM2 ? area / 1e6 / filmM2 * 100 : 0;
   $('#matSize').textContent = sh.roll ? `${tr('Roll')} ${sh.w} mm × ${Math.round(SH)} mm` : `${sh.w} × ${sh.h} mm${n > 1 ? `, ${n} ${tr('sheets')}` : ''}`;
@@ -7437,6 +7496,14 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Cut on the sheet: drag from the edge of a piece into it. The cut is wrapped back onto the frame": "Auf dem Bogen schneiden: vom Rand eines Teils hineinziehen. Der Schnitt wird auf den Rahmen zurückübertragen",
+  "Cut on the sheet: drag from the edge of a piece into it, or click a dashed suggestion. FitFlat cuts it on the frame and unwraps again.": "Auf dem Bogen schneiden: vom Rand eines Teils hineinziehen oder einen gestrichelten Vorschlag anklicken. FitFlat schneidet am Rahmen und wickelt neu ab.",
+  "Suggested cut: click to make it": "Vorgeschlagener Schnitt: anklicken, um ihn zu setzen",
+  "Start the cut on a piece, at its edge.": "Fang den Schnitt auf einem Teil an, an seinem Rand.",
+  "Start the cut at the edge of the piece (or just outside it), then drag inwards.": "Fang den Schnitt am Rand des Teils (oder knapp außerhalb) an und zieh nach innen.",
+  "Draw the cut from the edge of a piece into it.": "Zieh den Schnitt vom Rand eines Teils hinein.",
+  "Relief cut on the sheet": "Entlastungsschnitt auf dem Bogen",
+  "Cut made on the frame. Stretch {0}% → {1}%. Drag its handles on the model (Edit mode) to adjust it, or undo.": "Schnitt am Rahmen gesetzt. Dehnung {0} % → {1} %. Zieh seine Griffe am Modell (Bearbeiten-Modus), um ihn anzupassen, oder mach ihn rückgängig.",
   "Templates folder…": "Vorlagenordner…",
   "Change templates folder…": "Vorlagenordner wechseln…",
   "Stop using this folder": "Diesen Ordner nicht mehr nutzen",

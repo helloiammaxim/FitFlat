@@ -271,6 +271,7 @@ Each tag shows the V's opening in degrees and how wide it is at the edge in mm, 
 ## 12. Sheet and export
 
 - **Width, Height, Gap** of the sheet in mm. The preview shows how the pieces are packed and how many there are.
+- **Cut on the sheet (✂):** with the scissors on, drag from the edge of a piece into it to make a relief cut there, or click one of the dashed suggested cuts. FitFlat makes the cut on the frame, unwraps again and shows the result on the sheet and on the model, where you can adjust it with its handles in Edit mode. Ctrl+Z undoes it.
 - **Zoom:** scroll over the preview to zoom in where the pointer is, drag to move around, double-click (or **Fit**) to see the whole sheet again. **⤢** opens a big view over the screen; Esc closes it.
 - **Name labels**, **Sheet outline**, **Mirror pieces** (for cutting from the back).
 - **Clean curves** exports smooth Bézier curves with few nodes. **±** sets how far exported curves may stray from the unwrapped outline (default 0.1 mm); higher gives fewer, smoother nodes.
