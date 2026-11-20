@@ -325,6 +325,11 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 #seamMarks button.cut{ border-style:dashed; border-color:var(--ink); }
 #seamMarks button.join{ color:var(--accent); }
 #seamMarks button.back{ opacity:.45; }
+#reliefMarks{ position:absolute; inset:0; pointer-events:none; z-index:3; }
+#reliefMarks button{ position:absolute; left:0; top:0; pointer-events:auto; height:22px; padding:0 8px; border-radius:11px; border:1.5px solid #FF3B30; background:var(--surface); color:#D2302A; font:700 11px/1 inherit; cursor:pointer; box-shadow:0 1px 3px rgba(0,0,0,.25); white-space:nowrap; }
+#reliefMarks button.slit{ border-color:#FF9500; color:#B86A00; }
+#reliefMarks button.back{ opacity:.45; }
+#reliefMarks button:hover{ opacity:1; border-color:#E5007E; color:#E5007E; }
 #seamMarks button:hover{ opacity:1; border-color:#E5007E; color:#E5007E; }
 .libwhere p{ margin:0; }
 .libwbtns{ display:flex; flex-wrap:wrap; gap:6px; margin:8px 0 2px; }
@@ -745,6 +750,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div class="ghost" id="vlineOverlay" hidden></div>
       <div id="gizmo" hidden></div>
       <div id="seamMarks" hidden></div>
+      <div id="reliefMarks" hidden></div>
       <div class="refov" id="refOv" hidden><img id="refImg" alt="Reference image"><span class="rgrip" id="refMove" title="Drag to move the image"></span><span class="rsize" id="refSize" title="Drag to size the image; hold Alt to turn it"></span></div>
       <div class="placebar" id="placeBar" hidden>
         <strong>Place artwork</strong>
@@ -1591,7 +1597,7 @@ const Core = (() => {
       cgSolve(applyL, dg, bv, v, freeA, 1e-7, 600);
     }
     // stretch per face
-    const stretch = new Float64Array(m); let flips = 0;
+    const stretch = new Float64Array(m), sv = new Float64Array(m * 2); let flips = 0;
     for (let f = 0; f < m; f++) {
       const [i,j,k] = lf[f];
       const U = [u[j]-u[i], u[k]-u[i], v[j]-v[i], v[k]-v[i]];
@@ -1601,11 +1607,11 @@ const Core = (() => {
       if (a*dd - b*c2 <= 0) flips++;
       const Ee=(a+dd)/2, F=(a-dd)/2, G=(c2+b)/2, H=(c2-b)/2, Qq=Math.hypot(Ee,H), R=Math.hypot(F,G);
       const s1=Qq+R, s2=Math.abs(Qq-R);
-      stretch[f] = Math.max(Math.abs(s1-1), Math.abs(s2-1));
+      stretch[f] = Math.max(Math.abs(s1-1), Math.abs(s2-1)); sv[2*f] = s1; sv[2*f+1] = s2;
       void det;
     }
     const localFace = new Map(); faces.forEach((f, i) => localFace.set(f, i));
-    return { u, v, lf, gv, faces, localFace, stretch, flips, seam };
+    return { u, v, lf, gv, faces, localFace, stretch, sv, flips, seam };
   }
 
   // ---------- full decal solve ----------
@@ -1666,10 +1672,10 @@ const Core = (() => {
     const set = new Set(reg.faces); for (const s of samples) set.add(s.face);
     let mx = 0, wsum = 0, asum = 0;
     for (const f of set) { const st = fl.stretch[fl.localFace.get(f)]; mx = Math.max(mx, st); wsum += st*topo.area[f]; asum += topo.area[f]; }
-    const faceStretch = new Map(); for (const f of set) faceStretch.set(f, fl.stretch[fl.localFace.get(f)]);
+    const faceStretch = new Map(), faceSig = new Map(); for (const f of set) { const l = fl.localFace.get(f); faceStretch.set(f, fl.stretch[l]); faceSig.set(f, [fl.sv[2*l], fl.sv[2*l+1]]); }
     let area = 0; for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i+1)%outline.length]; area += a[0]*b[1]-b[0]*a[1]; }
     const uvOf = (f, b) => { const lfi = fl.localFace.get(f); if (lfi === undefined) return null; const t = fl.lf[lfi]; return [b[0]*fl.u[t[0]] + b[1]*fl.u[t[1]] + b[2]*fl.u[t[2]], b[0]*fl.v[t[0]] + b[1]*fl.v[t[1]] + b[2]*fl.v[t[2]]]; };
-    return { samples, outline, stretchMax: mx, stretchMean: asum ? wsum/asum : 0, insideFaces: [...set], faceStretch, area: Math.abs(area)/2, flips: fl.flips, uvOf, coreFaces: reg.insideFaces, seamEdges: fl.seam?.edges || null, slitSeam: !!hint };
+    return { samples, outline, stretchMax: mx, stretchMean: asum ? wsum/asum : 0, insideFaces: [...set], faceStretch, faceSig, area: Math.abs(area)/2, flips: fl.flips, uvOf, coreFaces: reg.insideFaces, seamEdges: fl.seam?.edges || null, slitSeam: !!hint };
   }
 
   // ---------- clean curves for export ----------
@@ -1965,7 +1971,7 @@ new MutationObserver(() => wake(600)).observe(document.body, { subtree: true, ch
 (function loop(){ const now = performance.now(); if (tween) { wake(); tween(); } controls.update();
   let pressing = false; try { pressing = !!press; } catch (e) {} // press is declared further down
   if (now > awakeUntil && !S.busy && !pressing && now - lastDraw < 1000) { requestAnimationFrame(loop); return; } lastDraw = now;
-  syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); drawSeamMarks(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
+  syncOrtho(); if (typeof drawKnifeOverlay === 'function') { drawKnifeOverlay(); drawViewLineOverlay(); try { drawGizmo(); drawSeamMarks(); drawReliefMarks(); } catch (e) {} } if (typeof renderGrid === 'function' && S.grid?.show && S.grid.plane === 'auto') renderGrid();
   if (S.model && !camera.isOrthographicCamera) { const dd = camera.position.distanceTo(controls.target); const nn = Math.max(0.05, dd * 0.01); if (Math.abs(camera.near - nn) > nn * 0.2) { camera.near = nn; camera.updateProjectionMatrix(); } } renderer.render(scene, camera); requestAnimationFrame(loop); })();
 
 // ---------- model ----------
@@ -3201,7 +3207,12 @@ function aroundTube(d, R) {
 function joinedRuns(d, R) {
   if (d.seamOpen || !R.zero.length || !R.full.length) return [];
   if (!aroundTube(d, R)) return R.zero.filter(pr => d.ctrl[pr[0]].seam !== true);
-  const g = joinOf(d, R.zero); return g ? [g] : [];
+  // round the tube: at least one edge has to stay open (by default the lowest, underneath); every other edge may stay
+  // joined, and the openings between joined edges become holes
+  const C = d.ctrl;
+  if (R.zero.some(pr => C[pr[0]].seam === true)) return R.zero.filter(pr => C[pr[0]].seam !== true);
+  const cut = R.zero[d.seamFlip ? 0 : R.zero.length - 1];
+  return R.zero.filter(pr => pr !== cut);
 }
 // the edges of the mirrored piece: walk the half forward and its mirror backward, crossing over at every joined stretch
 function mirrorWalk(d, R, J) {
@@ -4282,64 +4293,136 @@ function duplicateDecal(d) {
   S.active = nd; S.sel = null; if (S.mode !== 'edit') setMode('edit'); renderHandles(); updateUI();
   flash(`${nd.name} added next to ${d.name}. Drag it to place it.`);
 }
-// ---------- relief cuts: where a decal stretches too much, a notch from the edge lets the film lie flat ----------
+// ---------- relief cuts: where a decal stretches too much, a cut from the edge lets the film lie flat ----------
+// Each over-limit spot is read from the flat result itself:
+//  - the flat piece is too big there (film has extra material, it would wrinkle: a bulge, a lug, a tube end):
+//    a V-notch takes a wedge out; its opening angle is the surface's curvature over the spot (angle defect)
+//  - the flat piece is too small there (film has to stretch over a saddle, like the fillet where tubes meet):
+//    a slit lets it open
+// Cuts start at the edge, prefer the hidden side (underneath), end in a small round hole so the film doesn't tear on,
+// and are kept only if they really lower the stretch.
+const RELIEF_HOLE = 1.6; // mm, the round hole at the end of a cut
+function angleDefect(faces) {
+  const { mesh, topo } = S.model, T = mesh.tri, P = mesh.pos, vs = new Set();
+  for (const f of faces) for (let k = 0; k < 3; k++) vs.add(T[3*f+k]);
+  const ang = (f, v) => { const k = T[3*f] === v ? 0 : T[3*f+1] === v ? 1 : 2, a = T[3*f+k], b = T[3*f+(k+1)%3], c = T[3*f+(k+2)%3];
+    const u = [0, 1, 2].map(q => P[3*b+q] - P[3*a+q]), w = [0, 1, 2].map(q => P[3*c+q] - P[3*a+q]);
+    return Math.acos(Math.max(-1, Math.min(1, (u[0]*w[0] + u[1]*w[1] + u[2]*w[2]) / ((Math.hypot(...u) * Math.hypot(...w)) || 1)))); };
+  let K = 0; for (const v of vs) { let sum = 0; for (let i = topo.vfStart[v]; i < topo.vfStart[v+1]; i++) sum += ang(topo.vf[i], v); K += 2 * Math.PI - sum; }
+  return K;
+}
+let reliefCache = { key: '', map: new Map() };
 function reliefSuggest(d) {
   const r = d.res; if (!r || r.error || !r.faceStretch || !(r.stretchMax >= reliefAt()) || !r.samples?.length) return [];
-  const { mesh } = S.model, T = mesh.tri, P = mesh.pos, cen = f => [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3);
+  const ck = d.id + ':' + (r._v || 0) + ':' + S.film.max; if (reliefCache.map.has(ck)) return reliefCache.map.get(ck);
+  const { mesh, topo } = S.model, T = mesh.tri, P = mesh.pos, cen = f => [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3);
   const inside = r.insideFaces.map(cen), mid = [0, 1, 2].map(k => inside.reduce((a, c) => a + c[k], 0) / inside.length);
   const hot = [...r.faceStretch].filter(([, st]) => st >= reliefAt()).sort((a, b) => b[1] - a[1]);
   const sep = Math.max(12, Math.sqrt(r.area) * 0.3), peaks = []; // the worst spots, kept apart
   for (const [f, st] of hot) { const c = cen(f); if (peaks.every(p => dist3(p.c, c) > sep)) peaks.push({ f, st, c }); if (peaks.length >= 6) break; }
-  const smp = r.samples, n = smp.length, piece = S.model.topo.piece[smp[0].face];
-  return peaks.map(pk => {
-    let bi = 0, bd = 1e30; smp.forEach((q, i) => { const dd = dist3(q.point, pk.c); if (dd < bd) { bd = dd; bi = i; } });
+  const smp = r.samples, n = smp.length, piece = topo.piece[smp[0].face];
+  const out = peaks.map(pk => {
+    // the spot: stretched faces around the peak
+    const cl = [...r.faceStretch].filter(([f, st]) => st >= reliefAt() * 0.5 && dist3(cen(f), pk.c) < sep * 0.8).map(([f]) => f);
+    let ex = 0, de = 0; for (const f of cl) { const g = r.faceSig?.get(f); if (!g) continue; ex += topo.area[f] * Math.max(0, g[0] - 1); de += topo.area[f] * Math.max(0, 1 - g[1]); }
+    const kind = ex >= de ? 'notch' : 'slit', K = angleDefect(cl);
+    // where on the edge it starts: close to the spot, and rather underneath than on top
+    let bi = 0, bd = 1e30, bc = 1e30;
+    smp.forEach((q, i) => { const dd = dist3(q.point, pk.c), ny = fnorm(q.face)[1], c = dd * (1 + 0.6 * Math.max(0, ny)); if (c < bc) { bc = c; bd = dd; bi = i; } });
     const E = smp[bi].point, toMid = dist3(E, mid); if (toMid < 4) return null;
-    // from the edge towards the middle, through the stretched spot and a little past it
-    const dir = bd > 2 ? v3.sub(pk.c, E) : v3.sub(mid, E), dl = v3.len(dir) || 1, len = Math.min(Math.max(bd * 1.3, toMid * 0.3, 5), toMid * 0.7);
-    const pts = []; for (let i = 0; i <= 10; i++) { const h = Core.closestPoint(S.model.mesh, S.model.grid, v3.add(E, v3.mul(dir, len / dl * i / 10)), 80, f => S.model.topo.piece[f] === piece); if (h) pts.push(h); }
+    const dir = bd > 2 ? v3.sub(pk.c, E) : v3.sub(mid, E), dl = v3.len(dir) || 1, len = Math.min(Math.max(bd * 1.3, toMid * 0.45, 5), toMid * 0.7);
+    const pts = []; for (let i = 0; i <= 10; i++) { const h = Core.closestPoint(mesh, S.model.grid, v3.add(E, v3.mul(dir, len / dl * i / 10)), 80, f => topo.piece[f] === piece); if (h) pts.push(h); }
     if (pts.length < 2) return null;
     const tg = v3.sub(smp[(bi + 2) % n].point, smp[(bi - 2 + n) % n].point);
-    return { E, Eface: smp[bi].face, pts, tan: v3.mul(tg, 1 / (v3.len(tg) || 1)), st: pk.st, len };
+    // a notch opens by the curvature it has to take out (at least 3°, at most 40°); a slit is a hair-thin cut
+    const theta = Math.min(40, Math.max(3, Math.abs(K) * 180 / Math.PI)), me = topo.medianEdge || 1, w = kind === 'notch' ? Math.min(len * 0.6, Math.max(1, 2.5 * me, 2 * len * Math.tan(theta * Math.PI / 360))) : Math.min(2.5, Math.max(0.8, 2.5 * me)); // narrower than the mesh it would cut nothing
+    return { E, Eface: smp[bi].face, pts, tan: v3.mul(tg, 1 / (v3.len(tg) || 1)), st: pk.st, len, kind, peak: pk.c, rad: sep * 0.8, theta: kind === 'notch' ? theta : 0, w, under: fnorm(smp[bi].face)[1] < 0 };
   }).filter(Boolean);
+  if (reliefCache.map.size > 40) reliefCache.map.clear(); reliefCache.map.set(ck, out); return out;
 }
+const reliefTargets = () => S.decals.filter(d => d.closed && !d.holeOf && !d.partOf && d.liveOf == null && !d.stale && isShown(d) && (S.showStretch || d === S.active));
 let reliefObj = null, reliefKey = '';
 function renderRelief() {
-  const key = S.showStretch + '|' + S.decals.map(d => d.id + ':' + (d.res && !d.res.error ? d.res.area.toFixed(1) + '/' + d.res.stretchMax.toFixed(3) : '-')).join(',');
+  const L = S.model ? reliefTargets() : [];
+  const key = S.showStretch + '|' + (S.active?.id ?? '') + '|' + S.film.max + '|' + L.map(d => d.id + ':' + (d.res && !d.res.error ? (d.res._v || 0) + '/' + d.res.stretchMax.toFixed(3) : '-')).join(',') + '|' + (S.reliefHover ?? '');
   if (key === reliefKey) return; reliefKey = key;
   if (reliefObj) { scene.remove(reliefObj); reliefObj.children.forEach(disposeObj); reliefObj = null; }
-  if (!S.model || !S.showStretch) return;
+  if (!L.length) return;
   const grp = new THREE.Group(), k = hOff() * 1.6;
-  for (const d of S.decals) for (const c of (d.closed && !d.holeOf ? reliefSuggest(d) : [])) {
-    const l = fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat('#FF3B30', 2.5, 1, false));
+  for (const d of L) reliefSuggest(d).forEach((c, i) => {
+    const hot = S.reliefHover === d.id + ':' + i;
+    const l = fatLine(c.pts.map(h => offsetPt(h.point, h.face, k)), false, lineMat(hot ? '#E5007E' : c.kind === 'notch' ? '#FF3B30' : '#FF9500', hot ? 4 : 2.5, 1, false));
     l.material.dashed = true; l.material.dashSize = 2; l.material.gapSize = 1.5; l.material.needsUpdate = true; l.computeLineDistances(); grp.add(l);
-  }
+  });
   grp.children.forEach(o => o.renderOrder = 11); scene.add(grp); reliefObj = grp;
 }
-// cut the suggested notches: a narrow V from just outside the edge to the end of each suggested line
-function applyRelief(d) {
+// tags on the model, one per suggested cut: click to make just that cut
+let reliefMarkKey = '';
+function drawReliefMarks() {
+  const el = $('#reliefMarks'); if (!el) return;
+  const L = S.model && !press && !S.drawing ? reliefTargets() : [], items = [];
+  for (const d of L) reliefSuggest(d).forEach((c, i) => items.push({ d, c, i }));
+  if (!items.length) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; reliefMarkKey = ''; } return; }
+  const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta)).join(',');
+  if (key !== reliefMarkKey) {
+    reliefMarkKey = key; el.hidden = false;
+    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, {0}° wide: the film is too big here and would wrinkle. Click to cut it') : tr('Slit: the film has to stretch here. Click to cut it')).replace('{0}', Math.round(x.c.theta)))}">${x.c.kind === 'notch' ? 'V ' + Math.round(x.c.theta) + '°' : tr('Slit')}</button>`).join('');
+    el.querySelectorAll('button').forEach(b => {
+      const it = () => items[+b.dataset.j];
+      b.onclick = e => { e.stopPropagation(); const x = it(); if (x) applyRelief(x.d, [x.i]); };
+      b.onpointerenter = () => { const x = it(); if (x) { S.reliefHover = x.d.id + ':' + x.i; renderRelief(); wake(); } };
+      b.onpointerleave = () => { S.reliefHover = null; renderRelief(); wake(); };
+    });
+  }
+  items.forEach((x, j) => { const b = el.children[j]; if (!b) return; const tip = x.c.pts[x.c.pts.length - 1], q = screenOf(tip.point);
+    b.style.transform = `translate(${Math.round(q.x - b.offsetWidth / 2)}px,${Math.round(q.y - b.offsetHeight - 6)}px)`;
+    b.style.visibility = q.z > 1 ? 'hidden' : ''; b.classList.toggle('back', !facing(tip.point, tip.face)); });
+}
+// a small round hole on the surface, as a closed outline of four smooth points
+function holeCtrl(p, face, a, b, rad) {
+  const piece = S.model.topo.piece[face], on = q => Core.closestPoint(S.model.mesh, S.model.grid, q, 80, f => S.model.topo.piece[f] === piece);
+  const hs = [v3.add(p, v3.mul(a, rad)), v3.add(p, v3.mul(b, rad)), v3.add(p, v3.mul(a, -rad)), v3.add(p, v3.mul(b, -rad))].map(on);
+  return hs.every(Boolean) ? hs.map(h => ({ p: h.point, face: h.face, type: 'auto' })) : null;
+}
+// make the suggested cuts (all of them, or only the ones listed); each one stays only if it lowers the stretch
+// how bad the film is around one spot: the worst stretch within the radius
+function spotStretch(r, c, rad) { const { mesh } = S.model, T = mesh.tri, P = mesh.pos; let mx = 0;
+  for (const [f, st] of r.faceStretch) { const q = [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3); if (dist3(q, c) < rad && st > mx) mx = st; } return mx; }
+function applyRelief(d, only) {
   flushStale();
-  const cuts = reliefSuggest(d); if (!cuts.length) { flash(`${d.name} lies flat enough; no relief cuts needed.`); return; }
-  const before = snapshot(); let target = d, made = 0;
-  setBusy('Cutting…');
+  let cuts = reliefSuggest(d); if (only) cuts = cuts.filter((c, i) => only.includes(i));
+  if (!cuts.length) { flash(tr('{0} lies flat enough; no relief cuts needed.').replace('{0}', d.name)); return; }
+  const before = snapshot(), start = d.res?.stretchMax || 0; let target = d, made = 0, dropped = 0, failed = 0;
+  setBusy(tr('Cutting…'));
   setTimeout(() => {
     const piece = S.model.topo.piece[d.ctrl[0].face], onS = q => Core.closestPoint(S.model.mesh, S.model.grid, q, 80, f => S.model.topo.piece[f] === piece);
+    const cutOut = (tgt, ctrl) => { // subtract one shape from the target; returns the new target or null
+      const res = Core.solveDecal(S.model, ctrl, false); if (res.error) return null; res.insideSet = new Set(res.insideFaces);
+      const r = booleanCore('difference', tgt, { ctrl, closed: true, res, mirror: false, name: 'relief' });
+      if (r.error || !r.made?.length) return null;
+      for (const h of [...holesOf(tgt), tgt]) removeDecal(h, true);
+      for (const nd of r.made) { S.decals.push(nd); solveNow(nd); }
+      return r.made.find(x => !x.holeOf) || r.made[0];
+    };
     for (const c of cuts) {
       if (!S.decals.includes(target)) break;
-      const tip = c.pts[c.pts.length - 1].point, inn = v3.sub(c.pts[Math.min(2, c.pts.length - 1)].point, c.E), il = v3.len(inn) || 1, out = v3.mul(inn, -2.5 / il);
-      const w = Math.min(4, Math.max(1.2, c.len * c.st * 3)); // wider notches where the film stretches more
-      const B = v3.add(c.E, out), b1 = onS(v3.add(B, v3.mul(c.tan, w / 2))), b2 = onS(v3.add(B, v3.mul(c.tan, -w / 2))), tp = onS(tip);
+      const snap = snapshot(), keepId = target.id, was = target.res && !target.res.error ? spotStretch(target.res, c.peak, c.rad) : 0, wasMean = target.res?.stretchMean || 0;
+      const tipH = c.pts[c.pts.length - 1], tip = tipH.point, inn = v3.sub(c.pts[Math.min(2, c.pts.length - 1)].point, c.E), il = v3.len(inn) || 1, out = v3.mul(inn, -2.5 / il);
+      const B = v3.add(c.E, out), b1 = onS(v3.add(B, v3.mul(c.tan, c.w / 2))), b2 = onS(v3.add(B, v3.mul(c.tan, -c.w / 2))), tp = onS(tip);
       if (!b1 || !b2 || !tp) continue;
-      const ctrl = [b1, tp, b2].map(h => ({ p: h.point, face: h.face, type: 'corner' }));
-      const res = Core.solveDecal(S.model, ctrl, false); if (res.error) continue; res.insideSet = new Set(res.insideFaces);
-      const r = booleanCore('difference', target, { ctrl, closed: true, res, mirror: false, name: 'relief' });
-      if (r.error || !r.made?.length) continue;
-      for (const h of [...holesOf(target), target]) removeDecal(h, true);
-      for (const nd of r.made) { S.decals.push(nd); solveNow(nd); }
-      target = r.made.find(x => !x.holeOf) || r.made[0]; made++;
+      let t2 = cutOut(target, [b1, tp, b2].map(h => ({ p: h.point, face: h.face, type: 'corner' })));
+      if (!t2) { failed++; continue; }
+      // the round hole at the end
+      const ax = v3.mul(inn, 1 / il), hc = holeCtrl(tp.point, tp.face, ax, c.tan, RELIEF_HOLE / 2), t3 = hc ? cutOut(t2, hc) : null;
+      if (t3) t2 = t3;
+      const now = t2.res && !t2.res.error ? spotStretch(t2.res, c.peak, c.rad) : 1;
+      if (now < was * 0.9 && (t2.res.stretchMean <= wasMean * 1.05)) { target = t2; made++; }
+      else { applySnapshot(snap); target = S.decals.find(x => x.id === keepId) || target; dropped++; } // it didn't help: put it back
     }
     setBusy(false);
-    if (made) { histPush(before, 'Relief cuts'); S.active = target; renderHandles(); updateUI(); flash(`Added ${made} relief cut${made === 1 ? '' : 's'}. Stretch now ${(target.res?.stretchMax * 100 || 0).toFixed(1)}%.`); }
-    else flash('The relief cuts could not be added here. Try splitting the decal with the Knife.');
+    if (made) { histPush(before, 'Relief cuts'); S.active = target; reliefCache.map.clear(); renderHandles(); updateUI();
+      flash(tr('Added {0} relief cut(s). Stretch {1}% → {2}%.').replace('{0}', made).replace('{1}', (start * 100).toFixed(1)).replace('{2}', ((target.res?.stretchMax || 0) * 100).toFixed(1)) + (dropped ? ' ' + tr('{0} suggested cut(s) left out: they didn’t help.').replace('{0}', dropped) : '')); }
+    else { updateUI(); flash(tr('No cut lowered the stretch here. Try splitting the decal with the Knife where it changes from tube to lug.')); }
   }, 20);
 }
 function updateUI() {
@@ -4417,7 +4500,7 @@ function renderList() {
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
     const plain = !d.partOf && d.liveOf == null; // parts and live pieces get their own short set of actions
-    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut small notches where the film stretches too much (the red lines with Stretch on)">Relief cuts</button>' : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut where the film stretches too much: V-notches where it would wrinkle, slits where it has to stretch. The tags on the model make one cut at a time">Relief cuts</button>' : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, [d]); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
@@ -5658,7 +5741,7 @@ function drawSeamMarks() {
 function toggleRun(d, r) {
   if (!d) return;
   const runs = centreRuns(d), want = runs.map(x => x.a === r.a ? !x.joined : x.joined);
-  if (want.filter(Boolean).length > 1 && !r.ring) { askRuns(d, runs.map(x => x.a === r.a), 'would close into a ring if edge {0} joined too, and a ring can’t lie flat. Tick the edges that stay open as seams; one stays joined.', r.no); return; }
+  if (want.every(Boolean) && !r.ring) { askRuns(d, (() => { const ci = runs.findIndex(x => x.a === r.a), o = ci === runs.length - 1 ? runs.length - 2 : runs.length - 1; return runs.map((x, k) => k !== o); })(), 'would close into a ring if edge {0} joined too, and a ring can’t lie flat. Keep at least one edge open as a seam; all the others can stay joined.', r.no); return; }
   setRuns(d, runs, want);
 }
 function setRuns(d, runs, want) {
@@ -5668,22 +5751,23 @@ function setRuns(d, runs, want) {
   if (want.some(Boolean)) d.seamOpen = false;
   solve(d); renderHandles(); updateUI();
   const j = runs.findIndex((r, k) => want[k]);
-  flash(j < 0 ? tr('Every edge is open: two separate pieces that meet on the centre line.') : runs[0].ring && want.filter(Boolean).length > 1 ? tr('Joined: the openings between joined edges stay open like holes.') : runs.length > 1 ? tr('Joined at edge {0}; the other edges stay open as seams.').replace('{0}', runs[j].no) : tr('Joined: both sides are one piece.'));
+  flash(j < 0 ? tr('Every edge is open: two separate pieces that meet on the centre line.') : want.filter(Boolean).length > 1 ? tr('Joined: the openings between joined edges stay open like holes.') : runs.length > 1 ? tr('Joined at edge {0}; the other edges stay open as seams.').replace('{0}', runs[j].no) : tr('Joined: both sides are one piece.'));
 }
 function askRuns(d, want, why, no) {
   const runs = centreRuns(d); if (!runs.length || !S.decals.includes(d) || document.querySelector('dialog[open]')) return;
   want = want || runs.map(r => r.joined);
   const dlg = $('#seamDlg'), box = $('#seamList');
   $('#seamTitle').textContent = tr('Which edges open?'); $('#seamName').textContent = d.name;
-  $('#seamText').textContent = tr(why || 'meets the centre line along more than one edge. Joined at all of them it would close into a ring, and a ring can’t lie flat. Tick the edges that stay open as seams (dashed on the model); one stays joined.').replace('{0}', no);
+  $('#seamText').textContent = tr(why || 'goes round the tube and meets the centre line along more than one edge. Joined at all of them it would close into a ring, and a ring can’t lie flat. Tick at least one edge to stay open as a seam (dashed on the model); the others can stay joined, and any opening between them is cut out like a hole.').replace('{0}', no);
   box.className = 'seamlist runs';
   box.innerHTML = runs.map((r, k) => `<label class="runrow" data-k="${k}"><input type="checkbox"${want[k] ? '' : ' checked'}><b>${esc(tr('Edge'))} ${r.no}</b><span>${esc(tr(runWhere(d, r)))}</span><span class="st"></span></label>`).join('') + '<p class="runwarn" id="runWarn"></p>';
   const boxes = [...box.querySelectorAll('input')];
   const check = () => {
     const j = boxes.filter(b => !b.checked).length, w = $('#runWarn');
     boxes.forEach(b => b.closest('.runrow').querySelector('.st').textContent = tr(b.checked ? 'seam' : 'joined'));
-    w.textContent = j > 1 ? tr('Only one edge can stay joined, or the piece closes into a ring.') : j === 0 ? tr('All open: you get two separate pieces.') : '';
-    w.classList.toggle('bad', j > 1); $('#seamOk').disabled = j > 1;
+    const ring = j === boxes.length && !runs[0].ring;
+    w.textContent = ring ? tr('Keep at least one edge open, or the piece closes into a ring.') : j === 0 ? tr('All open: you get two separate pieces.') : '';
+    w.classList.toggle('bad', ring); $('#seamOk').disabled = ring;
   };
   boxes.forEach(b => b.onchange = check);
   box.querySelectorAll('.runrow').forEach(row => {
@@ -5691,7 +5775,7 @@ function askRuns(d, want, why, no) {
     row.onpointerleave = () => { S.runHover = null; renderHandles(); wake(); };
   });
   $('#seamOk').hidden = false; $('#seamKeep').textContent = tr('Cancel');
-  $('#seamOk').onclick = () => { const w = boxes.map(b => !b.checked); if (w.filter(Boolean).length > 1) return; dlg.close(); setRuns(d, runs, w); };
+  $('#seamOk').onclick = () => { const w = boxes.map(b => !b.checked); if (w.every(Boolean) && !runs[0].ring) return; dlg.close(); setRuns(d, runs, w); };
   $('#seamKeep').onclick = () => dlg.close();
   dlg.onclose = () => { S.runHover = null; dlg.onclose = null; renderHandles(); wake(); };
   check(); dlg.showModal();
@@ -6920,8 +7004,8 @@ const DE = {
   "Near side, facing you": "Vorne, zu dir hin",
   "Moved seam": "Naht verlegt",
   "Which edges open?": "Welche Kanten bleiben offen?",
-  "meets the centre line along more than one edge. Joined at all of them it would close into a ring, and a ring can’t lie flat. Tick the edges that stay open as seams (dashed on the model); one stays joined.": "trifft die Mittellinie an mehr als einer Kante. Überall verbunden würde es zu einem Ring, und ein Ring liegt nie flach. Hak die Kanten an, die als Naht offen bleiben (gestrichelt am Modell); eine bleibt verbunden.",
-  "would close into a ring if edge {0} joined too, and a ring can’t lie flat. Tick the edges that stay open as seams; one stays joined.": "würde zum Ring, wenn Kante {0} auch verbunden wäre, und ein Ring liegt nie flach. Hak die Kanten an, die als Naht offen bleiben; eine bleibt verbunden.",
+  "goes round the tube and meets the centre line along more than one edge. Joined at all of them it would close into a ring, and a ring can’t lie flat. Tick at least one edge to stay open as a seam (dashed on the model); the others can stay joined, and any opening between them is cut out like a hole.": "geht ums Rohr und trifft die Mittellinie an mehr als einer Kante. Überall verbunden würde es zum Ring, und ein Ring liegt nie flach. Hak mindestens eine Kante an, die als Naht offen bleibt (gestrichelt am Modell); die anderen können verbunden bleiben, und Öffnungen dazwischen werden wie ein Loch ausgeschnitten.",
+  "would close into a ring if edge {0} joined too, and a ring can’t lie flat. Keep at least one edge open as a seam; all the others can stay joined.": "würde zum Ring, wenn Kante {0} auch verbunden wäre, und ein Ring liegt nie flach. Lass mindestens eine Kante als Naht offen; alle anderen können verbunden bleiben.",
   "Edge": "Kante",
   "on top": "oben",
   "underneath": "unten",
@@ -6929,7 +7013,7 @@ const DE = {
   "at the left end": "am linken Ende",
   "seam": "Naht",
   "joined": "verbunden",
-  "Only one edge can stay joined, or the piece closes into a ring.": "Nur eine Kante kann verbunden bleiben, sonst wird das Stück zum Ring.",
+  "Keep at least one edge open, or the piece closes into a ring.": "Lass mindestens eine Kante offen, sonst wird das Stück zum Ring.",
   "All open: you get two separate pieces.": "Alles offen: du bekommst zwei einzelne Stücke.",
   "Edge {0} is joined: both sides are one piece here. Click to cut it open as a seam": "Kante {0} ist verbunden: beide Seiten sind hier ein Stück. Klick, um sie als Naht aufzuschneiden",
   "Edge {0} is a seam: the film is cut open here. Click to join it": "Kante {0} ist eine Naht: die Folie ist hier offen. Klick, um sie zu verbinden",
@@ -6937,6 +7021,14 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "V-notch, {0}° wide: the film is too big here and would wrinkle. Click to cut it": "V-Kerbe, {0}° breit: die Folie ist hier zu groß und würde Falten werfen. Klick zum Schneiden",
+  "Slit: the film has to stretch here. Click to cut it": "Schlitz: die Folie muss sich hier dehnen. Klick zum Schneiden",
+  "Slit": "Schlitz",
+  "Cutting…": "Schneide…",
+  "{0} lies flat enough; no relief cuts needed.": "{0} liegt flach genug; keine Entlastungsschnitte nötig.",
+  "Added {0} relief cut(s). Stretch {1}% → {2}%.": "{0} Entlastungsschnitt(e) gesetzt. Dehnung {1} % → {2} %.",
+  "{0} suggested cut(s) left out: they didn’t help.": "{0} vorgeschlagene(r) Schnitt(e) weggelassen: sie halfen nicht.",
+  "No cut lowered the stretch here. Try splitting the decal with the Knife where it changes from tube to lug.": "Kein Schnitt hat die Dehnung hier gesenkt. Teile das Decal mit dem Messer, wo es vom Rohr in die Muffe übergeht.",
   "Live unwrap": "Live-Abwicklung",
   "Unwrap": "Abwickeln",
   "Unwrap ({0})": "Abwickeln ({0})",
@@ -7407,7 +7499,7 @@ const DE = {
   'Pill': 'Pille', 'A pill (stadium): drag its length and width, or type the size and click to place it': 'Eine Pille (Langloch): Länge und Breite aufziehen, oder Größe eingeben und klicken zum Platzieren',
   'Pill size in mm: click on the model to place one at this size, or drag to draw any size': 'Pillengröße in mm: auf das Modell klicken platziert eine in dieser Größe, Ziehen zeichnet jede Größe',
   'Click on the model to place the pill.': 'Klicke auf das Modell, um die Pille zu platzieren.', 'Pill: drag its length and width (Alt draws from the centre), or set L × W in the toolbar and click to place one at that size.': 'Pille: Länge und Breite aufziehen (Alt zeichnet von der Mitte aus), oder L × B in der Werkzeugleiste eingeben und klicken, um eine in dieser Größe zu platzieren.',
-  'Relief cuts': 'Entlastungsschnitte', 'Cut small notches where the film stretches too much (the red lines with Stretch on)': 'Kleine Kerben schneiden, wo die Folie zu stark gedehnt wird (die roten Linien bei eingeschalteter Dehnung)',
+  'Relief cuts': 'Entlastungsschnitte', 'Cut where the film stretches too much: V-notches where it would wrinkle, slits where it has to stretch. The tags on the model make one cut at a time': 'Kleine Kerben schneiden, wo die Folie zu stark gedehnt wird (die roten Linien bei eingeschalteter Dehnung)',
   'The relief cuts could not be added here. Try splitting the decal with the Knife.': 'Die Entlastungsschnitte ließen sich hier nicht setzen. Teile das Decal mit dem Messer.',
   'Duplicate': 'Duplizieren', 'Duplicate this decal (Ctrl+D)': 'Dieses Decal duplizieren (Strg+D)', 'Close the shape first, then duplicate it.': 'Schließe zuerst die Form, dann dupliziere sie.',
   'Rectangle': 'Rechteck', 'Drawing': 'Zeichnen', 'Open line': 'Offene Linie', 'piece': 'Teil', 'pieces': 'Teile', 'Resulting frame:': 'Ergebnis:',
