@@ -134,6 +134,9 @@ Zieh die pinken Anfasser, um die Kurve zu biegen; Alt-Ziehen trennt sie.
 - **Ecken abrunden / Alle abrunden** mit Radius **r** in mm.
 - **Vereinfachen / Alle vereinfachen** mit Toleranz **±** in mm — entfernt Punkte, die die Form nicht braucht (dezimieren). Nützlich nach Freihandzeichnen oder SVG-Import.
 
+### Live-Abwicklung
+Standardmäßig wird jedes Decal nach jeder Änderung sofort abgewickelt. Bei großen Rahmen bremst das beim Formen der Kontur. Schalte **Live-Abwicklung** aus (Taste **L**): Änderungen zeichnen dann nur die Kontur neu, das Decal zeigt **nicht abgewickelt** und fehlt noch auf dem Bogen. Drück **Abwickeln** (Taste **U**), wenn die Form fertig ist. Der Bogen-Tab, Export, Kombinieren und Entlastungsschnitte wickeln Wartendes von selbst ab.
+
 ---
 
 ## 6. Verschieben, Drehen, Skalieren
@@ -330,6 +333,8 @@ Standardmäßig bleibt alles im Browser. In **Projekte** speichert **Ordner verw
 | Strg+D | Ausgewähltes Decal duplizieren |
 | M | Ausgewählte Punkte zusammenführen |
 | F | Auf Auswahl zoomen |
+| L | Live-Abwicklung an / aus |
+| U | Geänderte Decals abwickeln (bei ausgeschalteter Live-Abwicklung) |
 | Pfeiltasten (Umschalt) | Ausgewählte Punkte schieben |
 | X / Y / Z (beim Ziehen) | Bewegung auf eine Achse sperren |
 | Strg + Scrollen / Alt + Scrollen | Decal oder Auswahl drehen / skalieren (Umschalt: größere Schritte) |

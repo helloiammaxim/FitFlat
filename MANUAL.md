@@ -134,6 +134,9 @@ Drag the pink handles to bend the curve; Alt-drag breaks them apart.
 - **Round corners / Round all** with radius **r** in mm.
 - **Simplify / Simplify all** with tolerance **±** in mm — removes points the shape does not need (decimate). Useful after freehand drawing or SVG import.
 
+### Live unwrap
+By default every change unwraps the decal right away. On big frames that can slow you down while you shape the outline. Turn **Live unwrap** off (key **L**): edits then only redraw the outline, the decal shows **not unwrapped**, and it stays off the sheet. Press **Unwrap** (key **U**) when the shape is done. Opening the Sheet tab, exporting, combining decals and relief cuts unwrap anything still waiting on their own.
+
 ---
 
 ## 6. Moving, turning and sizing
@@ -330,6 +333,8 @@ By default everything stays in the browser. In **Projects**, **Use a folder…**
 | Ctrl+D | Duplicate the selected decal |
 | M | Merge selected points |
 | F | Zoom to selection |
+| L | Live unwrap on / off |
+| U | Unwrap changed decals (when Live unwrap is off) |
 | Arrow keys (Shift) | Nudge selected points |
 | X / Y / Z (while dragging) | Lock the move to an axis |
 | Ctrl + scroll / Alt + scroll | Turn / size the decal or selection (Shift: bigger steps) |
