@@ -895,7 +895,9 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <ul class="cards" id="startList"></ul>
       </div>
       <div id="libTpl" role="tabpanel" aria-labelledby="tabTpl" hidden>
-        <div class="libbar"><button type="button" class="btn" id="tplExport" title="Download all templates as one file">Download templates</button><label class="btn" tabindex="0" title="Add templates from a downloaded templates file">Add from file…<input type="file" id="tplFile" accept=".json" hidden></label></div>
+        <div class="libwhere"><p id="tplWhere"></p>
+          <div class="libwbtns"><button type="button" class="btn" id="tplFolderBtn" title="Load and keep templates as SVG files in a folder you choose, for example a shared folder on the company network">Templates folder…</button><button type="button" class="btn primary" id="tplReconnect" hidden>Reconnect</button><button type="button" class="btn" id="tplFolderOff" hidden title="Keep templates with your projects again">Stop using this folder</button></div></div>
+        <div class="libbar"><button type="button" class="btn" id="tplExport" title="Download all templates as one file">Download all</button><label class="btn" tabindex="0" title="Add templates from SVG files (one outline each, in mm) or from a downloaded templates file">Add from files…<input type="file" id="tplFile" accept=".json,.svg" multiple hidden></label></div>
         <p class="note">Save a decal as a template with <b>Save to library</b> in the Decal panel (Edit mode). Placing a template works like placing artwork: move over the model, click, adjust, Apply.</p>
         <ul class="cards" id="tplList"></ul>
       </div>
@@ -2709,7 +2711,51 @@ const FS = (() => {
     },
   };
 })();
-const Store = { all: s => useFolder() ? FS.all(s) : DB.all(s), get: (s, id) => useFolder() ? FS.get(s, id) : DB.get(s, id), put: (s, v) => useFolder() ? FS.put(s, v) : DB.put(s, v).then(() => v.id), del: (s, id) => useFolder() ? FS.del(s, id) : DB.del(s, id) };
+// a templates folder of its own (for example a shared one): every template is an SVG file there, and any SVG with closed
+// outlines dropped into it shows up as a template
+const TPLDIR = { handle: null, ok: false, name: '' };
+async function tplPerm(ask) {
+  const h = TPLDIR.handle; if (!h) return (TPLDIR.ok = false);
+  try { let p = await h.queryPermission({ mode: 'readwrite' }); if (p !== 'granted' && ask) p = await h.requestPermission({ mode: 'readwrite' }); TPLDIR.ok = p === 'granted'; } catch (e) { TPLDIR.ok = false; }
+  return TPLDIR.ok;
+}
+const TF = (() => {
+  const write = async (fname, text) => { const fh = await TPLDIR.handle.getFileHandle(fname, { create: true }), w = await fh.createWritable(); await w.write(text); await w.close(); };
+  const exists = async fname => { try { await TPLDIR.handle.getFileHandle(fname); return true; } catch (e) { return false; } };
+  const all = async () => { const out = [];
+    for await (const [name, h] of TPLDIR.handle.entries()) if (h.kind === 'file' && /\.svg$/i.test(name)) { try { const file = await h.getFile(); if (file.size > 4e6) continue; const t = templateFromSVG(await file.text(), name); if (t) out.push({ ...t, id: 'f:' + name, created: file.lastModified }); } catch (e) {} }
+    return out; };
+  return {
+    all, async get(id) { return (await all()).find(t => t.id === id); },
+    async put(rec) { const old = String(rec.id || '').startsWith('f:') ? String(rec.id).slice(2) : null, base = fsafe(rec.name); let fname = base + '.svg';
+      if (fname !== old) for (let k = 2; await exists(fname); k++) fname = `${base} (${k}).svg`;
+      await write(fname, templateSVG(rec)); if (old && old !== fname) { try { await TPLDIR.handle.removeEntry(old); } catch (e) {} } return 'f:' + fname; },
+    async del(id) { if (String(id).startsWith('f:')) await TPLDIR.handle.removeEntry(String(id).slice(2)); },
+  };
+})();
+const useTplDir = s => s === 'templates' && TPLDIR.handle && TPLDIR.ok;
+const Store0 = { all: s => useFolder() ? FS.all(s) : DB.all(s), get: (s, id) => useFolder() ? FS.get(s, id) : DB.get(s, id), put: (s, v) => useFolder() ? FS.put(s, v) : DB.put(s, v).then(() => v.id), del: (s, id) => useFolder() ? FS.del(s, id) : DB.del(s, id) };
+const Store = { all: s => useTplDir(s) ? TF.all() : Store0.all(s), get: (s, id) => useTplDir(s) ? TF.get(id) : Store0.get(s, id), put: (s, v) => useTplDir(s) ? TF.put(v) : Store0.put(s, v), del: (s, id) => useTplDir(s) ? TF.del(id) : Store0.del(s, id) };
+async function pickTplFolder() {
+  if (!canFolder) { flash(tr('This browser cannot work with folders. Use Chrome or Edge, or Download and Open project files.')); return; }
+  let h; try { h = await window.showDirectoryPicker({ id: 'fitflat-templates', mode: 'readwrite' }); }
+  catch (e) { if (e?.name !== 'AbortError') flash(tr('The folder could not be opened here: {0}').replace('{0}', e?.message || e)); return; }
+  TPLDIR.handle = h; TPLDIR.name = h.name; await tplPerm(true);
+  try { await KV.set('tplFolder', h); } catch (e) {}
+  updateTplWhere(); renderLib(); if (TPLDIR.ok) flash(tr('Templates now come from the folder "{0}".').replace('{0}', h.name));
+}
+async function tplFolderOff() { TPLDIR.handle = null; TPLDIR.ok = false; TPLDIR.name = ''; try { await KV.set('tplFolder', null); } catch (e) {} updateTplWhere(); renderLib(); }
+function updateTplWhere() {
+  const el = $('#tplWhere'); if (!el) return;
+  el.textContent = TPLDIR.handle ? (TPLDIR.ok ? tr('Templates come from the folder "{0}": one SVG file each. SVGs you put there show up here too.') : tr('Templates come from the folder "{0}". Click Reconnect to let FitFlat use it again.')).replace('{0}', TPLDIR.name)
+    : tr('Templates are kept with your projects. Choose a templates folder to load them from SVG files, for example a shared folder.');
+  $('#tplFolderBtn').textContent = tr(TPLDIR.handle ? 'Change templates folder…' : 'Templates folder…'); $('#tplFolderBtn').hidden = !canFolder;
+  $('#tplReconnect').hidden = !(TPLDIR.handle && !TPLDIR.ok); $('#tplFolderOff').hidden = !TPLDIR.handle;
+}
+$('#tplFolderBtn').addEventListener('click', pickTplFolder);
+$('#tplFolderOff').addEventListener('click', tplFolderOff);
+$('#tplReconnect').addEventListener('click', async () => { if (await tplPerm(true)) { updateTplWhere(); renderLib(); } });
+(async () => { try { const h = await KV.get('tplFolder'); if (h && canFolder) { TPLDIR.handle = h; TPLDIR.name = h.name; await tplPerm(false); } } catch (e) {} updateTplWhere(); })();
 async function pickFolder() {
   if (!canFolder) { flash(tr('This browser cannot work with folders. Use Chrome or Edge, or Download and Open project files.')); return; }
   let h; try { h = await window.showDirectoryPicker({ id: 'fitflat', mode: 'readwrite' }); }
@@ -2789,7 +2835,7 @@ async function renderLib() {
   $('#tplList').innerHTML = ts.length ? ts.map(t => { const pad = Math.max(t.w, t.h) * 0.08;
     return `<li data-id="${esc(t.id)}"><button type="button" class="th" data-a="place" title="${esc(tr('Place on the model'))}"><svg viewBox="${-pad} ${-pad} ${t.w + 2*pad} ${t.h + 2*pad}" xmlns="http://www.w3.org/2000/svg"><path d="${esc(t.d)}" fill="currentColor" fill-opacity=".18" fill-rule="evenodd" stroke="currentColor" stroke-width="1.5" vector-effect="non-scaling-stroke"/></svg></button>
     <div class="meta"><b translate="no">${esc(t.name)}</b>${fmm(t.w)} × ${fmm(t.h)} mm${t.mirror ? ' · ' + esc(tr('mirrored')) : ''}</div>
-    <div class="acts"><button type="button" class="primary" data-a="place">${tr('Place')}</button><button type="button" data-a="ren">${tr('Rename')}</button><button type="button" class="del" data-a="del">${tr('Delete')}</button></div></li>`; }).join('')
+    <div class="acts"><button type="button" class="primary" data-a="place">${tr('Place')}</button><button type="button" data-a="ren">${tr('Rename')}</button><button type="button" data-a="dl" title="${esc(tr('Download as an SVG file (mm)'))}">${tr('Download')}</button><button type="button" class="del" data-a="del">${tr('Delete')}</button></div></li>`; }).join('')
     : `<li class="empty">${tr('No templates yet. Select a decal in Edit mode and click Save to library in the Decal panel.')}</li>`;
 }
 $('#projList').addEventListener('click', async e => {
@@ -2804,6 +2850,7 @@ $('#tplList').addEventListener('click', async e => {
   const b = e.target.closest('[data-a]'), li = e.target.closest('li[data-id]'); if (!b || !li) return; const t = await Store.get('templates', li.dataset.id); if (!t) return;
   if (b.dataset.a === 'place') { $('#libDlg').close(); placeTemplate(t); }
   if (b.dataset.a === 'ren') { const n = prompt(tr('New name:'), t.name); if (n && n.trim()) { t.name = n.trim(); await Store.put('templates', t); renderLib(); } }
+  if (b.dataset.a === 'dl') saveFile(fsafe(t.name) + '.svg', templateSVG(t), $('#libMsg'));
   if (b.dataset.a === 'del' && confirm(tr('Delete the template "{0}"?').replace('{0}', t.name))) { await Store.del('templates', t.id); renderLib(); }
 });
 function libTab(t) { t = t === true ? 'tpl' : t === false ? 'proj' : t; for (const [tab, pan, k] of [['#tabProj', '#libProj', 'proj'], ['#tabStart', '#libStart', 'start'], ['#tabTpl', '#libTpl', 'tpl']]) { $(tab).setAttribute('aria-selected', String(t === k)); $(pan).hidden = t !== k; } }
@@ -2838,11 +2885,31 @@ $('#libSaveNew').addEventListener('click', async () => { if (await saveProject(t
 $('#libDownload').addEventListener('click', () => { if (S.source) saveFile(baseName() + '.decals.json', projectJSON(), $('#libMsg')); });
 $('#libFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) { $('#libDlg').close(); openFile(f); } e.target.value = ''; });
 $('#tplExport').addEventListener('click', async () => { const ts = await Store.all('templates'); if (!ts.length) { $('#libMsg').textContent = tr('No templates to download yet.'); return; } saveFile('decal_templates.json', JSON.stringify({ app: 'decal-studio-templates', version: 1, templates: ts }), $('#libMsg')); });
-$('#tplFile').addEventListener('change', async e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { const j = JSON.parse(await f.text()); if (j.app !== 'decal-studio-templates' || !Array.isArray(j.templates)) throw new Error(tr('not a templates file'));
+$('#tplFile').addEventListener('change', async e => { const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+  const svgs = files.filter(f => /\.svg$/i.test(f.name)), jsons = files.filter(f => !/\.svg$/i.test(f.name));
+  let added = 0, bad = [];
+  for (const f of svgs) { const t = templateFromSVG(await f.text(), f.name); if (!t) { bad.push(f.name); continue; } try { await Store.put('templates', { ...t, id: uid(), created: Date.now() }); added++; } catch (er) { bad.push(f.name); } }
+  if (svgs.length) { $('#libMsg').textContent = tr('Added {0} templates.').replace('{0}', added) + (bad.length ? ' ' + tr('Not readable: {0}').replace('{0}', bad.join(', ')) : ''); renderLib(); }
+  for (const f of jsons) try { const j = JSON.parse(await f.text()); if (j.app !== 'decal-studio-templates' || !Array.isArray(j.templates)) throw new Error(tr('not a templates file'));
     let n = 0; for (const t of j.templates) { if (typeof t.d !== 'string' || !(t.w > 0) || !(t.h > 0) || !/^[MLCZ0-9 .,eE+-]*$/i.test(t.d)) continue; await Store.put('templates', { id: uid(), name: String(t.name || 'Template').slice(0, 80), created: Date.now(), w: +t.w, h: +t.h, d: t.d, mirror: !!t.mirror }); n++; }
     $('#libMsg').textContent = tr('Added {0} templates.').replace('{0}', n); renderLib(); }
   catch (err) { $('#libMsg').textContent = tr('That file could not be read: {0}').replace('{0}', err.message); } });
+// ---------- templates as SVG files ----------
+// a template as an SVG in mm: what Download writes and what a templates folder holds, one file per template
+function templateSVG(t) {
+  const f = v => (Math.round(v * 100) / 100).toString();
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${f(t.w)}mm" height="${f(t.h)}mm" viewBox="0 0 ${f(t.w)} ${f(t.h)}" data-fitflat-template="1" data-mirror="${t.mirror ? 1 : 0}">\n<title>${esc(t.name)}</title>\n<path d="${t.d}" fill="none" stroke="#000" stroke-width="0.2" fill-rule="evenodd"/>\n</svg>\n`;
+}
+// any SVG with closed outlines (in mm, cm or inches on the root, else 96 px per inch) as a template
+function templateFromSVG(text, fname) {
+  const r = parseSVG(text); if (!r || r.error || !r.shapes?.length) return null;
+  const doc = new DOMParser().parseFromString(text, 'image/svg+xml'), root = doc.documentElement, own = root.getAttribute('data-fitflat-template') === '1';
+  const k = r.mmPerUnit, { x0, y0, x1, y1 } = r.bbox, f = v => (Math.round(v * 100) / 100).toString(), P = q => f((q.x - x0) * k) + ' ' + f((q.y - y0) * k);
+  const d = r.shapes.map(sh => 'M' + P(sh[0].p) + ' ' + sh.map((a, i) => { const b = sh[(i + 1) % sh.length]; return `C${P(a.hout)} ${P(b.hin)} ${P(b.p)}`; }).join(' ') + ' Z').join(' ');
+  if (!/^[MLCZ0-9 .,eE+-]*$/i.test(d)) return null;
+  const title = own ? (doc.querySelector('title')?.textContent || '').trim() : '';
+  return { name: (title || String(fname || 'Template').replace(/\.svg$/i, '')).slice(0, 80), w: (x1 - x0) * k, h: (y1 - y0) * k, d, mirror: own && root.getAttribute('data-mirror') === '1' };
+}
 // a decal's flat outline (with holes) as a template, in mm
 async function saveTemplate(d) {
   flushStale();
@@ -7355,6 +7422,20 @@ const DE = {
   "Joined at edge {0}; the other edges stay open as seams.": "Verbunden an Kante {0}; die anderen Kanten bleiben als Naht offen.",
   "Joined: both sides are one piece.": "Verbunden: beide Seiten sind ein Stück.",
   "Changed seams": "Nähte geändert",
+  "Templates folder…": "Vorlagenordner…",
+  "Change templates folder…": "Vorlagenordner wechseln…",
+  "Stop using this folder": "Diesen Ordner nicht mehr nutzen",
+  "Keep templates with your projects again": "Vorlagen wieder bei den Projekten speichern",
+  "Load and keep templates as SVG files in a folder you choose, for example a shared folder on the company network": "Vorlagen als SVG-Dateien in einem Ordner deiner Wahl laden und speichern, z. B. einem gemeinsamen Ordner im Firmennetz",
+  "Download all": "Alle herunterladen",
+  "Add from files…": "Aus Dateien hinzufügen…",
+  "Add templates from SVG files (one outline each, in mm) or from a downloaded templates file": "Vorlagen aus SVG-Dateien (je ein Umriss, in mm) oder aus einer heruntergeladenen Vorlagendatei hinzufügen",
+  "Download as an SVG file (mm)": "Als SVG-Datei herunterladen (mm)",
+  "Not readable: {0}": "Nicht lesbar: {0}",
+  "Templates now come from the folder \"{0}\".": "Vorlagen kommen jetzt aus dem Ordner „{0}“.",
+  "Templates come from the folder \"{0}\": one SVG file each. SVGs you put there show up here too.": "Vorlagen kommen aus dem Ordner „{0}“: je eine SVG-Datei. SVGs, die du dort ablegst, erscheinen hier auch.",
+  "Templates come from the folder \"{0}\". Click Reconnect to let FitFlat use it again.": "Vorlagen kommen aus dem Ordner „{0}“. Klick auf Wieder verbinden, damit FitFlat ihn wieder nutzen darf.",
+  "Templates are kept with your projects. Choose a templates folder to load them from SVG files, for example a shared folder.": "Vorlagen werden bei deinen Projekten gespeichert. Wähle einen Vorlagenordner, um sie aus SVG-Dateien zu laden, z. B. aus einem gemeinsamen Ordner.",
   "Drag to move where the cut starts at the edge": "Ziehen, um den Anfang des Schnitts am Rand zu verschieben",
   "Drag to move the end of the cut": "Ziehen, um das Ende des Schnitts zu verschieben",
   "Delete this cut": "Diesen Schnitt löschen",

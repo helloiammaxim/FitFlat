@@ -302,6 +302,8 @@ Deine Arbeit wird **in diesem Browser** (auf diesem Computer) gespeichert. Der P
 - **Automatisch speichern**: während du arbeitest, wird alle halbe Minute eine Kopie als *Letzte Sitzung* gespeichert, damit nichts verloren geht, wenn der Browser schließt.
 - **Vorlagen** sind ein Rahmen mit den Decals, die du darauf immer verwendest (zum Beispiel für ein Radmodell). **Aktuelles als Vorlage speichern**, dann öffnet **Neu daraus** eine Kopie als neues Projekt; die Vorlage selbst bleibt unverändert.
 - **Decal-Vorlagen** sind einzelne Decals, gespeichert mit *In Bibliothek speichern* im Decal-Panel. **Platziere** eine auf jedem Rahmen wie SVG-Grafik: über das Modell fahren, klicken, anpassen, Anwenden. Lade alle Decal-Vorlagen als eine Datei herunter oder füge Vorlagen aus so einer Datei hinzu.
+- **Herunterladen** speichert eine Vorlage als SVG-Datei in mm, **Alle herunterladen** alle in einer Datei, **Aus Dateien hinzufügen…** lädt SVG-Dateien (je mit geschlossenen Umrissen, in mm) oder eine solche Datei.
+- **Vorlagenordner…** (im Tab Decal-Vorlagen) lädt und speichert Vorlagen in einem eigenen Ordner, z. B. einem gemeinsamen Ordner im Firmennetz, getrennt vom Ort deiner Projekte. Jede Vorlage dort ist eine SVG-Datei, und jede SVG, die du in den Ordner kopierst, erscheint als Vorlage. **Diesen Ordner nicht mehr nutzen** speichert Vorlagen wieder bei den Projekten.
 - **Öffnen** in der oberen Leiste öffnet weiterhin Dateien: Modelle (.glb, .obj, .stl), Projekte (.json) und SVG-Grafik.
 
 Der Browserspeicher gehört zu diesem Browser auf diesem Computer. Um Arbeit auf einen anderen Computer zu bringen oder als Sicherung, nutze **Herunterladen** und öffne die Datei dort.

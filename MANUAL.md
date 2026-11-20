@@ -301,7 +301,8 @@ Your work is kept **in this browser** (on this computer). The project name in th
 - **Projects** lists your saved projects with a picture, the frame and the number of decals. Search and sort them; **Open**, **Rename**, **Duplicate**, **Download** (a `.json` file) or **Delete**.
 - **Autosave**: while you work, a copy is saved every half minute as *Last session*, so nothing is lost if the browser closes.
 - **Starting points** are a frame with the decals you always use on it (for example one bike model). **Save current as starting point**, then **New from it** opens a copy as a new project; the starting point itself never changes.
-- **Decal templates** are single decals saved with *Save to library* in the Decal panel. **Place** one on any frame like SVG artwork: move over the model, click, adjust, Apply. Download all templates as one file, or add templates from such a file.
+- **Decal templates** are single decals saved with *Save to library* in the Decal panel. **Place** one on any frame like SVG artwork: move over the model, click, adjust, Apply. **Download** saves one template as an SVG file in mm, **Download all** saves them all in one file, and **Add from files…** loads SVG files (each with closed outlines, in mm) or such a file.
+- **Templates folder…** (in the Decal templates tab) loads and keeps templates in a folder of their own, for example a shared folder on the company network, separate from where your projects are. Every template there is one SVG file, and any SVG you copy into that folder shows up as a template. **Stop using this folder** goes back to keeping templates with your projects.
 - **Open** in the top bar still opens files: models (.glb, .obj, .stl), projects (.json) and SVG artwork.
 
 Browser storage belongs to this browser on this computer. To move work to another computer, or as a backup, use **Download** and open the file there.
