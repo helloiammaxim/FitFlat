@@ -1791,12 +1791,18 @@ const Core = (() => {
       // the end of a cut: the line reaches the tip, goes once round a small hole there, and comes back from the tip
       const hr = (darts.hole || 0.8), tipHole = (from, tip) => { const a0 = Math.atan2(from[1] - tip[1], from[0] - tip[0]), out = [], cx = tip[0] - Math.cos(a0) * hr, cy = tip[1] - Math.sin(a0) * hr;
         for (let q = 0; q <= 16; q++) { const a = a0 + q / 16 * Math.PI * 2; out.push([cx + Math.cos(a) * hr, cy + Math.sin(a) * hr]); } return out; };
-      const inPoly = (p, O) => { let c = false; for (let a = 0, b = O.length - 1; a < O.length; b = a++) { const [xi, yi] = O[a], [xj, yj] = O[b]; if ((yi > p[1]) !== (yj > p[1]) && p[0] < (xj - xi) * (p[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
       for (const { i, A, B, k } of ins) {
         const N = outline.length, tip = A[A.length - 1], W = 12; let bj = -1, bg = 0;
         // the V between both sides: open (no film there) is a V-notch; covered by film means the sides overlap: a slit
-        const cen = [(A[0][0] + B[0][0] + tip[0]) / 3, (A[0][1] + B[0][1] + tip[1]) / 3];
-        if (inPoly(cen, outline)) { const mid = [(A[0][0] + B[0][0]) / 2, (A[0][1] + B[0][1]) / 2]; let bi2 = 0, bd2 = 1e30;
+        // look halfway down the V, on the line between both sides: is there film there in the flat pattern?
+        // (the outline can't tell: before the V is drawn in it runs straight across the V's mouth)
+        const hA = Math.hypot(A[0][0] - tip[0], A[0][1] - tip[1]) || 1, hB = Math.hypot(B[0][0] - tip[0], B[0][1] - tip[1]) || 1, hh = Math.min(hA, hB) * 0.5;
+        const bis = [(A[0][0] - tip[0]) / hA + (B[0][0] - tip[0]) / hB, (A[0][1] - tip[1]) / hA + (B[0][1] - tip[1]) / hB], bl = Math.hypot(...bis);
+        const cen = bl > 1e-6 ? [tip[0] + bis[0] / bl * hh, tip[1] + bis[1] / bl * hh] : tip;
+        const covered = q => { for (let f = 0; f < fl.lf.length; f++) { const t = fl.lf[f], ax = fl.u[t[0]], ay = fl.v[t[0]], bx = fl.u[t[1]], by = fl.v[t[1]], cx = fl.u[t[2]], cy = fl.v[t[2]];
+          const d1 = (q[0]-bx)*(ay-by) - (ax-bx)*(q[1]-by), d2 = (q[0]-cx)*(by-cy) - (bx-cx)*(q[1]-cy), d3 = (q[0]-ax)*(cy-ay) - (cx-ax)*(q[1]-ay);
+          if (!((d1 < 0 || d2 < 0 || d3 < 0) && (d1 > 0 || d2 > 0 || d3 > 0))) return true; } return false; };
+        if (bl < 1e-6 || (dartInfo[k] && dartInfo[k].angle < 1) || covered(cen)) { const mid = [(A[0][0] + B[0][0]) / 2, (A[0][1] + B[0][1]) / 2]; let bi2 = 0, bd2 = 1e30;
           outline.forEach((p, q) => { const dd = Math.hypot(p[0] - mid[0], p[1] - mid[1]); if (dd < bd2) { bd2 = dd; bi2 = q; } });
           const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, ...tipHole(m2, tip), m2.slice()); if (dartInfo[k]) dartInfo[k].slit = true; continue; }
         for (let q = -W; q < W; q++) { const j = (i + q + N) % N, k = (j + 1) % N, g = Math.hypot(outline[k][0] - outline[j][0], outline[k][1] - outline[j][1]); if (g > bg) { bg = g; bj = j; } }
