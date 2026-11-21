@@ -11997,7 +11997,18 @@ const Core = (() => {
         const bl = Math.hypot((A[0][0] - tip[0]) / hA + (B[0][0] - tip[0]) / hB, (A[0][1] - tip[1]) / hA + (B[0][1] - tip[1]) / hB);
         if (bl < 1e-6 || (dartInfo[k] && dartInfo[k].angle < 1) || !opens) { let bi2 = 0, bd2 = 1e30;
           outline.forEach((p, q) => { const dd = dPl(p, A) + dPl(p, B); if (dd < bd2) { bd2 = dd; bi2 = q; } });
-          const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, ...tipHole(m2, tip), m2.slice()); if (dartInfo[k]) dartInfo[k].slit = true; continue; }
+          // the two sides overlap a little at the mouth: trim both back to the slit line, so the outline doesn't cross itself
+          const N2 = outline.length, mx = (A[0][0] + B[0][0]) / 2 - tip[0], my = (A[0][1] + B[0][1]) / 2 - tip[1], ml = Math.hypot(mx, my) || 1, ux = mx / ml, uy = my / ml;
+          const sg = q => ux * (q[1] - tip[1]) - uy * (q[0] - tip[0]), al = q => ux * (q[0] - tip[0]) + uy * (q[1] - tip[1]), Wn = Math.min(40, N2 >> 2), reach = Math.max(hA, hB) * 1.6;
+          const cross = (a, b) => { const sa = sg(a), sb = sg(b); if (sa * sb > 0 || sa === sb) return null; const t = sa / (sa - sb), X = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]; const l = al(X); return l > hr && l < reach ? X : null; };
+          let j1 = -1, j2 = -1, X1 = null, X2 = null;
+          for (let q = 0; q < Wn && !X1; q++) { const j = (bi2 - q + N2) % N2; X1 = cross(outline[(j - 1 + N2) % N2], outline[j]); if (X1) j1 = j; }
+          for (let q = 1; q < Wn && !X2; q++) { const j = (bi2 + q) % N2; X2 = cross(outline[(j - 1 + N2) % N2], outline[j]); if (X2) j2 = (j - 1 + N2) % N2; }
+          const span = X1 && X2 ? (j2 - j1 + N2) % N2 : -1;
+          if (span >= 0 && span < 2 * Wn) { const rest = []; for (let q = (j2 + 1) % N2, n = 0; n < N2 - span - 1; q = (q + 1) % N2, n++) rest.push(outline[q]);
+            outline.length = 0; outline.push(...rest, X1, ...tipHole(X1, tip), X2); }
+          else { const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, ...tipHole(m2, tip), m2.slice()); }
+          if (dartInfo[k]) dartInfo[k].slit = true; continue; }
         const open = Math.hypot(A[0][0] - B[0][0], A[0][1] - B[0][1]); let bs = 1e30;
         for (let j = 0; j < N; j++) { const k2 = (j + 1) % N, sc = Math.min(dPl(outline[j], A) + dPl(outline[k2], B), dPl(outline[j], B) + dPl(outline[k2], A));
           if (sc < bs) { bs = sc; bj = j; bg = Math.hypot(outline[k2][0] - outline[j][0], outline[k2][1] - outline[j][1]); } }
@@ -14480,8 +14491,16 @@ function drawDarts(d) {
     const E = hs[0], tip = hs[hs.length - 1], L = dist3(E.point, tip.point), dv = v3.sub(tip.point, E.point), nf = fnorm(E.face);
     let sd = v3cross(nf, dv); const sl = v3.len(sd); if (sl < 1e-9) return; sd = v3.mul(sd, 1 / sl);
     const half = Math.min(L * 0.4, L * Math.tan(Math.min(40, di0.angle || 0) * Math.PI / 360)); if (!(half > 0.2)) return;
-    for (const sg of [1, -1]) { const w = walkOn(E.point, E.face, v3.mul(sd, sg * half), onD, 0.5), e2 = w[w.length - 1];
-      add([offsetPt(tip.point, tip.face, k), offsetPt(e2.point, e2.face, k)], '#111111', 1.6, 0.8); }
+    // follow the cut and step sideways on the surface, more the further from the tip: a wedge that lies on the frame
+    const acc = [0]; for (let i = 1; i < hs.length; i++) acc.push(acc[i-1] + dist3(hs[i-1].point, hs[i].point)); const tot = acc[acc.length - 1] || 1;
+    const sides = [1, -1].map(sg => hs.map((h, i) => { const fr = (tot - acc[i]) / tot; if (fr < 1e-3) return offsetPt(h.point, h.face, k);
+      const nx = hs[Math.min(i + 1, hs.length - 1)].point, pv = hs[Math.max(i - 1, 0)].point; let sd2 = v3cross(fnorm(h.face), v3.sub(nx, pv)); const l2 = v3.len(sd2); sd2 = l2 > 1e-9 ? v3.mul(sd2, 1 / l2) : sd;
+      const w = walkOn(h.point, h.face, v3.mul(sd2, sg * half * fr), onD, 0.5), e2 = w[w.length - 1]; return offsetPt(e2.point, e2.face, k); }));
+    const pos = []; for (let i = 0; i + 1 < hs.length; i++) { const a0 = sides[0][i], a1 = sides[0][i+1], b0 = sides[1][i], b1 = sides[1][i+1]; pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1); }
+    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    const wedge = new THREE.Mesh(gg, new THREE.MeshBasicMaterial({ color: 0xff5a36, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
+    wedge.renderOrder = 6; decalGroup.add(wedge); d.obj.push(wedge);
+    for (const sp of sides) add(sp, '#ff5a36', 1.4, 0.95);
   });
 }
 function updateDecalVisual(d, preview) {
