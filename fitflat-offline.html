@@ -11772,6 +11772,13 @@ const Core = (() => {
     if (chi !== 1 || bnd.length === 0) return { error: chi <= 0 ? 'This shape wraps all the way around a tube. Leave a small gap so the decal can lie flat.' : 'This area could not be flattened. Try a simpler outline.' };
     const dartCuts = [];
     if (darts && darts.length) { for (const poly of darts) { const c = poly && poly.length >= 2 ? dartCut(P, gv, lf, bnd, poly) : null; dartCuts.push(c); if (c) { n = gv.length; check(); } } }
+    // a cut with a set V angle: on the frame both sides are the same line (the film meets, no gap); on the sheet side B is
+    // side A turned about the tip by the angle, away from A's film, so the V opens by exactly that much and never overlaps
+    const dartV = [];
+    dartCuts.forEach((dc, k) => { const deg = darts[k] && darts[k].v; if (!dc || typeof deg !== 'number' || !isFinite(deg)) return;
+      const prs = []; for (let z = 0; z < dc.A.length; z++) if (dc.A[z] !== dc.B[z]) prs.push([dc.A[z], dc.B[z]]);
+      if (prs.length) dartV.push({ A: dc.A, B: dc.B, tip: dc.A[dc.A.length - 1], prs, th: Math.max(0, Math.min(60, deg)) * Math.PI / 180 }); });
+    const vFacesD = new Map(); if (dartV.length) lf.forEach((t, f) => { for (const q of t) { let a = vFacesD.get(q); if (!a) vFacesD.set(q, a = []); a.push(f); } });
     // local 2D coords per triangle
     const X = new Float64Array(m*6), cot = new Float64Array(m*3);
     for (let f = 0; f < m; f++) {
@@ -11793,6 +11800,9 @@ const Core = (() => {
     // the outline (and both sides of every cut) keeps its true length: on the sheet it has to match the line on the frame,
     // so its edges are held much harder than the inside, which takes the distortion instead
     const BW = 40, bE = new Set(); for (const [a, b] of bnd) bE.add(a < b ? K(a, b) : K(b, a));
+    // a cut that closes on the frame isn't a free edge: its two sides come out the same length by themselves, holding them
+    // stiff would only put a rigid strip through the middle of the piece
+    for (const dv of dartV) for (const L of [dv.A, dv.B]) for (let z = 0; z + 1 < L.length; z++) { const a = L[z], b = L[z+1]; bE.delete(a < b ? K(a, b) : K(b, a)); }
     const faceB = new Uint8Array(m);
     for (let f = 0; f < m; f++) { if (keepFaces && keepFaces.has(faces[f])) faceB[f] = 1; else for (let k = 0; k < 3; k++) { const a = lf[f][k], b = lf[f][(k+1)%3]; if (bE.has(a < b ? K(a, b) : K(b, a))) faceB[f] = 1; } }
     // every edge of a triangle the outline runs through, or that lies on the border, is held
@@ -11849,6 +11859,19 @@ const Core = (() => {
     for (let i = 0; i < n; i++) if (!(dg[i] > 1e-12)) dg[i] = 1;
     const applyL = (s, y) => { y.fill(0); for (let q = 0; q < E1.length; q += 3) { const i=E1[q], j=E1[q+1], w=E1[q+2], dd=s[i]-s[j]; y[i]+=w*dd; y[j]-=w*dd; } };
     const freeA = new Uint8Array(n).fill(1); freeA[pa] = 0;
+    // cuts with a V angle: B's position follows from A's and the tip's (expand), and B's pull is handed back to them (fold)
+    const depD = new Uint8Array(n), xD = new Float64Array(2 * n), rD = new Float64Array(2 * n), yD = new Float64Array(2 * n), tD = new Float64Array(2 * n), dgD = new Float64Array(2 * n), freeD = new Uint8Array(2 * n);
+    for (const dv of dartV) dv.prs = dv.prs.filter(([a, b]) => !depD[a] && !depD[b] && a !== dv.tip && b !== dv.tip && (depD[b] = 1));
+    const expandD = x => { for (const dv of dartV) { const c = dv.c, sn = dv.s, tx = x[dv.tip], ty = x[n + dv.tip];
+        for (const [a, b] of dv.prs) { const ax = x[a] - tx, ay = x[n + a] - ty; x[b] = tx + c * ax - sn * ay; x[n + b] = ty + sn * ax + c * ay; } } };
+    const foldD = y => { for (const dv of dartV) { const c = dv.c, sn = dv.s;
+        for (const [a, b] of dv.prs) { const gx = y[b], gy = y[n + b]; y[b] = 0; y[n + b] = 0;
+          const rx = c * gx + sn * gy, ry = -sn * gx + c * gy; // Rᵀ·g to A, (I−R)ᵀ·g to the tip
+          y[a] += rx; y[n + a] += ry; y[dv.tip] += gx - rx; y[n + dv.tip] += gy - ry; } } };
+    const applyLD = (x, y) => { tD.set(x); expandD(tD); applyL(tD.subarray(0, n), y.subarray(0, n)); applyL(tD.subarray(n), y.subarray(n)); foldD(y); for (let i = 0; i < n; i++) if (depD[i]) { y[i] = 0; y[n + i] = 0; } };
+    if (dartV.length) { let pin = pa; if (depD[pin]) { for (let i = 0; i < n; i++) if (!depD[i]) { pin = i; break; } }
+      for (let i = 0; i < n; i++) { dgD[i] = dg[i]; dgD[n + i] = dg[i]; const f = depD[i] || i === pin ? 0 : 1; freeD[i] = f; freeD[n + i] = f; } }
+    void yD;
     const bu = new Float64Array(n), bv = new Float64Array(n);
     const wc = (f,k) => Math.min(Math.max(cot[f*3+k]/2, 0.005), 50) * (isB(lf[f][(k+1)%3], lf[f][(k+2)%3]) ? BW : 1);
     // ARAP: each triangle wants its own shape back (a rotation of it). With shrink, film is pulled tight like on the bike:
@@ -11890,8 +11913,19 @@ const Core = (() => {
           bu[i]+=w*rx; bv[i]+=w*ry; bu[j]-=w*rx; bv[j]-=w*ry;
         }
       }
+      if (dartV.length) { // side B of every cut is side A turned about the tip: B = R·A + (I−R)·tip, solved as one with u and v together
+        for (const dv of dartV) { const tx = u[dv.tip], ty = v[dv.tip]; let sA = 0;
+          for (let z = 1; z < dv.A.length - 1; z++) { const a = dv.A[z], fs = vFacesD.get(a) || []; let cx = 0, cy = 0; for (const f of fs) { const t = lf[f]; cx += (u[t[0]] + u[t[1]] + u[t[2]]) / 3; cy += (v[t[0]] + v[t[1]] + v[t[2]]) / 3; }
+            if (fs.length) { cx /= fs.length; cy /= fs.length; sA += (u[a] - tx) * (cy - ty) - (v[a] - ty) * (cx - tx); } }
+          const ph = (sA > 0 ? -1 : 1) * dv.th; dv.c = Math.cos(ph); dv.s = Math.sin(ph); }
+        for (let i = 0; i < n; i++) { xD[i] = u[i]; xD[n + i] = v[i]; rD[i] = bu[i]; rD[n + i] = bv[i]; }
+        foldD(rD); expandD(xD);
+        cgSolve(applyLD, dgD, rD, xD, freeD, 1e-7, 1200);
+        expandD(xD); for (let i = 0; i < n; i++) { u[i] = xD[i]; v[i] = xD[n + i]; }
+      } else {
       cgSolve(applyL, dg, bu, u, freeA, 1e-7, 600);
       cgSolve(applyL, dg, bv, v, freeA, 1e-7, 600);
+      }
     }
     // stretch per face
     const stretch = new Float64Array(m), sv = new Float64Array(m * 2); let flips = 0;
@@ -11981,7 +12015,7 @@ const Core = (() => {
         const uvA = dc.A.map(l => [fl.u[l], fl.v[l]]), uvB = dc.B.map(l => [fl.u[l], fl.v[l]]), tipUV = uvA[uvA.length - 1];
         const a0 = uvA[0], b0 = uvB[0], ang = Math.acos(Math.max(-1, Math.min(1, ((a0[0]-tipUV[0])*(b0[0]-tipUV[0]) + (a0[1]-tipUV[1])*(b0[1]-tipUV[1])) / ((Math.hypot(a0[0]-tipUV[0], a0[1]-tipUV[1]) * Math.hypot(b0[0]-tipUV[0], b0[1]-tipUV[1])) || 1)))) * 180 / Math.PI;
         const pl = P => P.reduce((t, q, z) => z ? t + Math.hypot(q[0] - P[z-1][0], q[1] - P[z-1][1]) : 0, 0), d3 = darts[k].reduce((t, q, z) => z ? t + Math.hypot(q[0] - darts[k][z-1][0], q[1] - darts[k][z-1][1], q[2] - darts[k][z-1][2]) : 0, 0);
-        dartInfo.push({ angle: ang, sideA: Math.hypot(uvA[0][0] - tipUV[0], uvA[0][1] - tipUV[1]), sideB: Math.hypot(uvB[0][0] - tipUV[0], uvB[0][1] - tipUV[1]), len3: d3 }); ins.push({ i: bi, A: uvA, B: uvB, k, opens: dartOpens(dc) }); });
+        dartInfo.push({ angle: ang, sideA: Math.hypot(uvA[0][0] - tipUV[0], uvA[0][1] - tipUV[1]), sideB: Math.hypot(uvB[0][0] - tipUV[0], uvB[0][1] - tipUV[1]), len3: d3 }); ins.push({ i: bi, A: uvA, B: uvB, k, opens: typeof darts[k].v === 'number' ? darts[k].v > 0.5 : dartOpens(dc) }); });
       ins.sort((x, y) => y.i - x.i);
       // the outline already jumps across the opening where the dart meets it (samples on each side follow their own side):
       // put the tip into that jump, so the V on the sheet is two straight cuts meeting at the tip
@@ -12006,14 +12040,14 @@ const Core = (() => {
           for (let q = 1; q < Wn && !X2; q++) { const j = (bi2 + q) % N2; X2 = cross(outline[(j - 1 + N2) % N2], outline[j]); if (X2) j2 = (j - 1 + N2) % N2; }
           const span = X1 && X2 ? (j2 - j1 + N2) % N2 : -1;
           if (span >= 0 && span < 2 * Wn) { const rest = []; for (let q = (j2 + 1) % N2, n = 0; n < N2 - span - 1; q = (q + 1) % N2, n++) rest.push(outline[q]);
-            outline.length = 0; outline.push(...rest, X1, ...tipHole(X1, tip), X2); }
-          else { const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, ...tipHole(m2, tip), m2.slice()); }
+            outline.length = 0; outline.push(...rest, X1, ...tipHole(X1, tip), X2); if (dartInfo[k]) dartInfo[k].uvV = [tip.slice(), X1.slice(), X2.slice()]; }
+          else { const m2 = outline[bi2]; outline.splice(bi2 + 1, 0, ...tipHole(m2, tip), m2.slice()); if (dartInfo[k]) dartInfo[k].uvV = [tip.slice(), m2.slice(), m2.slice()]; }
           if (dartInfo[k]) dartInfo[k].slit = true; continue; }
         const open = Math.hypot(A[0][0] - B[0][0], A[0][1] - B[0][1]); let bs = 1e30;
         for (let j = 0; j < N; j++) { const k2 = (j + 1) % N, sc = Math.min(dPl(outline[j], A) + dPl(outline[k2], B), dPl(outline[j], B) + dPl(outline[k2], A));
           if (sc < bs) { bs = sc; bj = j; bg = Math.hypot(outline[k2][0] - outline[j][0], outline[k2][1] - outline[j][1]); } }
         void W; void i;
-        if (bj >= 0 && bg > open * 0.2 && bs < Math.max(1.5, open * 0.5)) outline.splice(bj + 1, 0, ...tipHole(outline[bj], tip));
+        if (bj >= 0 && bg > open * 0.2 && bs < Math.max(1.5, open * 0.5)) { if (dartInfo[k]) dartInfo[k].uvV = [tip.slice(), outline[bj].slice(), outline[(bj + 1) % outline.length].slice()]; outline.splice(bj + 1, 0, ...tipHole(outline[bj], tip)); }
         else { const pv = outline[(i - 1 + N) % N], nx = outline[(i + 1) % N], dd = (p, q) => Math.hypot(p[0]-q[0], p[1]-q[1]);
           const [p0, p1] = dd(pv, A[0]) + dd(B[0], nx) <= dd(pv, B[0]) + dd(A[0], nx) ? [A[0], B[0]] : [B[0], A[0]]; outline.splice(i, 1, p0, ...tipHole(p0, tip), p1); }
       }
@@ -12854,7 +12888,7 @@ function projectJSON() {
     frame: src.tubes ? { tubes: src.tubes, geo: src.geo, tubeSizes: src.tubeSizes, presetName: src.presetName, sizeIndex: src.sizeIndex } : null,
     presets: userPresets,
     decals: S.decals.filter(d => d.ctrl.length).map(d => ({
-      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir, darts: d.darts?.length ? d.darts.map(p => p.map(q => q.map(v => +v.toFixed(4)))) : undefined,
+      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir, darts: d.darts?.length ? d.darts.map(p => p.map(q => q.map(v => +v.toFixed(4)))) : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? +d.dartV[i].toFixed(2) : null) : undefined,
       ctrl: d.ctrl.map(c => ({ p: r3(c.p), type: c.type || 'auto', hin: r3(c.hin), hout: r3(c.hout), plane: !!c.plane, seam: c.seam })),
     })),
   });
@@ -13302,7 +13336,8 @@ function restoreDecals(list, msg, fname) {
       const ctrl = dd.ctrl.map(c => { const h = c.p && Core.closestPoint(mesh, grid, c.p, 120); return h && { p: h.point, face: h.face, type: c.type, hin: c.hin || undefined, hout: c.hout || undefined, plane: !!c.plane, seam: typeof c.seam === 'boolean' ? c.seam : undefined }; }).filter(Boolean);
       if (!ctrl.length) continue;
       const d = { id, name: safeName(dd.name) || `Decal ${id}`, color: safeColor(dd.color) || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, seamOpen: !!dd.seamOpen, seamFlip: !!dd.seamFlip, res: null, twin: null, obj: [], _hole: dd.holeOf, _part: dd.partOf, _live: dd.liveOf, seamDir: Array.isArray(dd.seamDir) && dd.seamDir.length === 3 && dd.seamDir.every(Number.isFinite) ? dd.seamDir : undefined,
-        darts: Array.isArray(dd.darts) ? dd.darts.filter(p => Array.isArray(p) && p.length >= 2 && p.length <= 64 && p.every(q => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite))).slice(0, 24) : undefined };
+        darts: Array.isArray(dd.darts) ? dd.darts.filter(p => Array.isArray(p) && p.length >= 2 && p.length <= 64 && p.every(q => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite))).slice(0, 24) : undefined,
+        dartV: Array.isArray(dd.darts) && Array.isArray(dd.dartV) && dd.dartV.length === dd.darts.length && dd.darts.every(p => Array.isArray(p) && p.length >= 2 && p.length <= 64 && p.every(q => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite))) ? dd.dartV.slice(0, 24).map(x => typeof x === 'number' && isFinite(x) ? Math.max(0, Math.min(60, x)) : null) : undefined };
       S.decals.push(d); made.push(d);
     }
     // live combinations keep their numbers apart from the decals' own ids
@@ -13459,7 +13494,7 @@ function hitLine(x, y) {
 
 // ---------- history ----------
 const HIST = { undo: [], redo: [] };
-const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf || undefined, liveOf: d.liveOf ?? undefined, seamDir: d.seamDir, darts: d.darts?.length ? d.darts : undefined,
+const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf || undefined, liveOf: d.liveOf ?? undefined, seamDir: d.seamDir, darts: d.darts?.length ? d.darts : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? d.dartV[i] : null) : undefined,
   ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken, seam: c.seam })) });
 const snapshot = () => JSON.stringify({ decals: S.decals.map(decalState), drawing: S.drawing?.id ?? null });
 // each entry is the state before a step, with the step's name and time
@@ -13475,7 +13510,7 @@ function applySnapshot(str) {
     let d = S.decals.find(x => x.id === a.id);
     const before = d ? JSON.stringify(decalState(d)) : null;
     if (!d) { d = { ...a, res: null, twin: null, obj: [] }; S.decals.push(d); }
-    else { for (const k of ['partOf', 'liveOf', 'holeOf', 'seamDir', 'darts']) delete d[k]; Object.assign(d, a); }
+    else { for (const k of ['partOf', 'liveOf', 'holeOf', 'seamDir', 'darts', 'dartV']) delete d[k]; Object.assign(d, a); }
     if (before !== JSON.stringify(decalState(d))) { if (d.closed && d.ctrl.length >= 3) solveNow(d); else { d.res = null; d.twin = null; updateDecalVisual(d, true); } }
     order.push(d);
   }
@@ -14295,7 +14330,7 @@ function clearStrokePreview() { if (strokeLine) { scene.remove(strokeLine); stro
 // Solving is the slow part. The same outline always unwraps the same way, so results are kept by outline: undo, redo,
 // duplicates and decals that did not change come straight back without unwrapping again.
 const SOLVES = new Map(); let RESV = 0;
-const solveKey = (ctrl, flip, dir, darts) => (darts?.length ? 'D' + darts.map(p => p.map(q => q.map(x => x.toFixed(3)).join(',')).join(';')).join('/') + '#' : '') + (flip ? 'f' : '') + (dir ? dir.map(v => v.toFixed(3)).join(',') + '#' : '') + ctrl.map(c => [c.p, c.face, c.type || 'auto', c.hin, c.hout, c.broken ? 1 : 0, c.plane ? 1 : 0].map(v => Array.isArray(v) ? v.map(x => +x.toFixed(5)).join(',') : v ?? '').join(';')).join('|');
+const solveKey = (ctrl, flip, dir, darts) => (darts?.length ? 'D' + darts.map(p => p.map(q => q.map(x => x.toFixed(3)).join(',')).join(';') + (typeof p.v === 'number' ? 'v' + p.v.toFixed(2) : '')).join('/') + '#' : '') + (flip ? 'f' : '') + (dir ? dir.map(v => v.toFixed(3)).join(',') + '#' : '') + ctrl.map(c => [c.p, c.face, c.type || 'auto', c.hin, c.hout, c.broken ? 1 : 0, c.plane ? 1 : 0].map(v => Array.isArray(v) ? v.map(x => +x.toFixed(5)).join(',') : v ?? '').join(';')).join('|');
 function solveOne(ctrl, flip, dir, darts) {
   const sh = filmShrink(), key = (sh ? 'T' + sh.toFixed(4) : '') + solveKey(ctrl, flip, dir, darts), hit = SOLVES.get(key);
   if (hit && hit.model === S.model) { SOLVES.delete(key); SOLVES.set(key, hit); return hit.r; }
@@ -14306,15 +14341,44 @@ function solveOne(ctrl, flip, dir, darts) {
   SOLVES.set(key, { model: S.model, r }); if (SOLVES.size > 80) SOLVES.delete(SOLVES.keys().next().value);
   return r;
 }
+// how good a cut is: the worst excess and stretch near it, each against the film's limit (plus a little of the average)
+function cutScore(r, polys) {
+  if (!r || r.error || !r.faceSig) return 1e9;
+  const { mesh } = S.model, T = mesh.tri, P = mesh.pos, fl = foldAt(), sl = filmMax();
+  const near = polys.map(p => { let L = 0; for (let i = 1; i < p.length; i++) L += dist3(p[i-1], p[i]); return { p, R: Math.max(8, L * 1.2) }; });
+  let mf = 0, mt = 0, sf = 0, st = 0, a = 0;
+  for (const [f, g] of r.faceSig) { const c = [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3);
+    if (!near.some(({ p, R }) => p.some(q => dist3(q, c) < R))) continue;
+    const fo = Math.max(0, g[0] - 1), te = Math.max(0, 1 - g[1]); mf = Math.max(mf, fo); mt = Math.max(mt, te); sf += fo; st += te; a++; }
+  return a ? Math.max(mf / fl, mt / sl) + 0.25 * (sf / a / fl + st / a / sl) : 1e9;
+}
+// cuts without a width yet get the one that leaves the least excess and stretch around them: try a few, then refine
+function autoDartV(d) {
+  const vs = d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? d.dartV[i] : null);
+  if (vs.every(x => x !== null)) { d.dartV = vs; return; }
+  const mc = mergedCtrl(d), ctrl = mc || d.ctrl, dir = d.seamDir || null, done = new Set();
+  for (let i = 0; i < vs.length; i++) { if (vs[i] !== null || done.has(i)) continue;
+    const j = dartPartner(d, i), g = j >= 0 && vs[j] === null ? [i, j] : [i]; g.forEach(k => done.add(k));
+    const polys = g.map(k => d.darts[k]), memo = new Map();
+    const score = th => { if (memo.has(th)) return memo.get(th); g.forEach(k => { vs[k] = th; });
+      const r = solveOne(ctrl, d.flip, dir, d.darts.map((p, k) => Object.assign(p.slice(), { v: vs[k] ?? 0 }))), sc = cutScore(r, polys) + th * 1e-4; memo.set(th, sc); return sc; };
+    let best = 0; for (const th of [0, 5, 10, 16, 24, 32]) if (score(th) < score(best)) best = th;
+    for (const th of [best - 3, best + 3]) if (th >= 0 && score(th) < score(best)) best = th;
+    g.forEach(k => { vs[k] = best; }); }
+  d.dartV = vs;
+}
+// each cut with its V angle on the sheet (degrees, in d.dartV next to d.darts; empty = not chosen yet)
+const dartList = d => d.darts.map((p, i) => Object.assign(p.slice(), { v: typeof d.dartV?.[i] === 'number' ? d.dartV[i] : undefined }));
 function solveNow(d) {
   // editing a piece of a live combination by hand fixes the combination first
   if (d.liveOf != null && !S.recomputing && !S.restoring && S.decals.includes(d)) applyCombo(d.liveOf, true);
   const mc = mergedCtrl(d), dir = d.seamDir || null;
-  const dts = d.darts?.length ? d.darts : null;
+  if (d.darts?.length && !S.model?.noAuto) autoDartV(d);
+  const dts = d.darts?.length ? dartList(d) : null;
   d.res = solveOne(mc || d.ctrl, d.flip, dir, dts); d.merged = !!mc;
   d.ringHoles = mc?.holes?.length ? mc.holes.map(h => ({ ctrl: h, res: solveOne(h, false), virtual: true })) : null;
   if (mc) d.twin = null;
-  else if (d.mirror) { const tc = twinCtrl(d), pl = mirrorPlane(), td = dir && pl ? dir.map((v, k) => k === pl.k ? -v : v) : dir; d.twin = { ctrl: tc, res: solveOne(tc, d.flip, td, dts && pl ? dts.map(p => p.map(reflect)) : null) }; } else d.twin = null;
+  else if (d.mirror) { const tc = twinCtrl(d), pl = mirrorPlane(), td = dir && pl ? dir.map((v, k) => k === pl.k ? -v : v) : dir; d.twin = { ctrl: tc, res: solveOne(tc, d.flip, td, dts && pl ? dts.map(p => Object.assign(p.map(reflect), { v: p.v })) : null) }; } else d.twin = null;
   updateDecalVisual(d, false);
   if (d.partOf && !S.recomputing && !S.restoring) queueCombo(d.partOf.cid); // one of its parts changed
   // it closed around a tube: ask once where the seam should go (a live combination's pieces are asked when they are applied)
@@ -14486,21 +14550,6 @@ function drawDarts(d) {
     if (hs.length < 2) return;
     const add = (pts, col, w, op) => { const l = fatLine(pts, false, lineMat(col, w, op, false)); l.renderOrder = 6; decalGroup.add(l); d.obj.push(l); };
     add(hs.map(h => offsetPt(h.point, h.face, k)), '#111111', 2.2, 0.95);
-    // a slit opens on the bike: the film on both sides moves apart by the angle it had to give; show that gap as a V
-    const di0 = info[di]; if (!di0?.slit || !onD) return;
-    const E = hs[0], tip = hs[hs.length - 1], L = dist3(E.point, tip.point), dv = v3.sub(tip.point, E.point), nf = fnorm(E.face);
-    let sd = v3cross(nf, dv); const sl = v3.len(sd); if (sl < 1e-9) return; sd = v3.mul(sd, 1 / sl);
-    const half = Math.min(L * 0.4, L * Math.tan(Math.min(40, di0.angle || 0) * Math.PI / 360)); if (!(half > 0.2)) return;
-    // follow the cut and step sideways on the surface, more the further from the tip: a wedge that lies on the frame
-    const acc = [0]; for (let i = 1; i < hs.length; i++) acc.push(acc[i-1] + dist3(hs[i-1].point, hs[i].point)); const tot = acc[acc.length - 1] || 1;
-    const sides = [1, -1].map(sg => hs.map((h, i) => { const fr = (tot - acc[i]) / tot; if (fr < 1e-3) return offsetPt(h.point, h.face, k);
-      const nx = hs[Math.min(i + 1, hs.length - 1)].point, pv = hs[Math.max(i - 1, 0)].point; let sd2 = v3cross(fnorm(h.face), v3.sub(nx, pv)); const l2 = v3.len(sd2); sd2 = l2 > 1e-9 ? v3.mul(sd2, 1 / l2) : sd;
-      const w = walkOn(h.point, h.face, v3.mul(sd2, sg * half * fr), onD, 0.5), e2 = w[w.length - 1]; return offsetPt(e2.point, e2.face, k); }));
-    const pos = []; for (let i = 0; i + 1 < hs.length; i++) { const a0 = sides[0][i], a1 = sides[0][i+1], b0 = sides[1][i], b1 = sides[1][i+1]; pos.push(...a0, ...b0, ...a1, ...a1, ...b0, ...b1); }
-    const gg = new THREE.BufferGeometry(); gg.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-    const wedge = new THREE.Mesh(gg, new THREE.MeshBasicMaterial({ color: 0xff5a36, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }));
-    wedge.renderOrder = 6; decalGroup.add(wedge); d.obj.push(wedge);
-    for (const sp of sides) add(sp, '#ff5a36', 1.4, 0.95);
   });
 }
 function updateDecalVisual(d, preview) {
@@ -14884,7 +14933,7 @@ function drawReliefMarks() {
   const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta) + ':' + x.c.mouth.toFixed(1)).join(',');
   if (key !== reliefMarkKey) {
     reliefMarkKey = key; el.hidden = false;
-    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Slit: the film would have to stretch over a saddle here. A straight cut in from the edge, ending in a small round hole, lets it open. Click to cut it')).replace('{0}', Math.round(x.c.theta)) + (x.c.big ? ' ' + tr('This spot curves more than one cut can take out: splitting the decal here with the Knife works better.') : ''))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '° · ' + (x.c.mouth < 10 ? x.c.mouth.toFixed(1) : Math.round(x.c.mouth)) : tr('Slit') + ' · ' + Math.round(x.c.len)} mm</button>`).join('');
+    el.innerHTML = items.map((x, j) => `<button type="button" data-j="${j}" class="${x.c.kind}" title="${esc((x.c.kind === 'notch' ? tr('V-notch, about {0}°: the film is too big here and would wrinkle. It gets a cut that opens into a V on the sheet and closes up on the frame. Click to cut it') : tr('Saddle: the frame needs more film here than a flat sheet has. A V would only take film away, so a cut doesn\'t help: split the decal here with the Knife')).replace('{0}', Math.round(x.c.theta)) + (x.c.big ? ' ' + tr('This spot curves more than one cut can take out: splitting the decal here with the Knife works better.') : ''))}">✂ ${x.c.kind === 'notch' ? tr('V-notch') + ' ' + Math.round(x.c.theta) + '° · ' + (x.c.mouth < 10 ? x.c.mouth.toFixed(1) : Math.round(x.c.mouth)) : tr('Saddle: split here')}${x.c.kind === 'notch' ? ' mm' : ''}</button>`).join('');
     el.querySelectorAll('button').forEach(b => {
       const it = () => items[+b.dataset.j];
       b.onclick = e => { e.stopPropagation(); const x = it(); if (x) applyRelief(x.d, [x.i]); };
@@ -14924,7 +14973,7 @@ function drawCutMarks() {
     cutMarkKey = key; el.hidden = false;
     el.innerHTML = shown.map(i => `<div class="h start" data-i="${i}" data-e="0" title="${esc(tr('Drag to move where the cut starts at the edge'))}"></div><div class="h tip" data-i="${i}" data-e="1" title="${esc(tr('Drag to move the end of the cut'))}"></div><button type="button" class="x" data-i="${i}" title="${esc(tr('Delete this cut'))}">×</button>`).join('');
     el.querySelectorAll('.x').forEach(b => b.onclick = e => { e.stopPropagation(); const d2 = cutTarget(); if (!d2) return; const i = +b.dataset.i, j = dartPartner(d2, i);
-      pushHistory('Deleted relief cut'); d2.darts = d2.darts.filter((_, k) => k !== i && k !== j); if (!d2.darts.length) delete d2.darts; reliefCache.map.clear(); solve(d2); });
+      pushHistory('Deleted relief cut'); if (d2.dartV) d2.dartV = d2.darts.map((_, k) => d2.dartV[k] ?? null).filter((_, k) => k !== i && k !== j); d2.darts = d2.darts.filter((_, k) => k !== i && k !== j); if (!d2.darts.length) { delete d2.darts; delete d2.dartV; } reliefCache.map.clear(); solve(d2); });
     el.querySelectorAll('.h').forEach(h => h.onpointerdown = e => {
       e.stopPropagation(); e.preventDefault(); const d2 = cutTarget(); if (!d2) return;
       cutDrag = { d: d2, i: +h.dataset.i, end: +h.dataset.e, before: snapshot(), el: h, moved: false }; h.classList.add('drag'); try { h.setPointerCapture(e.pointerId); } catch (er) {} });
@@ -14936,8 +14985,8 @@ function drawCutMarks() {
       const np = end ? dartLine(d2, other, q) : dartLine(d2, q, other); if (np.length < 2) return;
       const j = dartPartner(d2, i); d2.darts[i] = np; if (j >= 0) d2.darts[j] = np.map(p => reflect(p).map(v => +v.toFixed(4)));
       cutDrag.moved = true; updateDecalVisual(d2, true); wake(); };
-      h.onpointerup = () => { if (!cutDrag || cutDrag.el !== h) return; const { d: d2, before, moved } = cutDrag; h.classList.remove('drag'); cutDrag = null;
-        if (moved) { histPush(before, 'Moved relief cut'); reliefCache.map.clear(); solve(d2); } }; });
+      h.onpointerup = () => { if (!cutDrag || cutDrag.el !== h) return; const { d: d2, before, moved } = cutDrag, cutDrag0i = cutDrag.i; h.classList.remove('drag'); cutDrag = null;
+        if (moved) { histPush(before, 'Moved relief cut'); const j = dartPartner(d2, cutDrag0i); if (d2.dartV) { d2.dartV[cutDrag0i] = null; if (j >= 0) d2.dartV[j] = null; } reliefCache.map.clear(); solve(d2); } }; });
   }
   const kids = el.children; let c = 0;
   for (const i of shown) { const P = d.darts[i]; if (!P) continue; const a = P[0], b = P[P.length - 1], qa = screenOf(a), qb = screenOf(b), hs = kids[c], ht = kids[c + 1], hx = kids[c + 2]; c += 3;
@@ -14958,10 +15007,22 @@ function holeCtrl(p, face, a, b, rad) {
 // how bad the film is around one spot: the worst stretch within the radius
 function spotStretch(r, c, rad) { const { mesh } = S.model, T = mesh.tri, P = mesh.pos; let mx = 0;
   for (const [f, st] of r.faceStretch) { const q = [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3); if (dist3(q, c) < rad && st > mx) mx = st; } return mx; }
+// set one cut's V width by hand (its mirror image follows) and unwrap again
+function setDartV(d, k, th) {
+  if (!d || !d.darts?.[k]) return; pushHistory('V width');
+  const vs = d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? d.dartV[i] : null), j = dartPartner(d, k); vs[k] = +th.toFixed(1); if (j >= 0) vs[j] = vs[k]; d.dartV = vs;
+  const was = d.res?.stretchMax || 0; d.stale = false; setBusy(tr('Unwrapping…'));
+  setTimeout(() => { solveNow(d); reliefCache.map.clear(); setBusy(false); updateUI();
+    flash((th < 0.5 ? tr('Cut closed to a plain slit.') : tr('V opened to {0}°.').replace('{0}', th.toFixed(0))) + ' ' + tr('Stretch {0}% → {1}%.').replace('{0}', (was * 100).toFixed(1)).replace('{1}', ((d.res?.stretchMax || 0) * 100).toFixed(1))); }, 20);
+}
+// add cuts with their V widths (null: picked automatically on the next unwrap)
+function addDarts(d, list) { const n0 = d.darts?.length || 0, vs = (d.dartV || []).slice(0, n0); while (vs.length < n0) vs.push(null);
+  d.darts = [...(d.darts || []), ...list.map(x => x[0])]; d.dartV = [...vs, ...list.map(x => typeof x[1] === 'number' ? x[1] : null)]; }
 function applyRelief(d, only) {
   flushStale();
   let cuts = reliefSuggest(d); if (only) cuts = cuts.filter((c, i) => only.includes(i));
-  if (!cuts.length) { flash(tr('{0} lies flat enough; no relief cuts needed.').replace('{0}', d.name)); return; }
+  const saddles = cuts.filter(c => c.kind !== 'notch').length; cuts = cuts.filter(c => c.kind === 'notch');
+  if (!cuts.length) { flash(saddles ? tr('These spots are saddle-shaped: a V can only take film away, and here the frame needs more. Split the decal there with the Knife instead.') : tr('{0} lies flat enough; no relief cuts needed.').replace('{0}', d.name)); return; }
   const before = snapshot(), start = d.res?.stretchMax || 0; let target = d, made = 0, dropped = 0, failed = 0;
   setBusy(tr('Cutting…'));
   setTimeout(() => {
@@ -14971,7 +15032,7 @@ function applyRelief(d, only) {
       const r = booleanCore('difference', tgt, { ctrl, closed: true, res, mirror: false, name: 'relief' });
       if (r.error || !r.made?.length) return null;
       for (const h of [...holesOf(tgt), tgt]) removeDecal(h, true);
-      const main = r.made.find(x => !x.holeOf) || r.made[0]; if (tgt.darts?.length) main.darts = tgt.darts;
+      const main = r.made.find(x => !x.holeOf) || r.made[0]; if (tgt.darts?.length) { main.darts = tgt.darts; main.dartV = tgt.dartV; }
       for (const nd of r.made) { S.decals.push(nd); solveNow(nd); }
       return main;
     };
@@ -14982,7 +15043,7 @@ function applyRelief(d, only) {
     // cuts often only work together (around a saddle each one alone can make its own spot worse): try the whole set first
     if (!only && cuts.length > 1) {
       const snap0 = snapshot(), polys = cuts.map(polyOf);
-      target.darts = [...(target.darts || []), ...polys.flatMap(pair)]; target.stale = false; solveNow(target);
+      addDarts(target, polys.flatMap((p, i) => pair(p).map(q => [q, cuts[i].theta]))); target.stale = false; solveNow(target);
       if (target.res && !target.res.error && target.res.stretchMax < start * 0.9) {
         cuts.forEach((c, i) => { if (S.decals.includes(target)) target = holeAt(target, polys[i], c); }); made = cuts.length; cuts = [];
       } else { applySnapshot(snap0); target = S.decals.find(x => x.id === d.id) || d; }
@@ -14992,7 +15053,7 @@ function applyRelief(d, only) {
       const snap = snapshot(), keepId = target.id, was = target.res && !target.res.error ? spotStretch(target.res, c.peak, c.rad) : 0, wasMean = target.res?.stretchMean || 0;
       { // a cut along the line: on a bulge the sheet opens into a V, on a saddle it stays a slit
         const poly = [c.E, ...c.pts.slice(1).map(h => h.point)].map(p => p.map(v => +v.toFixed(4)));
-        target.darts = [...(target.darts || []), ...pair(poly)]; target.stale = false; solveNow(target);
+        addDarts(target, pair(poly).map(q => [q, c.theta])); target.stale = false; solveNow(target);
         const ok = target.res && !target.res.error && target.res.darts?.[target.darts.length - 1];
         const now = ok ? spotStretch(target.res, c.peak, c.rad) : 1;
         if (ok && now < was * (c.kind === 'notch' ? 0.9 : 0.97) && target.res.stretchMean <= wasMean * 1.05) {
@@ -15095,7 +15156,7 @@ function renderList() {
         if (d.liveOf != null) applyCombo(d.liveOf, true); // a combined piece goes for good, the others stay
         const part = d.partOf?.cid; removeDecal(d); if (part != null) { recomputeCombo(part); } }
       if (b.dataset.a === 'relief') { applyRelief(d); return; }
-      if (b.dataset.a === 'undart') { pushHistory('Removed relief cuts'); delete d.darts; solve(d); return; }
+      if (b.dataset.a === 'undart') { pushHistory('Removed relief cuts'); delete d.darts; delete d.dartV; solve(d); return; }
       if (b.dataset.a === 'dup') { duplicateDecal(d); return; }
       if (b.dataset.a === 'lock') { pushHistory(d.locked ? 'Unlocked' : 'Locked'); d.locked = !d.locked; if (d.locked && S.active === d) { S.active = null; S.sel = null; } renderHandles(); updateUI(); flash(d.locked ? `${d.name} is locked. You can draw over it now.` : `${d.name} is unlocked.`); }
       if (b.dataset.a === 'applymir') applyMirror(d);
@@ -15189,6 +15250,8 @@ function sheetVB() {
   // the grid is a pattern, which doesn't keep its line weight by itself: set it from the zoom
   const r = svg.getBoundingClientRect(), mmPx = Math.max(v.w / Math.max(1, r.width), v.h / Math.max(1, r.height));
   svg.querySelectorAll('pattern').forEach((p, i) => p.querySelectorAll('path').forEach(q => q.setAttribute('stroke-width', (mmPx * (i === 0 ? 0.5 : 0.9)).toFixed(4))));
+  // the V handles keep their size on screen
+  svg.querySelectorAll('.vh circle').forEach(c => c.setAttribute('r', (mmPx * 8).toFixed(3))); svg.querySelectorAll('.vh text').forEach(t => t.setAttribute('font-size', (mmPx * 12).toFixed(3)));
 }
 function sheetPt(cx, cy) { const svg = $('#sheet'), m = svg.getScreenCTM(); if (!m) return null; const p = svg.createSVGPoint(); p.x = cx; p.y = cy; return p.matrixTransform(m.inverse()); }
 function sheetZoom(k, cx, cy) {
@@ -15260,7 +15323,7 @@ function makeSheetCut(p, uvA, uvB) {
   let poly = pts; if (twin) poly = poly.map(q => reflect(q).map(v => +v.toFixed(4))); // the mirrored piece: cut its original side, the mirror follows
   pushHistory('Relief cut on the sheet');
   const pair = d.mirror && d.mergedMap ? (() => { const m = poly.map(q => reflect(q).map(v => +v.toFixed(4))); return poly.every((q, i) => dist3(q, m[i]) < 4) ? [poly] : [poly, m]; })() : [poly];
-  const was = d.res?.stretchMax || 0; d.darts = [...(d.darts || []), ...pair]; d.stale = false;
+  const was = d.res?.stretchMax || 0; addDarts(d, pair.map(q => [q, null])); d.stale = false;
   setBusy(tr('Unwrapping…')); setTimeout(() => { solveNow(d); reliefCache.map.clear(); setBusy(false); S.active = d; renderHandles(); updateUI();
     flash(tr('Cut made on the frame. Stretch {0}% → {1}%. Drag its handles on the model (Edit mode) to adjust it, or undo.').replace('{0}', (was * 100).toFixed(1)).replace('{1}', ((d.res?.stretchMax || 0) * 100).toFixed(1))); }, 20);
 }
@@ -15297,6 +15360,12 @@ function renderSheet() {
     if ((S.sheetCut || S.showStretch) && p.id[0] === 'd' && p.tf && reliefTargets().includes(d) || (S.sheetCut && p.id[0] === 'd' && p.tf && d.closed && !d.holeOf && !d.stale)) {
       reliefSuggest(d).forEach((c, ci) => { if (!c.uv) return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
         sugg += `<g class="ssug" data-d="${d.id}" data-i="${ci}"><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="2" stroke-dasharray="4 3"/><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="transparent" stroke-width="12"><title>${esc(tr('Suggested cut: click to make it'))}</title></line></g>`; }); }
+    // every cut's V: drag its corner to make it wider or narrower (to 0: a plain slit)
+    if (p.tf && res?.darts && (S.sheetCut || act) && d.darts?.length) res.darts.forEach((di, k) => { if (!di?.uvV || (p.id[0] === 'd' && d.mirror && d.mergedMap && dartPartner(d, k) >= 0 && dartPartner(d, k) < k)) return;
+      const [t, m1, m2] = di.uvV.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; }), th = typeof d.dartV?.[k] === 'number' ? d.dartV[k] : di.angle || 0;
+      const mx = (m1[0] + m2[0]) / 2, my = (m1[1] + m2[1]) / 2, L = Math.hypot(mx - t[0], my - t[1]) || 1, ux = (mx - t[0]) / L, uy = (my - t[1]) / L, h = th * Math.PI / 360, c = Math.cos(h), sn = Math.sin(h);
+      const hx = t[0] + (ux * c - uy * sn) * L, hy = t[1] + (ux * sn + uy * c) * L;
+      sugg += `<g class="vh" data-d="${d.id}" data-k="${k}" data-t="${t[0].toFixed(2)},${t[1].toFixed(2)},${ux.toFixed(5)},${uy.toFixed(5)},${L.toFixed(2)}"><line class="vpre" x1="${t[0].toFixed(1)}" y1="${t[1].toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="#FFD60A" stroke-width="1.5" vector-effect="non-scaling-stroke" pointer-events="none" opacity="0"/><circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${Math.max(2.2, L * 0.07).toFixed(1)}" fill="#FFD60A" stroke="#111" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>${esc(tr('Drag to open or close the V. Wider takes out more film; all the way closed is a plain slit'))}</title></circle><text x="${(t[0] + ux * L * 1.18).toFixed(1)}" y="${(t[1] + uy * L * 1.18).toFixed(1)}" font-size="${Math.max(3, L * 0.16).toFixed(1)}" text-anchor="middle" fill="#FFD60A" font-family="Barlow, Arial, sans-serif" pointer-events="none">${th < 0.5 ? tr('slit') : th.toFixed(0) + '°'}</text></g>`; });
     const pd = [pts, ...hl].map(r => 'M' + r.map(([x,y]) => `${x.toFixed(1)} ${(y+oy).toFixed(1)}`).join('L') + 'Z').join(' ');
     // the colours stay inside the piece: the triangles along the edge reach past the outline
     if (pBins.some(b => b.length)) { const cid = 'hc' + p.id.replace(/[^\w-]/g, ''); s += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${pd}"/></clipPath><g clip-path="url(#${cid})" pointer-events="none">` + pBins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="#${(i < 6 ? heat(filmMax() * (i + 0.5) / 5) : foldHeat(foldAt() * (i - 6 + 0.5) / 5)).getHexString()}"/>` : '').join('') + '</g>'; }
@@ -15306,6 +15375,13 @@ function renderSheet() {
   }
   svg.innerHTML = s + sugg; sheetVB();
   svg.querySelectorAll('.ssug').forEach(g => g.addEventListener('click', e => { e.stopPropagation(); const d = S.decals.find(x => x.id === +g.dataset.d); if (d) applyRelief(d, [+g.dataset.i]); }));
+  svg.querySelectorAll('.vh circle').forEach(cEl => { const g = cEl.parentNode;
+    cEl.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); const [tx, ty, ux, uy, L] = g.dataset.t.split(',').map(Number); S.vDrag = { g, d: +g.dataset.d, k: +g.dataset.k, tx, ty, ux, uy, L, th: null }; try { cEl.setPointerCapture(e.pointerId); } catch (er) {} g.querySelector('.vpre').setAttribute('opacity', '1'); });
+    cEl.addEventListener('pointermove', e => { const V = S.vDrag; if (!V || V.g !== g) return; const q = sheetPt(e.clientX, e.clientY); if (!q) return;
+      const rx = q.x - V.tx, ry = q.y - V.ty, al = Math.atan2(V.ux * ry - V.uy * rx, V.ux * rx + V.uy * ry); let th = Math.min(60, Math.abs(al) * 360 / Math.PI); if (th < 1.5) th = 0; V.th = th;
+      const h = Math.sign(al || 1) * th * Math.PI / 360, c = Math.cos(h), sn = Math.sin(h), hx = V.tx + (V.ux * c - V.uy * sn) * V.L, hy = V.ty + (V.ux * sn + V.uy * c) * V.L;
+      cEl.setAttribute('cx', hx); cEl.setAttribute('cy', hy); const ln = g.querySelector('.vpre'); ln.setAttribute('x2', hx); ln.setAttribute('y2', hy); g.querySelector('text').textContent = th < 0.5 ? tr('slit') : th.toFixed(0) + '°'; });
+    cEl.addEventListener('pointerup', () => { const V = S.vDrag; S.vDrag = null; if (!V || V.g !== g || V.th === null) return; setDartV(S.decals.find(x => x.id === V.d), V.k, V.th); }); });
   svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => setActive(S.decals.find(d => d.id === +el.dataset.id))));
   const filmM2 = sh.w * (n * SH) / 1e6, use = filmM2 ? area / 1e6 / filmM2 * 100 : 0;
   $('#matSize').textContent = sh.roll ? `${tr('Roll')} ${sh.w} mm × ${Math.round(SH)} mm` : `${sh.w} × ${sh.h} mm${n > 1 ? `, ${n} ${tr('sheets')}` : ''}`;
@@ -15943,7 +16019,7 @@ function knifeDart(before) {
   if (k === 0) return false; // the line has to come in from outside
   const poly = [K[k - 1], ...K.slice(k)].map(q => q.point.map(v => +v.toFixed(4)));
   const was = d.res.stretchMax;
-  d.darts = [...(d.darts || []), poly, ...(d.mirror && d.mergedMap ? [poly.map(p => reflect(p).map(v => +v.toFixed(4)))] : [])]; d.stale = false; solveNow(d);
+  addDarts(d, [poly, ...(d.mirror && d.mergedMap ? [poly.map(p => reflect(p).map(v => +v.toFixed(4)))] : [])].map(q => [q, null])); d.stale = false; solveNow(d);
   const info = d.res?.darts?.[d.darts.length - 1];
   if (!d.res || d.res.error || !info) { applySnapshot(before); flash(tr('That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.')); return true; }
   histPush(before, 'V-notch'); clearKnife(); S.active = d; reliefCache.map.clear(); renderHandles(); updateUI();
@@ -17725,6 +17801,16 @@ const DE = {
   "Start the cut at the edge of the piece (or just outside it), then drag inwards.": "Fang den Schnitt am Rand des Teils (oder knapp außerhalb) an und zieh nach innen.",
   "Draw the cut from the edge of a piece into it.": "Zieh den Schnitt vom Rand eines Teils hinein.",
   "Relief cut on the sheet": "Entlastungsschnitt auf dem Bogen",
+  "Saddle: the frame needs more film here than a flat sheet has. A V would only take film away, so a cut doesn't help: split the decal here with the Knife": "Sattel: Der Rahmen braucht hier mehr Folie, als ein flacher Bogen hat. Ein V nimmt nur Folie weg, ein Schnitt hilft also nicht: teil das Decal hier mit dem Messer",
+  "Saddle: split here": "Sattel: hier teilen",
+  "These spots are saddle-shaped: a V can only take film away, and here the frame needs more. Split the decal there with the Knife instead.": "Diese Stellen sind sattelförmig: Ein V kann nur Folie wegnehmen, der Rahmen braucht hier aber mehr. Teil das Decal dort lieber mit dem Messer.",
+  "Drag to open or close the V. Wider takes out more film; all the way closed is a plain slit": "Ziehen, um das V zu öffnen oder zu schließen. Breiter nimmt mehr Folie weg; ganz zu ist ein einfacher Schlitz",
+  "slit": "Schlitz",
+  "V width": "V-Breite",
+  "Cut closed to a plain slit.": "Schnitt zu einem einfachen Schlitz geschlossen.",
+  "V opened to {0}°.": "V auf {0}° geöffnet.",
+  "Stretch {0}% → {1}%.": "Dehnung {0} % → {1} %.",
+  "Finding the best V width…": "Beste V-Breite wird gesucht…",
   "Cut made on the frame. Stretch {0}% → {1}%. Drag its handles on the model (Edit mode) to adjust it, or undo.": "Schnitt am Rahmen gesetzt. Dehnung {0} % → {1} %. Zieh seine Griffe am Modell (Bearbeiten-Modus), um ihn anzupassen, oder mach ihn rückgängig.",
   "Templates folder…": "Vorlagenordner…",
   "Change templates folder…": "Vorlagenordner wechseln…",
