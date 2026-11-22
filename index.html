@@ -4874,9 +4874,8 @@ function addDarts(d, list) { const n0 = d.darts?.length || 0, vs = (d.dartV || [
 function applyRelief(d, only) {
   flushStale();
   let cuts = reliefSuggest(d); if (only) cuts = cuts.filter((c, i) => only.includes(i));
-  if (only && only.length === 1 && cuts.length === 1 && cuts[0].kind !== 'notch') { splitAtSpot(d, cuts[0]); return; }
   const saddles = cuts.filter(c => c.kind !== 'notch').length; cuts = cuts.filter(c => c.kind === 'notch');
-  if (!cuts.length) { flash(saddles ? tr('These spots are saddle-shaped: a V can only take film away, and here the frame needs more. Split the decal there with the Knife instead.') : tr('{0} lies flat enough; no relief cuts needed.').replace('{0}', d.name)); return; }
+  if (!cuts.length) { flash(saddles ? tr('The stretch left is at saddle-shaped spots: there the edge comes out a little short and is stretched into place (red), a cut wouldn\'t help. If it\'s more than your film can take, split the decal there with the Knife.') : tr('{0} lies flat enough; no relief cuts needed.').replace('{0}', d.name)); return; }
   const before = snapshot(), start = d.res?.stretchMax || 0; let target = d, made = 0, dropped = 0, failed = 0;
   setBusy(tr('Cutting…'));
   setTimeout(() => {
@@ -5085,7 +5084,7 @@ function cutSheetSVG(pieces, title) {
       const cid = 'clip-' + (++heatClipN) + '-' + p.id.replace(/[^\w-]/g, ''), clip = [p.pts, ...(p.holes || [])].map(r => 'M' + r.map(([x, y]) => `${x.toFixed(2)} ${(y + oy).toFixed(2)}`).join('L') + 'Z').join(' ');
       heatL += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${clip}"/></clipPath>\n<g clip-path="url(#${cid})">\n` + bins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="${binColor(i)}" stroke="${binColor(i)}" stroke-width="0.05"/>\n` : '').join('') + '</g>\n';
       // the suggested cuts, dashed: red = V-notch (too much film), orange = saddle (split there)
-      if (p.id[0] === 'd' && d && !d.stale) reliefSuggest(d).forEach(c => { if (!c.uv) return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
+      if (p.id[0] === 'd' && d && !d.stale) reliefSuggest(d).forEach(c => { if (!c.uv || c.kind !== 'notch') return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
         heatL += `<line x1="${a0[0].toFixed(2)}" y1="${a0[1].toFixed(2)}" x2="${b0[0].toFixed(2)}" y2="${b0[1].toFixed(2)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="0.4" stroke-dasharray="2 1.2"/>\n`; }); }
     if (heatL) { // a legend under the sheet: what the colours mean for this film
       const ly = pk.sheets * pk.H + (pk.sheets - 1) * gapY + 6, sw = 7, lab = (x, t) => `<text x="${x.toFixed(1)}" y="${(ly + 10).toFixed(1)}" font-family="Arial, sans-serif" font-size="2.6" fill="#333333">${t}</text>`;
@@ -5095,7 +5094,6 @@ function cutSheetSVG(pieces, title) {
       const x2 = 6 * sw + 14; for (let i = 0; i < 6; i++) lg += `<rect x="${(x2 + i * sw).toFixed(1)}" y="${ly.toFixed(1)}" width="${sw}" height="5" fill="${binColor(i + 6)}"/>`;
       lg += lab(x2, '0%') + lab(x2 + 5 * sw, `${(foldAt() * 100).toFixed(1)}% ${esc(tr('excess (folds)'))}`);
       const x3 = x2 + 6 * sw + 34; lg += `<line x1="${x3}" y1="${(ly + 2.5).toFixed(1)}" x2="${x3 + 10}" y2="${(ly + 2.5).toFixed(1)}" stroke="#FF3B30" stroke-width="0.4" stroke-dasharray="2 1.2"/>` + lab(x3, esc(tr('suggested V-notch')));
-      lg += `<line x1="${x3 + 48}" y1="${(ly + 2.5).toFixed(1)}" x2="${x3 + 58}" y2="${(ly + 2.5).toFixed(1)}" stroke="#FF9500" stroke-width="0.4" stroke-dasharray="2 1.2"/>` + lab(x3 + 48, esc(tr('saddle: split here')));
       heatL += lg + '\n'; } }
   const svg = Core.buildSVG({ ...pk, placed }, sh.w, pk.H, { labels: sh.labels, border: sh.border, curves: sh.curves !== false, reg: sh.reg, weed: sh.weed ? Math.max(1, sh.gap) : 0, title, heat: heatL, heatName: tr('Stretch map') }, names);
   const nodes = placed.reduce((s, p) => s + (p.curves && p.curves.every(Boolean) && sh.curves !== false ? p.curves.reduce((t, r) => t + r.length, 0) : p.pts.length + (p.holes || []).reduce((t, h) => t + h.length, 0)), 0);
@@ -5239,7 +5237,7 @@ function renderSheet() {
     const pBins = S.showStretch ? heatBins(res, p, mf, oy, 1) : heatBins(null);
     // suggested relief cuts, on the flat piece: click one to make it
     if (p.id[0] === 'd' && p.tf && reliefTargets().includes(d) || (S.sheetCut && p.id[0] === 'd' && p.tf && d.closed && !d.holeOf && !d.stale)) {
-      reliefSuggest(d).forEach((c, ci) => { if (!c.uv) return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
+      reliefSuggest(d).forEach((c, ci) => { if (!c.uv || c.kind !== 'notch') return; /* saddles get no cut: the edge stretches into place there */ const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
         sugg += `<g class="ssug" data-d="${d.id}" data-i="${ci}"><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="2" stroke-dasharray="4 3"/><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="transparent" stroke-width="12"><title>${esc(tr('Suggested cut: click to make it'))}</title></line></g>`; }); }
     // every cut's V: drag its corner to make it wider or narrower (to 0: a plain slit)
     if (p.tf && res?.darts && (S.sheetCut || act) && d.darts?.length) res.darts.forEach((di, k) => { if (!di?.uvV || (p.id[0] === 'd' && d.mirror && d.mergedMap && dartPartner(d, k) >= 0 && dartPartner(d, k) < k)) return;
@@ -7912,6 +7910,7 @@ const DE = {
   "stretch": "Dehnung",
   "excess (folds)": "Überschuss (Falten)",
   "suggested V-notch": "vorgeschlagene V-Kerbe",
+  "The stretch left is at saddle-shaped spots: there the edge comes out a little short and is stretched into place (red), a cut wouldn't help. If it's more than your film can take, split the decal there with the Knife.": "Die restliche Dehnung liegt an sattelförmigen Stellen: Dort kommt der Rand etwas kürzer heraus und wird beim Aufbringen gedehnt (rot), ein Schnitt hilft nicht. Wenn es mehr ist, als deine Folie aushält, teil das Decal dort mit dem Messer.",
   "saddle: split here": "Sattel: hier teilen",
   "Cut a box around each piece and the sheet, so the waste film comes off in strips": "Einen Rahmen um jedes Teil und den Bogen schneiden, damit sich der Abfall in Streifen abziehen lässt",
   "DXF": "DXF",
