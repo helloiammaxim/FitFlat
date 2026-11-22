@@ -865,6 +865,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <label title="Cut from a roll: the sheet is as long as the pieces need, Height is ignored"><input type="checkbox" id="sroll"> Roll</label>
           <label title="Add three print-and-cut registration marks and keep pieces clear of them"><input type="checkbox" id="sreg"> Registration marks</label>
           <label title="Cut a box around each piece and the sheet, so the waste film comes off in strips"><input type="checkbox" id="sweed"> Weeding boxes</label>
+          <label title="Add the stretch and excess colours as their own layer under the cut lines, with a legend, to check the pieces in other vector software. Hide or delete that layer before cutting"><input type="checkbox" id="sheat"> Stretch map</label>
           <label class="stolw" title="How far exported curves may stray from the unwrapped outline. Higher gives fewer, smoother nodes">± <input type="number" id="stol" value="0.1" min="0.01" max="2" step="0.05"> mm</label>
         </div>
         <p class="note warn" id="sheetWarn"></p>
@@ -2069,9 +2070,10 @@ const Core = (() => {
       const fs = Math.max(2.5, Math.min(8, p.h / 5, p.w / Math.max(4, (names[p.id]||'').length) * 1.6));
       lab += `<text x="${f(p.x + p.w/2)}" y="${f(oy + p.y + p.h/2 + fs*0.35)}" font-family="Arial, sans-serif" font-size="${f(fs)}" text-anchor="middle" fill="#e5007e">${(names[p.id]||'').replace(/[<&>"]/g, c => ({'<':'&lt;','&':'&amp;','>':'&gt;','"':'&quot;'}[c]))}</text>\n`;
     }
+    const tot2 = opts.heat ? total + 20 : total, hn = String(opts.heatName || 'Stretch map').replace(/[<&>"]/g, '');
     return `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${f(W)}mm" height="${f(total)}mm" viewBox="0 0 ${f(W)} ${f(total)}">
-${opts.border ? `<g id="sheet">\n${sh}</g>\n` : ''}${reg ? `<g id="registration">\n${reg}</g>\n` : ''}<g id="cut">
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="${f(W)}mm" height="${f(tot2)}mm" viewBox="0 0 ${f(W)} ${f(tot2)}">
+${opts.heat ? `<g id="stretch-map" inkscape:groupmode="layer" inkscape:label="${hn}">\n${opts.heat}</g>\n` : ''}${opts.border ? `<g id="sheet">\n${sh}</g>\n` : ''}${reg ? `<g id="registration">\n${reg}</g>\n` : ''}<g id="cut">
 ${cut}</g>
 ${weed ? `<g id="weed">\n${weed}</g>\n` : ''}
 ${opts.labels ? `<g id="labels">\n${lab}</g>\n` : ''}</svg>`;
@@ -3170,7 +3172,7 @@ function loadProject(text, fname) {
   if (pj.app !== 'decal-unwrap') { alert('This JSON file is not a FitFlat project.'); return; }
   if (S.decals.length && S.dirty && !confirm('Opening a project replaces the current frame and decals. Continue?')) return;
   const restore = () => {
-    if (pj.sheet) { Object.assign(S.sheet, pj.sheet); $('#sw').value = S.sheet.w; $('#shh').value = S.sheet.h; $('#sgap').value = S.sheet.gap; $('#slab').checked = S.sheet.labels; $('#sbor').checked = S.sheet.border; $('#smir').checked = S.sheet.mirror; $('#scurve').checked = S.sheet.curves !== false; $('#stol').value = S.sheet.tol || 0.1; $('#sroll').checked = !!S.sheet.roll; $('#sreg').checked = !!S.sheet.reg; $('#sweed').checked = !!S.sheet.weed; $('#shh').disabled = !!S.sheet.roll; }
+    if (pj.sheet) { Object.assign(S.sheet, pj.sheet); $('#sw').value = S.sheet.w; $('#shh').value = S.sheet.h; $('#sgap').value = S.sheet.gap; $('#slab').checked = S.sheet.labels; $('#sbor').checked = S.sheet.border; $('#smir').checked = S.sheet.mirror; $('#scurve').checked = S.sheet.curves !== false; $('#stol').value = S.sheet.tol || 0.1; $('#sroll').checked = !!S.sheet.roll; $('#sreg').checked = !!S.sheet.reg; $('#sweed').checked = !!S.sheet.weed; $('#sheat').checked = !!S.sheet.heatMap; $('#shh').disabled = !!S.sheet.roll; }
     if (pj.film && pj.film.max > 0) setFilm(pj.film, true);
     S.ref = null; removeRefMesh(); placeRefOverlay(); if (pj.ref?.src && /^data:image\//.test(pj.ref.src)) loadRef(pj.ref.src, pj.ref);
     if (pj.mirrorAxis) { S.mirrorAxis = pj.mirrorAxis; $('#mirrorAxis').value = pj.mirrorAxis; }
@@ -4710,8 +4712,10 @@ function reliefSuggest(d) {
 }
 const reliefTargets = () => S.decals.filter(d => d.closed && !d.holeOf && !d.partOf && d.liveOf == null && !d.stale && isShown(d) && (S.showStretch || d === S.active));
 let reliefObj = null, reliefKey = '';
+// suggested cuts are shown on the flat sheet only (on the model they were confusing); this keeps the model clear
+const RELIEF_ON_MODEL = false;
 function renderRelief() {
-  const L = S.model ? reliefTargets() : [];
+  const L = S.model && RELIEF_ON_MODEL ? reliefTargets() : [];
   const key = S.showStretch + '|' + (S.active?.id ?? '') + '|' + S.film.max + '|' + L.map(d => d.id + ':' + (d.res && !d.res.error ? (d.res._v || 0) + '/' + d.res.stretchMax.toFixed(3) : '-')).join(',') + '|' + (S.reliefHover ?? '');
   if (key === reliefKey) return; reliefKey = key;
   if (reliefObj) { scene.remove(reliefObj); reliefObj.children.forEach(disposeObj); reliefObj = null; }
@@ -4738,7 +4742,7 @@ function renderRelief() {
 let reliefMarkKey = '';
 function drawReliefMarks() {
   const el = $('#reliefMarks'); if (!el) return;
-  const L = S.model && !press && !S.drawing ? reliefTargets() : [], items = [];
+  const L = S.model && RELIEF_ON_MODEL && !press && !S.drawing ? reliefTargets() : [], items = [];
   for (const d of L) reliefSuggest(d).forEach((c, i) => items.push({ d, c, i }));
   if (!items.length) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; reliefMarkKey = ''; } return; }
   const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta) + ':' + x.c.mouth.toFixed(1)).join(',');
@@ -5032,6 +5036,18 @@ function solvedPieces() {
   return out;
 }
 
+// the stretch map of a flat piece, as 12 colour bins of triangles (6 stretch, green to red; 6 excess, green to blue), in sheet mm
+function heatBins(res, p, mf, oy, dp) {
+  const bins = Array.from({ length: 12 }, () => []); if (!res?.uvOf || !res.faceStretch || !p?.tf) return bins;
+  for (const f of res.insideFaces) {
+    const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b)); if (U.some(u => !u)) continue;
+    const g = res.faceSig?.get(f), ten = g ? Math.max(0, 1 - g[1]) : (res.faceStretch.get(f) || 0), fold = g ? Math.max(0, g[0] - 1) : 0;
+    const bin = fold > ten ? 6 + Math.min(5, Math.floor(Math.min(1, fold / foldAt()) * 5.999)) : Math.min(5, Math.floor(Math.min(1, ten / filmMax()) * 5.999));
+    bins[bin].push('M' + U.map(u => { const q = mf(p.tf([u[0], -u[1]])); return `${q[0].toFixed(dp)} ${(q[1] + oy).toFixed(dp)}`; }).join('L') + 'Z');
+  }
+  return bins;
+}
+const binColor = i => '#' + (i < 6 ? heat(filmMax() * (i + 0.5) / 5) : foldHeat(foldAt() * (i - 6 + 0.5) / 5)).getHexString();
 // pack pieces on the sheet as set up: a roll grows as long as needed; registration marks keep a clear border
 let packMemo = null;
 function packSheet(pieces) {
@@ -5042,13 +5058,34 @@ function packSheet(pieces) {
   pk.H = sh.roll ? Math.max(60, Math.ceil(pk.used + 1)) : sh.h;
   packMemo = { key, pieces, pk }; return pk;
 }
+let heatClipN = 0;
 // one cut sheet as SVG text, for these pieces
 function cutSheetSVG(pieces, title) {
   const sh = S.sheet, pk = packSheet(pieces), info = Object.fromEntries(pieces.map(p => [p.id, p]));
   const mx = p => ([x, y]) => [2*p.x + p.w - x, y];
   const placed = sh.mirror ? pk.placed.map(p => ({ ...p, pts: p.pts.map(mx(p)), holes: (p.holes || []).map(h => h.map(mx(p))), curves: p.curves ? p.curves.map(r => r && r.map(sg => sg.map(mx(p)))) : null })) : pk.placed;
   const names = Object.fromEntries(Object.values(info).map(p => [p.id, p.name]));
-  const svg = Core.buildSVG({ ...pk, placed }, sh.w, pk.H, { labels: sh.labels, border: sh.border, curves: sh.curves !== false, reg: sh.reg, weed: sh.weed ? Math.max(1, sh.gap) : 0, title }, names);
+  // with Stretch map on: each piece's stretch and excess in its own layer under the cut lines, for checking in other vector software
+  let heatL = '';
+  if (sh.heatMap) { const gapY = 40;
+    for (const p of placed) { const d = info[p.id]?.decal, res = p.id[0] === 'm' ? d?.twin?.res : d?.res, oy = p.sheet * (pk.H + gapY), mf = sh.mirror ? mx(p) : q => q;
+      const bins = heatBins(res, p, mf, oy, 2); if (!bins.some(b => b.length)) continue;
+      const cid = 'clip-' + (++heatClipN) + '-' + p.id.replace(/[^\w-]/g, ''), clip = [p.pts, ...(p.holes || [])].map(r => 'M' + r.map(([x, y]) => `${x.toFixed(2)} ${(y + oy).toFixed(2)}`).join('L') + 'Z').join(' ');
+      heatL += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${clip}"/></clipPath>\n<g clip-path="url(#${cid})">\n` + bins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="${binColor(i)}" stroke="${binColor(i)}" stroke-width="0.05"/>\n` : '').join('') + '</g>\n';
+      // the suggested cuts, dashed: red = V-notch (too much film), orange = saddle (split there)
+      if (p.id[0] === 'd' && d && !d.stale) reliefSuggest(d).forEach(c => { if (!c.uv) return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
+        heatL += `<line x1="${a0[0].toFixed(2)}" y1="${a0[1].toFixed(2)}" x2="${b0[0].toFixed(2)}" y2="${b0[1].toFixed(2)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="0.4" stroke-dasharray="2 1.2"/>\n`; }); }
+    if (heatL) { // a legend under the sheet: what the colours mean for this film
+      const ly = pk.sheets * pk.H + (pk.sheets - 1) * gapY + 6, sw = 7, lab = (x, t) => `<text x="${x.toFixed(1)}" y="${(ly + 10).toFixed(1)}" font-family="Arial, sans-serif" font-size="2.6" fill="#333333">${t}</text>`;
+      let lg = `<text x="0" y="${(ly - 1.5).toFixed(1)}" font-family="Arial, sans-serif" font-size="3" fill="#333333">${esc(tr('Stretch map'))}: ${esc(S.film.id)} · ${esc(tr('stretch up to {0}%').replace('{0}', (filmMax() * 100).toFixed(1)))}</text>`;
+      for (let i = 0; i < 6; i++) lg += `<rect x="${(i * sw).toFixed(1)}" y="${ly.toFixed(1)}" width="${sw}" height="5" fill="${binColor(i)}"/>`;
+      lg += lab(0, '0%') + lab(5 * sw, `${(filmMax() * 100).toFixed(1)}% ${esc(tr('stretch'))}`);
+      const x2 = 6 * sw + 14; for (let i = 0; i < 6; i++) lg += `<rect x="${(x2 + i * sw).toFixed(1)}" y="${ly.toFixed(1)}" width="${sw}" height="5" fill="${binColor(i + 6)}"/>`;
+      lg += lab(x2, '0%') + lab(x2 + 5 * sw, `${(foldAt() * 100).toFixed(1)}% ${esc(tr('excess (folds)'))}`);
+      const x3 = x2 + 6 * sw + 34; lg += `<line x1="${x3}" y1="${(ly + 2.5).toFixed(1)}" x2="${x3 + 10}" y2="${(ly + 2.5).toFixed(1)}" stroke="#FF3B30" stroke-width="0.4" stroke-dasharray="2 1.2"/>` + lab(x3, esc(tr('suggested V-notch')));
+      lg += `<line x1="${x3 + 48}" y1="${(ly + 2.5).toFixed(1)}" x2="${x3 + 58}" y2="${(ly + 2.5).toFixed(1)}" stroke="#FF9500" stroke-width="0.4" stroke-dasharray="2 1.2"/>` + lab(x3 + 48, esc(tr('saddle: split here')));
+      heatL += lg + '\n'; } }
+  const svg = Core.buildSVG({ ...pk, placed }, sh.w, pk.H, { labels: sh.labels, border: sh.border, curves: sh.curves !== false, reg: sh.reg, weed: sh.weed ? Math.max(1, sh.gap) : 0, title, heat: heatL, heatName: tr('Stretch map') }, names);
   const nodes = placed.reduce((s, p) => s + (p.curves && p.curves.every(Boolean) && sh.curves !== false ? p.curves.reduce((t, r) => t + r.length, 0) : p.pts.length + (p.holes || []).reduce((t, h) => t + h.length, 0)), 0);
   return { svg, nodes, pk: { ...pk, placed }, names };
 }
@@ -5058,7 +5095,7 @@ function stackSVGs(files) {
   for (const f of files) { const m = f.text.svg.match(/viewBox="0 0 ([\d.]+) ([\d.]+)"/), inner = f.text.svg.replace(/^[\s\S]*?<svg[^>]*>/, '').replace(/<\/svg>\s*$/, ''); const w = +m[1], h = +m[2];
     body += `<g id="size-${String(f.size).replace(/[^\w-]/g, '')}" transform="translate(0 ${y})">\n${inner}</g>\n`; y += h + 30; W = Math.max(W, w); }
   const H = Math.max(0, y - 30);
-  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">\n${body}</svg>`;
+  return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">\n${body}</svg>`;
 }
 // DXF (R12 text, millimetres): cut outlines as closed polylines, curves flattened finely; labels, marks, weed boxes and the sheet on their own layers
 function cutSheetDXF(pk, W, names) {
@@ -5187,15 +5224,9 @@ function renderSheet() {
     area += ringA(pts) - hl.reduce((t, h) => t + ringA(h), 0);
     // with Stretch on, the flat pieces show where the film stretches, in the same colours as the model
     const res = p.id[0] === 'm' ? d.twin?.res : d.res;
-    const pBins = Array.from({ length: 12 }, () => []);
-    if (S.showStretch && res?.uvOf && res.faceStretch && p.tf) for (const f of res.insideFaces) {
-      const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b)); if (U.some(u => !u)) continue;
-      const g = res.faceSig?.get(f), ten = g ? Math.max(0, 1 - g[1]) : (res.faceStretch.get(f) || 0), fold = g ? Math.max(0, g[0] - 1) : 0;
-      const bin = fold > ten ? 6 + Math.min(5, Math.floor(Math.min(1, fold / foldAt()) * 5.999)) : Math.min(5, Math.floor(Math.min(1, ten / filmMax()) * 5.999));
-      pBins[bin].push('M' + U.map(u => { const q = mf(p.tf([u[0], -u[1]])); return `${q[0].toFixed(1)} ${(q[1] + oy).toFixed(1)}`; }).join('L') + 'Z');
-    }
+    const pBins = S.showStretch ? heatBins(res, p, mf, oy, 1) : heatBins(null);
     // suggested relief cuts, on the flat piece: click one to make it
-    if ((S.sheetCut || S.showStretch) && p.id[0] === 'd' && p.tf && reliefTargets().includes(d) || (S.sheetCut && p.id[0] === 'd' && p.tf && d.closed && !d.holeOf && !d.stale)) {
+    if (p.id[0] === 'd' && p.tf && reliefTargets().includes(d) || (S.sheetCut && p.id[0] === 'd' && p.tf && d.closed && !d.holeOf && !d.stale)) {
       reliefSuggest(d).forEach((c, ci) => { if (!c.uv) return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
         sugg += `<g class="ssug" data-d="${d.id}" data-i="${ci}"><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="2" stroke-dasharray="4 3"/><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="transparent" stroke-width="12"><title>${esc(tr('Suggested cut: click to make it'))}</title></line></g>`; }); }
     // every cut's V: drag its corner to make it wider or narrower (to 0: a plain slit)
@@ -5235,7 +5266,7 @@ $('#filmPreset').addEventListener('change', e => { const f = FILMS.find(x => x.i
 $('#filmMax').addEventListener('change', e => { const v = parseFloat(e.target.value); if (!(v > 0)) { e.target.value = S.film.max; return; } const f = FILMS.find(x => x.id === S.film.id); setFilm({ id: f && f.id !== 'custom' && f.max === v ? f.id : 'custom', max: v }); });
 setTimeout(() => setFilm(S.film, true)); // after the language tables are ready
 $('#stol').addEventListener('change', e => { S.sheet.tol = Math.max(0.01, +e.target.value || 0.1); e.target.value = S.sheet.tol; renderSheet(); });
-for (const [id, k] of [['#slab','labels'],['#sbor','border'],['#smir','mirror'],['#scurve','curves'],['#sroll','roll'],['#sreg','reg'],['#sweed','weed']]) $(id).addEventListener('change', e => { S.sheet[k] = e.target.checked; if (k === 'roll') $('#shh').disabled = e.target.checked; renderSheet(); });
+for (const [id, k] of [['#slab','labels'],['#sbor','border'],['#smir','mirror'],['#scurve','curves'],['#sroll','roll'],['#sreg','reg'],['#sweed','weed'],['#sheat','heatMap']]) $(id).addEventListener('change', e => { S.sheet[k] = e.target.checked; if (k === 'roll') $('#shh').disabled = e.target.checked; renderSheet(); });
 
 // ---------- cut, smooth and round tools ----------
 // insert an anchor at (seg, t) without changing the curve's shape
@@ -7862,6 +7893,13 @@ const DE = {
   "Registration marks": "Passermarken",
   "Add three print-and-cut registration marks and keep pieces clear of them": "Drei Passermarken für Print-and-Cut hinzufügen und die Teile davon freihalten",
   "Weeding boxes": "Entgitterrahmen",
+  "Stretch map": "Dehnungskarte",
+  "Add the stretch and excess colours as their own layer under the cut lines, with a legend, to check the pieces in other vector software. Hide or delete that layer before cutting": "Die Farben für Dehnung und Überschuss als eigene Ebene unter den Schnittlinien hinzufügen, mit Legende, um die Teile in anderer Vektorsoftware zu prüfen. Diese Ebene vor dem Schneiden ausblenden oder löschen",
+  "stretch up to {0}%": "Dehnung bis {0} %",
+  "stretch": "Dehnung",
+  "excess (folds)": "Überschuss (Falten)",
+  "suggested V-notch": "vorgeschlagene V-Kerbe",
+  "saddle: split here": "Sattel: hier teilen",
   "Cut a box around each piece and the sheet, so the waste film comes off in strips": "Einen Rahmen um jedes Teil und den Bogen schneiden, damit sich der Abfall in Streifen abziehen lässt",
   "DXF": "DXF",
   "Download the cut sheet as DXF (millimetres), for cutter software that prefers it": "Den Schnittbogen als DXF (Millimeter) herunterladen, für Plotter-Software, die das bevorzugt",
