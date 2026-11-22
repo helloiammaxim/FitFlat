@@ -15007,6 +15007,22 @@ function holeCtrl(p, face, a, b, rad) {
 // how bad the film is around one spot: the worst stretch within the radius
 function spotStretch(r, c, rad) { const { mesh } = S.model, T = mesh.tri, P = mesh.pos; let mx = 0;
   for (const [f, st] of r.faceStretch) { const q = [0, 1, 2].map(k => (P[T[3*f]*3+k] + P[T[3*f+1]*3+k] + P[T[3*f+2]*3+k]) / 3); if (dist3(q, c) < rad && st > mx) mx = st; } return mx; }
+// "Saddle: split here": a knife line straight across the piece at that spot, perpendicular to the edge, like the Knife would cut
+function splitAtSpot(d, c) {
+  const r = d.res; if (!r || r.error || !r.outline || !c.uv) return;
+  const tri = flatTris(r), [s0, s1] = c.uv, L0 = Math.hypot(s1[0] - s0[0], s1[1] - s0[1]) || 1, dir = [(s1[0] - s0[0]) / L0, (s1[1] - s0[1]) / L0];
+  let span = 0; for (const o of r.outline) span = Math.max(span, Math.hypot(o[0] - s0[0], o[1] - s0[1]));
+  const K = []; let gap = true;
+  for (let t = -4; t <= span + 4; t += 0.8) { const h = flatTo3(tri, [s0[0] + dir[0] * t, s0[1] + dir[1] * t]); if (!h) { gap = true; continue; } K.push({ point: h.point, face: h.face, brk: gap }); gap = false; }
+  if (K.length < 3) { flash(tr('Couldn\'t split here. Draw the cut with the Knife instead.')); return; }
+  const before = snapshot(); setBusy(tr('Cutting…'));
+  setTimeout(() => {
+    const res = knifeCutAll(withMirror([K]), before); setBusy(false);
+    if (!res) { flash(tr('Couldn\'t split here. Draw the cut with the Knife instead.')); return; }
+    resymmetrize(); histPush(before, 'Split at saddle'); reliefCache.map.clear(); S.active = null; renderHandles(); updateUI();
+    flash(tr('Split into separate pieces at the saddle{0}.').replace('{0}', res.mirrored ? tr(', and on the mirror side') : ''));
+  }, 20);
+}
 // set one cut's V width by hand (its mirror image follows) and unwrap again
 function setDartV(d, k, th) {
   if (!d || !d.darts?.[k]) return; pushHistory('V width');
@@ -15021,6 +15037,7 @@ function addDarts(d, list) { const n0 = d.darts?.length || 0, vs = (d.dartV || [
 function applyRelief(d, only) {
   flushStale();
   let cuts = reliefSuggest(d); if (only) cuts = cuts.filter((c, i) => only.includes(i));
+  if (only && only.length === 1 && cuts.length === 1 && cuts[0].kind !== 'notch') { splitAtSpot(d, cuts[0]); return; }
   const saddles = cuts.filter(c => c.kind !== 'notch').length; cuts = cuts.filter(c => c.kind === 'notch');
   if (!cuts.length) { flash(saddles ? tr('These spots are saddle-shaped: a V can only take film away, and here the frame needs more. Split the decal there with the Knife instead.') : tr('{0} lies flat enough; no relief cuts needed.').replace('{0}', d.name)); return; }
   const before = snapshot(), start = d.res?.stretchMax || 0; let target = d, made = 0, dropped = 0, failed = 0;
@@ -17803,6 +17820,9 @@ const DE = {
   "Relief cut on the sheet": "Entlastungsschnitt auf dem Bogen",
   "Saddle: the frame needs more film here than a flat sheet has. A V would only take film away, so a cut doesn't help: split the decal here with the Knife": "Sattel: Der Rahmen braucht hier mehr Folie, als ein flacher Bogen hat. Ein V nimmt nur Folie weg, ein Schnitt hilft also nicht: teil das Decal hier mit dem Messer",
   "Saddle: split here": "Sattel: hier teilen",
+  "Couldn't split here. Draw the cut with the Knife instead.": "Hier ließ sich nicht teilen. Zeichne den Schnitt stattdessen mit dem Messer.",
+  "Split into separate pieces at the saddle{0}.": "Am Sattel in getrennte Teile geteilt{0}.",
+  ", and on the mirror side": " und auf der Spiegelseite",
   "These spots are saddle-shaped: a V can only take film away, and here the frame needs more. Split the decal there with the Knife instead.": "Diese Stellen sind sattelförmig: Ein V kann nur Folie wegnehmen, der Rahmen braucht hier aber mehr. Teil das Decal dort lieber mit dem Messer.",
   "Drag to open or close the V. Wider takes out more film; all the way closed is a plain slit": "Ziehen, um das V zu öffnen oder zu schließen. Breiter nimmt mehr Folie weg; ganz zu ist ein einfacher Schlitz",
   "slit": "Schlitz",
