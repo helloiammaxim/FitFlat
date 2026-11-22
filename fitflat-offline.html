@@ -15055,7 +15055,7 @@ function setDartV(d, k, th) {
   const vs = d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? d.dartV[i] : null), j = dartPartner(d, k); vs[k] = +th.toFixed(1); if (j >= 0) vs[j] = vs[k]; d.dartV = vs;
   const was = d.res?.stretchMax || 0; d.stale = false; setBusy(tr('Unwrapping…'));
   setTimeout(() => { solveNow(d); reliefCache.map.clear(); setBusy(false); updateUI();
-    flash((th < 0.5 ? tr('Cut closed to a plain slit.') : tr('V opened to {0}°.').replace('{0}', th.toFixed(0))) + ' ' + tr('Stretch {0}% → {1}%.').replace('{0}', (was * 100).toFixed(1)).replace('{1}', ((d.res?.stretchMax || 0) * 100).toFixed(1))); }, 20);
+    flash((th < 0.5 ? tr('Cut closed to a plain slit.') : tr('V opened to {0}°.').replace('{0}', th.toFixed(0)) + (d.res?.darts?.[k]?.len3 ? ' ' + tr('Base {0} mm.').replace('{0}', (2 * d.res.darts[k].len3 * Math.sin(th * Math.PI / 360)).toFixed(1)) : '')) + ' ' + tr('Stretch {0}% → {1}%.').replace('{0}', (was * 100).toFixed(1)).replace('{1}', ((d.res?.stretchMax || 0) * 100).toFixed(1))); }, 20);
 }
 // add cuts with their V widths (null: picked automatically on the next unwrap)
 function addDarts(d, list) { const n0 = d.darts?.length || 0, vs = (d.dartV || []).slice(0, n0); while (vs.length < n0) vs.push(null);
@@ -15435,7 +15435,7 @@ function renderSheet() {
       const [t, m1, m2] = di.uvV.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; }), th = typeof d.dartV?.[k] === 'number' ? d.dartV[k] : di.angle || 0;
       const mx = (m1[0] + m2[0]) / 2, my = (m1[1] + m2[1]) / 2, L = Math.hypot(mx - t[0], my - t[1]) || 1, ux = (mx - t[0]) / L, uy = (my - t[1]) / L, h = th * Math.PI / 360, c = Math.cos(h), sn = Math.sin(h);
       const hx = t[0] + (ux * c - uy * sn) * L, hy = t[1] + (ux * sn + uy * c) * L;
-      sugg += `<g class="vh" data-d="${d.id}" data-k="${k}" data-t="${t[0].toFixed(2)},${t[1].toFixed(2)},${ux.toFixed(5)},${uy.toFixed(5)},${L.toFixed(2)}"><line class="vpre" x1="${t[0].toFixed(1)}" y1="${t[1].toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="#FFD60A" stroke-width="1.5" vector-effect="non-scaling-stroke" pointer-events="none" opacity="0"/><circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${Math.max(2.2, L * 0.07).toFixed(1)}" fill="#FFD60A" stroke="#111" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>${esc(tr('Drag to open or close the V. Wider takes out more film; all the way closed is a plain slit'))}</title></circle><text x="${(t[0] + ux * L * 1.18).toFixed(1)}" y="${(t[1] + uy * L * 1.18).toFixed(1)}" font-size="${Math.max(3, L * 0.16).toFixed(1)}" text-anchor="middle" fill="#FFD60A" font-family="Barlow, Arial, sans-serif" pointer-events="none">${th < 0.5 ? tr('slit') : th.toFixed(0) + '°'}</text></g>`; });
+      sugg += `<g class="vh" data-d="${d.id}" data-k="${k}" data-t="${t[0].toFixed(2)},${t[1].toFixed(2)},${ux.toFixed(5)},${uy.toFixed(5)},${L.toFixed(2)}"><line class="vpre" x1="${t[0].toFixed(1)}" y1="${t[1].toFixed(1)}" x2="${hx.toFixed(1)}" y2="${hy.toFixed(1)}" stroke="#FFD60A" stroke-width="1.5" vector-effect="non-scaling-stroke" pointer-events="none" opacity="0"/><circle cx="${hx.toFixed(1)}" cy="${hy.toFixed(1)}" r="${Math.max(2.2, L * 0.07).toFixed(1)}" fill="#FFD60A" stroke="#111" stroke-width="1.2" vector-effect="non-scaling-stroke"><title>${esc(tr('Drag to open or close the V. Wider takes out more film; all the way closed is a plain slit'))}</title></circle><text x="${(t[0] + ux * L * 1.18).toFixed(1)}" y="${(t[1] + uy * L * 1.18).toFixed(1)}" font-size="${Math.max(3, L * 0.16).toFixed(1)}" text-anchor="middle" fill="#FFD60A" font-family="Barlow, Arial, sans-serif" pointer-events="none">${th < 0.5 ? tr('slit') : 'V ' + (2 * L * Math.sin(th * Math.PI / 360)).toFixed(1) + ' mm'}</text></g>`; });
     const pd = [pts, ...hl].map(r => 'M' + r.map(([x,y]) => `${x.toFixed(1)} ${(y+oy).toFixed(1)}`).join('L') + 'Z').join(' ');
     // the colours stay inside the piece: the triangles along the edge reach past the outline
     if (pBins.some(b => b.length)) { const cid = 'hc' + p.id.replace(/[^\w-]/g, ''); s += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${pd}"/></clipPath><g clip-path="url(#${cid})" pointer-events="none">` + pBins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="#${(i < 6 ? heat(filmMax() * (i + 0.5) / 5) : foldHeat(foldAt() * (i - 6 + 0.5) / 5)).getHexString()}"/>` : '').join('') + '</g>'; }
@@ -15450,7 +15450,7 @@ function renderSheet() {
     cEl.addEventListener('pointermove', e => { const V = S.vDrag; if (!V || V.g !== g) return; const q = sheetPt(e.clientX, e.clientY); if (!q) return;
       const rx = q.x - V.tx, ry = q.y - V.ty, al = Math.atan2(V.ux * ry - V.uy * rx, V.ux * rx + V.uy * ry); let th = Math.min(60, Math.abs(al) * 360 / Math.PI); if (th < 1.5) th = 0; V.th = th;
       const h = Math.sign(al || 1) * th * Math.PI / 360, c = Math.cos(h), sn = Math.sin(h), hx = V.tx + (V.ux * c - V.uy * sn) * V.L, hy = V.ty + (V.ux * sn + V.uy * c) * V.L;
-      cEl.setAttribute('cx', hx); cEl.setAttribute('cy', hy); const ln = g.querySelector('.vpre'); ln.setAttribute('x2', hx); ln.setAttribute('y2', hy); g.querySelector('text').textContent = th < 0.5 ? tr('slit') : th.toFixed(0) + '°'; });
+      cEl.setAttribute('cx', hx); cEl.setAttribute('cy', hy); const ln = g.querySelector('.vpre'); ln.setAttribute('x2', hx); ln.setAttribute('y2', hy); g.querySelector('text').textContent = th < 0.5 ? tr('slit') : 'V ' + (2 * V.L * Math.sin(th * Math.PI / 360)).toFixed(1) + ' mm'; });
     cEl.addEventListener('pointerup', () => { const V = S.vDrag; S.vDrag = null; if (!V || V.g !== g || V.th === null) return; setDartV(S.decals.find(x => x.id === V.d), V.k, V.th); }); });
   svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => setActive(S.decals.find(d => d.id === +el.dataset.id))));
   const filmM2 = sh.w * (n * SH) / 1e6, use = filmM2 ? area / 1e6 / filmM2 * 100 : 0;
@@ -17881,6 +17881,7 @@ const DE = {
   "V width": "V-Breite",
   "Cut closed to a plain slit.": "Schnitt zu einem einfachen Schlitz geschlossen.",
   "V opened to {0}°.": "V auf {0}° geöffnet.",
+  "Base {0} mm.": "Basis {0} mm.",
   "Stretch {0}% → {1}%.": "Dehnung {0} % → {1} %.",
   "Finding the best V width…": "Beste V-Breite wird gesucht…",
   "Cut made on the frame. Stretch {0}% → {1}%. Drag its handles on the model (Edit mode) to adjust it, or undo.": "Schnitt am Rahmen gesetzt. Dehnung {0} % → {1} %. Zieh seine Griffe am Modell (Bearbeiten-Modus), um ihn anzupassen, oder mach ihn rückgängig.",
