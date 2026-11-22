@@ -4754,7 +4754,8 @@ function renderRelief() {
 let reliefMarkKey = '';
 function drawReliefMarks() {
   const el = $('#reliefMarks'); if (!el) return;
-  const L = S.model && reliefOnModel() && !press && !S.drawing ? reliefTargets().map(d => d) : [], items = [];
+  // no tags on the model: in Knife mode they would catch the clicks meant for the knife line (the lines alone show the spots)
+  const L = [], items = [];
   for (const d of L) reliefSuggest(d).forEach((c, i) => { if (c.kind === 'notch') items.push({ d, c, i }); });
   if (!items.length) { if (!el.hidden) { el.hidden = true; el.innerHTML = ''; reliefMarkKey = ''; } return; }
   const key = items.map(x => x.d.id + ':' + x.i + x.c.kind + Math.round(x.c.theta) + ':' + x.c.mouth.toFixed(1)).join(',');
