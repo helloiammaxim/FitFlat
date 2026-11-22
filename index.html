@@ -4825,17 +4825,19 @@ function splitAtSpot(d, c) {
   const inO = pt => { let q = false; for (let a = 0, b = N - 1; a < N; b = a++) { const [xi, yi] = O[a], [xj, yj] = O[b]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) q = !q; } return q; };
   // which side of the mirror the spot is on: a split must stay on that side (the mirror copy is made from it)
   const pl = d.mirror ? mirrorPlane() : null, h0 = flatTo3(tri, [s0[0] + n0[0] * 2, s0[1] + n0[1] * 2]), side = pl && h0 ? Math.sign(h0.point[pl.k] - pl.c) : 0;
-  // the shortest straight line from the spot to the other edge that stays inside the piece: the neck where the tube turns into the joint
-  let best = null;
-  for (let q = 0; q < N; q++) { const e = O[q], dx = e[0] - s0[0], dy = e[1] - s0[1], L = Math.hypot(dx, dy); if (L < 4 || (best && L >= best.L)) continue;
-    if ((dx * n0[0] + dy * n0[1]) / L < Math.cos(Math.PI / 4)) continue;
-    let ok = true; for (let t = 0.06; t < 0.95 && ok; t += 0.06) { const pt = [s0[0] + dx * t, s0[1] + dy * t]; if (!inO(pt)) ok = false;
-      else if (side) { const h = flatTo3(tri, pt); if (h && Math.sign(h.point[pl.k] - pl.c) !== side && Math.abs(h.point[pl.k] - pl.c) > 0.5) ok = false; } }
-    if (ok) best = { e, L, dir: [dx / L, dy / L] }; }
-  if (!best) { flash(tr('Couldn\'t split here. Draw the cut with the Knife instead.')); return; }
+  // follow the suggested line itself: straight on from the edge, through the spot, until it leaves the piece
+  // (on a mirrored decal: or reaches the mirror line, where the mirror copy of the cut carries on)
+  let span = 0; for (const o of O) span = Math.max(span, Math.hypot(o[0] - s0[0], o[1] - s0[1]));
+  let end = 0, hitPlane = false; for (let t = 1; t <= span + 1; t += 0.5) { const pt = [s0[0] + n0[0] * t, s0[1] + n0[1] * t]; if (!inO(pt)) { if (t > 3) break; else continue; }
+    if (side) { const h = flatTo3(tri, pt); if (h && Math.sign(h.point[pl.k] - pl.c) !== side && Math.abs(h.point[pl.k] - pl.c) > 0.3) { hitPlane = true; break; } }
+    end = t; }
+  if (end < 4) { flash(tr('Couldn\'t split here. Draw the cut with the Knife instead.')); return; }
+  const best = { L: end + (side ? 0 : 1), dir: n0 };
   const K = []; let gap = true;
-  for (let t = -3; t <= best.L + 3; t += 0.6) { const h = flatTo3(tri, [s0[0] + best.dir[0] * t, s0[1] + best.dir[1] * t]); if (!h) { gap = true; continue; } K.push({ point: h.point, face: h.face, brk: gap }); gap = false; }
+  for (let t = -3; t <= best.L + (side ? 0.5 : 3); t += 0.6) { const h = flatTo3(tri, [s0[0] + best.dir[0] * t, s0[1] + best.dir[1] * t]); if (!h) { gap = true; continue; } K.push({ point: h.point, face: h.face, brk: gap }); gap = false; }
   if (K.length < 3) { flash(tr('Couldn\'t split here. Draw the cut with the Knife instead.')); return; }
+  // it reached the mirror line: carry on with its mirror image, so it is one cut from edge to edge
+  if (hitPlane) { const back = K.slice().reverse().map(k => { const sn = Core.closestPoint(S.model.mesh, S.model.grid, reflect(k.point), 50); return sn ? { point: sn.point, face: sn.face, brk: false } : null; }).filter(Boolean); K.push(...back); }
   // hand it to the Knife as a ready-drawn line: you see where it goes, redraw it if you like, Enter splits (mirrored decals on both sides)
   S.knifeThrough = false; setMode('knife');
   const run = K.map(k => ({ point: k.point, face: k.face })); run.unshift(null); run.push(null);
