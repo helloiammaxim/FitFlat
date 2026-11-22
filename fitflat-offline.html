@@ -11800,7 +11800,7 @@ const Core = (() => {
     }
     // the outline (and both sides of every cut) keeps its true length: on the sheet it has to match the line on the frame,
     // so its edges are held much harder than the inside, which takes the distortion instead
-    const BW = 40, bE = new Set(); for (const [a, b] of bnd) bE.add(a < b ? K(a, b) : K(b, a));
+    const BW = 40, BWS = 4, bE = new Set(); for (const [a, b] of bnd) bE.add(a < b ? K(a, b) : K(b, a));
     // a cut that closes on the frame isn't a free edge: its two sides come out the same length by themselves, holding them
     // stiff would only put a rigid strip through the middle of the piece
     for (const dv of dartV) for (const L of [dv.A, dv.B]) for (let z = 0; z + 1 < L.length; z++) { const a = L[z], b = L[z+1]; bE.delete(a < b ? K(a, b) : K(b, a)); }
@@ -11808,12 +11808,16 @@ const Core = (() => {
     for (let f = 0; f < m; f++) { if (keepFaces && keepFaces.has(faces[f])) faceB[f] = 1; else for (let k = 0; k < 3; k++) { const a = lf[f][k], b = lf[f][(k+1)%3]; if (bE.has(a < b ? K(a, b) : K(b, a))) faceB[f] = 1; } }
     // every edge of a triangle the outline runs through, or that lies on the border, is held
     const vB = new Uint8Array(n); for (let f = 0; f < m; f++) if (faceB[f]) for (const v of lf[f]) vB[v] = 1;
+    // with the film pulled tight the edge may come out a little shorter than on the frame (the installer stretches it to
+    // the line, within the film's limit) but never longer (that would be film that folds): an edge that is short is let go
+    const relaxB = new Set();
     const isB = (i, j) => vB[i] && vB[j];
+    const bw = (i, j) => !isB(i, j) ? 1 : relaxB.has(i < j ? K(i, j) : K(j, i)) ? BWS : BW;
     const buildEdges = (clamp) => {
       const em = new Map();
       for (let f = 0; f < m; f++) for (let k = 0; k < 3; k++) {
         const i = lf[f][(k+1)%3], j = lf[f][(k+2)%3];
-        let w = cot[f*3+k] / 2; if (clamp) w = Math.min(Math.max(w, 0.005), 50) * (isB(i, j) ? BW : 1);
+        let w = cot[f*3+k] / 2; if (clamp) w = Math.min(Math.max(w, 0.005), 50) * bw(i, j);
         const key = i<j?K(i,j):K(j,i); em.set(key, (em.get(key)||0) + w);
       }
       const E = new Float64Array(em.size*3); let q = 0;
@@ -11854,10 +11858,13 @@ const Core = (() => {
     let u = new Float64Array(n), v = new Float64Array(n);
     for (let i = 0; i < n; i++) { u[i] = x[i]*sc*(sa<0?-1:1); v[i] = x[n+i]*sc; }
     // --- ARAP ---
-    const E1 = buildEdges(true);
+    let E1 = buildEdges(true);
     const dg = new Float64Array(n);
-    for (let q = 0; q < E1.length; q += 3) { dg[E1[q]] += E1[q+2]; dg[E1[q+1]] += E1[q+2]; }
-    for (let i = 0; i < n; i++) if (!(dg[i] > 1e-12)) dg[i] = 1;
+    const setDg = () => { dg.fill(0); for (let q = 0; q < E1.length; q += 3) { dg[E1[q]] += E1[q+2]; dg[E1[q+1]] += E1[q+2]; } for (let i = 0; i < n; i++) if (!(dg[i] > 1e-12)) dg[i] = 1; };
+    setDg();
+    // the held edges, with their length on the frame: checked each round once the film is pulled tight
+    const edgeR = new Map(), heldE = []; { const seen = new Set(); for (let f = 0; f < m; f++) if (faceB[f]) for (let k = 0; k < 3; k++) { const i = lf[f][k], j = lf[f][(k+1)%3]; if (!(vB[i] && vB[j])) continue; const key = i < j ? K(i, j) : K(j, i); if (seen.has(key)) continue; seen.add(key);
+      const g1 = gv[i]*3, g2 = gv[j]*3; heldE.push([i, j, key, Math.hypot(P[g1]-P[g2], P[g1+1]-P[g2+1], P[g1+2]-P[g2+2])]); } }
     const applyL = (s, y) => { y.fill(0); for (let q = 0; q < E1.length; q += 3) { const i=E1[q], j=E1[q+1], w=E1[q+2], dd=s[i]-s[j]; y[i]+=w*dd; y[j]-=w*dd; } };
     const freeA = new Uint8Array(n).fill(1); freeA[pa] = 0;
     // cuts with a V angle: B's position follows from A's and the tip's (expand), and B's pull is handed back to them (fold)
@@ -11874,7 +11881,7 @@ const Core = (() => {
       for (let i = 0; i < n; i++) { dgD[i] = dg[i]; dgD[n + i] = dg[i]; const f = depD[i] || i === pin ? 0 : 1; freeD[i] = f; freeD[n + i] = f; } }
     void yD;
     const bu = new Float64Array(n), bv = new Float64Array(n);
-    const wc = (f,k) => Math.min(Math.max(cot[f*3+k]/2, 0.005), 50) * (isB(lf[f][(k+1)%3], lf[f][(k+2)%3]) ? BW : 1);
+    const wc = (f,k) => Math.min(Math.max(cot[f*3+k]/2, 0.005), 50) * bw(lf[f][(k+1)%3], lf[f][(k+2)%3]);
     // ARAP: each triangle wants its own shape back (a rotation of it). With shrink, film is pulled tight like on the bike:
     // a triangle may come out smaller than on the frame, by up to `shrink` in any direction, but never bigger; so the
     // curvature goes into tension (the installer stretches it into place) instead of extra film that wrinkles
@@ -11886,6 +11893,10 @@ const Core = (() => {
     for (let it = 0; it < iters; it++) {
       bu.fill(0); bv.fill(0);
       const limAll = it >= warm && lo < 1;
+      if (limAll) { let ch = false; // an edge pulled shorter may stay that short, and is held more softly so it can give
+        for (const [i, j, key, L3] of heldE) { const r = Math.hypot(u[i]-u[j], v[i]-v[j]) / L3; edgeR.set(key, Math.min(1, Math.max(lo, r)));
+          const soft = r < 0.999; if (soft !== relaxB.has(key)) { ch = true; if (soft) relaxB.add(key); else relaxB.delete(key); } }
+        if (ch) { E1 = buildEdges(true); setDg(); if (dartV.length) for (let i = 0; i < n; i++) { dgD[i] = dg[i]; dgD[n + i] = dg[i]; } } }
       for (let f = 0; f < m; f++) {
         const lim = limAll; // edge triangles may shrink too: their length along the edge is still held by the edge weights
         let s00=0,s01=0,s10=0,s11=0,m00=0,m01=0,m11=0;
@@ -11910,7 +11921,8 @@ const Core = (() => {
         for (let k = 0; k < 3; k++) {
           const a=(k+1)%3, b=(k+2)%3, i=lf[f][a], j=lf[f][b], w=wc(f,k);
           const dx=X[f*6+2*a]-X[f*6+2*b], dy=X[f*6+2*a+1]-X[f*6+2*b+1];
-          const rx = T00*dx + T01*dy, ry = T10*dx + T11*dy;
+          let rx = T00*dx + T01*dy, ry = T10*dx + T11*dy;
+          if (limAll && vB[i] && vB[j]) { const r = edgeR.get(i < j ? K(i, j) : K(j, i)); if (r !== undefined) { const tl = Math.hypot(rx, ry), L = Math.hypot(dx, dy) * r; if (tl > 1e-12) { rx *= L / tl; ry *= L / tl; } } } // held edge: its own length, never over the frame's
           bu[i]+=w*rx; bv[i]+=w*ry; bu[j]-=w*rx; bv[j]-=w*ry;
         }
       }

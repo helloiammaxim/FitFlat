@@ -289,7 +289,7 @@ If a piece is larger than the sheet, increase the sheet or split the decal.
 ### Film
 Pick your film in **Film** (PPF gloss or matte, cast or calendered vinyl, or Custom) and set its **Max stretch**. The stretch colours, the badges in the list and the relief-cut suggestions all use this limit. The presets are starting points; check your film's data sheet.
 
-The **outline keeps its true length** on the sheet, and so do both sides of every relief cut: the edge of a piece matches the line it follows on the frame, and the distortion a curved spot needs goes into the inside of the piece instead.
+The **outline is never longer than on the frame.** Film that is too long at the edge would wrinkle, so where the frame bulges the edge keeps its true length and the extra film shows up as excess (blue), the place for a V-notch: its base is the film that comes out. Where the frame is saddle-shaped, the edge may come out a little shorter than the frame, within the film's stretch limit, and the installer stretches it to the line (red at the edge instead of false blue inside). With **Pull film tight** off, the outline keeps exactly its true length everywhere.
 
 **Pull film tight** (on by default) unwraps the way an installer applies film: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch), never bigger. The curve then goes into tension, which the film handles, instead of extra film that wrinkles. Straight tubes stay true to size. Turn it off for exact sizes everywhere.
 
