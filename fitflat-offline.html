@@ -11890,10 +11890,12 @@ const Core = (() => {
     // result each round lets the inside creep smaller and smaller against the held edge
     const sxF = new Float64Array(m).fill(-1), syF = new Float64Array(m);
     const iters = (n > 20000 ? 8 : 18) + (shrink > 0 ? 8 : 0);
+    const u0 = u.slice(), v0 = v.slice();
+    const runArap = (adapt) => {
     for (let it = 0; it < iters; it++) {
       bu.fill(0); bv.fill(0);
       const limAll = it >= warm && lo < 1;
-      if (limAll) { let ch = false; // an edge pulled shorter may stay that short, and is held more softly so it can give
+      if (limAll && adapt) { let ch = false; // an edge pulled shorter may stay that short, and is held more softly so it can give
         for (const [i, j, key, L3] of heldE) { const r = Math.hypot(u[i]-u[j], v[i]-v[j]) / L3; edgeR.set(key, Math.min(1, Math.max(lo, r)));
           const soft = r < 0.999; if (soft !== relaxB.has(key)) { ch = true; if (soft) relaxB.add(key); else relaxB.delete(key); } }
         if (ch) { E1 = buildEdges(true); setDg(); if (dartV.length) for (let i = 0; i < n; i++) { dgD[i] = dg[i]; dgD[n + i] = dg[i]; } } }
@@ -11906,15 +11908,18 @@ const Core = (() => {
           s00+=w*du*dx; s01+=w*du*dy; s10+=w*dv*dx; s11+=w*dv*dy; m00+=w*dx*dx; m01+=w*dx*dy; m11+=w*dy*dy;
         }
         let T00, T01, T10, T11;
-        if (!lim) { const th = Math.atan2(s10 - s01, s00 + s11), c = Math.cos(th), s = Math.sin(th); T00 = c; T01 = -s; T10 = s; T11 = c; }
+        // a sliver (or a triangle turned inside out) gives no usable size: it only gets its rotation back
+        const mdet = m00*m11 - m01*m01, sliver = !(mdet > 1e-6 * (m00 + m11) * (m00 + m11)) || (s00*s11 - s01*s10) <= 0;
+        if (!lim || sliver) { const th = Math.atan2(s10 - s01, s00 + s11), c = Math.cos(th), s = Math.sin(th); T00 = c; T01 = -s; T10 = s; T11 = c; }
         else { // best linear fit J, then its stretch factors limited to [lo, 1]
           const det = m00*m11 - m01*m01 || 1e-12, a = (s00*m11 - s01*m01)/det, b = (s01*m00 - s00*m01)/det, c = (s10*m11 - s11*m01)/det, d = (s11*m00 - s10*m01)/det;
           const E=(a+d)/2, F=(a-d)/2, G=(c+b)/2, H=(c-b)/2, Q=Math.hypot(E,H), R=Math.hypot(F,G), a1=Math.atan2(G,F), a2=Math.atan2(H,E), th=(a2-a1)/2, ph=(a2+a1)/2;
           // bigger than the frame: back to true size; smaller: only a weak pull back, so tension is cheap but never free
           const pull = q => { const c = Math.min(1, Math.max(lo, q)); return c + (1 - c) * 0.6; };
-          if (sxF[f] < 0) { sxF[f] = pull(Q+R); syF[f] = pull(Q-R); }
+          if (sxF[f] < 0 || !isFinite(sxF[f])) { sxF[f] = pull(Q+R); syF[f] = pull(Q-R); }
           // still coming out bigger than the frame (pushed by its neighbours): ask it to shrink more, down to the limit
-          else { if (Q+R > 1.002) sxF[f] = Math.max(lo, sxF[f] / (Q+R)); if (Q-R > 1.002) syF[f] = Math.max(lo, syF[f] / (Q-R)); }
+          // (only a sane triangle, and only a little per round: a folded or wild one would send it off)
+          else if (adapt && Q+R < 1.5 && Q-R > 0.5) { if (Q+R > 1.002) sxF[f] = Math.max(lo, sxF[f] / Math.min(1.02, Q+R)); if (Q-R > 1.002) syF[f] = Math.max(lo, syF[f] / Math.min(1.02, Q-R)); }
           const sx = sxF[f], sy = syF[f], ct=Math.cos(th), st=Math.sin(th), cp=Math.cos(ph), sp=Math.sin(ph);
           T00 = cp*sx*ct - sp*sy*st; T01 = -cp*sx*st - sp*sy*ct; T10 = sp*sx*ct + cp*sy*st; T11 = -sp*sx*st + cp*sy*ct;
         }
@@ -11922,7 +11927,7 @@ const Core = (() => {
           const a=(k+1)%3, b=(k+2)%3, i=lf[f][a], j=lf[f][b], w=wc(f,k);
           const dx=X[f*6+2*a]-X[f*6+2*b], dy=X[f*6+2*a+1]-X[f*6+2*b+1];
           let rx = T00*dx + T01*dy, ry = T10*dx + T11*dy;
-          if (limAll && vB[i] && vB[j]) { const r = edgeR.get(i < j ? K(i, j) : K(j, i)); if (r !== undefined) { const tl = Math.hypot(rx, ry), L = Math.hypot(dx, dy) * r; if (tl > 1e-12) { rx *= L / tl; ry *= L / tl; } } } // held edge: its own length, never over the frame's
+          if (limAll && adapt && vB[i] && vB[j]) { const r = edgeR.get(i < j ? K(i, j) : K(j, i)); if (r !== undefined) { const tl = Math.hypot(rx, ry), L = Math.hypot(dx, dy) * r; if (tl > 1e-12) { rx *= L / tl; ry *= L / tl; } } } // held edge: its own length, never over the frame's
           bu[i]+=w*rx; bv[i]+=w*ry; bu[j]-=w*rx; bv[j]-=w*ry;
         }
       }
@@ -11940,6 +11945,15 @@ const Core = (() => {
       cgSolve(applyL, dg, bv, v, freeA, 1e-7, 600);
       }
     }
+    };
+    // how good a result is: triangles turned inside out first, then the worst distortion
+    const quality = () => { let fl = 0, worst = 0; for (let f = 0; f < m; f++) { const [i,j,k] = lf[f]; const U0 = u[j]-u[i], U1 = u[k]-u[i], V0 = v[j]-v[i], V1 = v[k]-v[i];
+      const x1 = X[f*6+2], x2 = X[f*6+4], y2 = X[f*6+5], a = U0/x1, b = (-U0*x2/x1 + U1)/y2, c = V0/x1, d = (-V0*x2/x1 + V1)/y2; if (a*d - b*c <= 0) fl++;
+      const E = (a+d)/2, F = (a-d)/2, G = (c+b)/2, H = (c-b)/2, Q = Math.hypot(E,H), R = Math.hypot(F,G); worst = Math.max(worst, Math.abs(Q+R-1), Math.abs(Math.abs(Q-R)-1)); } return { fl, worst }; };
+    runArap(lo < 1);
+    if (lo < 1) { const q1 = quality(); if (q1.fl > 0 || q1.worst > 0.5) { // pulling tight went wrong on this piece: unwrap it again the plain way and keep the better one
+      const u1 = u.slice(), v1 = v.slice(); u.set(u0); v.set(v0); sxF.fill(-1); edgeR.clear(); if (relaxB.size) { relaxB.clear(); E1 = buildEdges(true); setDg(); if (dartV.length) for (let i = 0; i < n; i++) { dgD[i] = dg[i]; dgD[n + i] = dg[i]; } }
+      runArap(false); const q2 = quality(); if (q2.fl > q1.fl || (q2.fl === q1.fl && q2.worst >= q1.worst)) { u.set(u1); v.set(v1); } } }
     // stretch per face
     const stretch = new Float64Array(m), sv = new Float64Array(m * 2); let flips = 0;
     for (let f = 0; f < m; f++) {
@@ -15162,7 +15176,7 @@ function renderList() {
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
     const plain = !d.partOf && d.liveOf == null; // parts and live pieces get their own short set of actions
-    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.closed && !d.holeOf && d.res && !d.res.error && d.res.stretchMax >= reliefAt() ? '<button data-a="relief" title="Cut where the film stretches too much: V-notches where it would wrinkle, slits where it has to stretch. The tags on the model make one cut at a time">Relief cuts</button>' : ''}${d.darts?.length ? `<button data-a="undart" title="${esc(tr('Take the relief cuts (V-notches and slits) out of this decal again'))}">${esc(tr('Remove relief cuts'))} (${d.darts.length})</button>` : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
+    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.darts?.length ? `<button data-a="undart" title="${esc(tr('Take all V-notches out of this decal again (Ctrl+Z brings them back)'))}">${esc(tr('Remove cuts'))} (${d.darts.length})</button>` : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, [d]); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
@@ -18066,6 +18080,8 @@ const DE = {
   "Add three print-and-cut registration marks and keep pieces clear of them": "Drei Passermarken für Print-and-Cut hinzufügen und die Teile davon freihalten",
   "Weeding boxes": "Entgitterrahmen",
   "Stretch map": "Dehnungskarte",
+  "Take all V-notches out of this decal again (Ctrl+Z brings them back)": "Alle V-Kerben wieder aus diesem Decal nehmen (Strg+Z holt sie zurück)",
+  "Remove cuts": "Schnitte entfernen",
   "Add the stretch and excess colours as their own layer under the cut lines, with a legend, to check the pieces in other vector software. Hide or delete that layer before cutting": "Die Farben für Dehnung und Überschuss als eigene Ebene unter den Schnittlinien hinzufügen, mit Legende, um die Teile in anderer Vektorsoftware zu prüfen. Diese Ebene vor dem Schneiden ausblenden oder löschen",
   "stretch up to {0}%": "Dehnung bis {0} %",
   "stretch": "Dehnung",
