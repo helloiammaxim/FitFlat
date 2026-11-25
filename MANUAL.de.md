@@ -46,10 +46,38 @@ Der **?**-Knopf oben startet eine kurze Tour, die auf die wichtigsten Bedienelem
 
 ## 2. Einen Rahmen laden
 
+
 ### Eigenes Modell öffnen
 **Öffnen** einer `.glb`-, `.gltf`-, `.obj`- oder `.stl`-Datei, oder die Datei auf die 3D-Ansicht ziehen. Das Fenster **Modellgröße prüfen** zeigt die Größe des Modells in Millimetern, Zentimetern, Metern und Zoll, die erkannte Einheit ist markiert — wähle die, die die echte Größe ergibt. Alles (Decals, Dehnung, Schneidebogen) wird daraus gemessen, und eine falsche Einheit lässt auch das Zoomen falsch wirken. Später änderst du sie über *Modelleinheit* in der oberen Leiste. STL-Dateien werden mit Z nach oben gelesen, wie Blender und CAD-Programme sie exportieren.
 
 Das echte Rahmenmodell ergibt die genauesten Produktionsschnitte.
+
+### Das Modell vorbereiten (Export-Einstellungen)
+**Lage:** Der Rahmen steht wie beim Fahren, vorne (Steuerrohr und Gabel) Richtung **+X**, Antriebsseite (Kettenblatt) Richtung **−Y**, Mittelebene des Rahmens bei Y = 0. In Blender und Plasticity ist das das Rad von der Seite in der *Front*-Ansicht. Andere Richtungen gehen auch; nur die erste Ansicht ändert sich.
+
+**Hochachse:** FitFlat liest `.glb`/`.gltf` und `.obj` mit **Y nach oben** (der übliche Standard) und `.stl` mit **Z nach oben**. Wenn in der Größenangabe oben Höhe und Breite vertauscht sind, liegt das Modell auf der Seite: mit der richtigen Hochachse neu exportieren.
+
+**Nur der Rahmen:** Rahmen (und Gabel) als ein Objekt exportieren, ohne Laufräder, Anbauteile oder Boden. Einseitige Teile möglichst weglassen (Schaltauge, Bremsaufnahme): Sie verschieben die Mitte, um die **Ebene: auto** spiegelt.
+
+**Plasticity** — *File › Export*, *Wavefront OBJ (.obj)*:
+
+| Option | Einstellung für FitFlat |
+|---|---|
+| Topology | **Tris** |
+| Face Angle Tolerance | **0.15** (High Poly) |
+| Edge Angle Tolerance | **0.15** |
+| Face Plane Tolerance | **0.005** (cm, = 0,05 mm) |
+| Max Width | etwa **0.4** cm (4 mm, die Größe, mit der FitFlat arbeitet) |
+| Simplify Radial Surfaces | an (gleichmäßige Ringe um die Rohre) |
+| Remove Small Features | aus |
+| Up Axis | **Y** |
+| Scale | 1, dann die Einheit in FitFlats Fenster *Modellgröße prüfen* wählen |
+
+**Blender** — *Datei › Exportieren › glTF 2.0*, Format *glTF Binary (.glb)*: *Include › Selected Objects*, *Transform › +Y Up* an (Standard), *Mesh › Apply Modifiers* an. Oder *Wavefront (.obj)* mit *Up: Y*, *Forward: −Z* (Standard). Vorher Drehung und Maßstab anwenden (Strg+A).
+
+**CAD (SolidWorks, Fusion, Onshape, Rhino)** — STL oder OBJ mit feiner Flächenabweichung exportieren (Sehnentoleranz etwa **0,05 mm**, Winkel etwa **10°**) und, falls angeboten, maximaler Kantenlänge um 4 mm.
+
+**Wie viele Dreiecke:** 50.000–300.000, gleichmäßig verteilt, sind ideal. Runde Rohre brauchen mindestens **32 Seiten** rundherum (64 sind besser); lange, dünne Dreiecke aus CAD schaden der Genauigkeit mehr als eine kleine Anzahl. FitFlat teilt große Dreiecke selbst auf etwa 4 mm (bis 400.000). Bis etwa 500.000 Dreiecke läuft es flüssig; über etwa 2 Millionen kann dem Browser der Speicher ausgehen. 3D-Scans vorher auf etwa 300.000–500.000 ausdünnen (Blender: *Decimate* oder *Remesh*).
 
 ### Rahmen aus Geometrie bauen
 **Rahmen aus Geometrie** baut einen Rahmen aus Zahlen:

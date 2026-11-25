@@ -51,6 +51,34 @@ The **?** button at the top starts a short tour that points at the main controls
 
 The real frame model gives the most accurate production patterns.
 
+
+### Preparing the model (export settings)
+**Position:** the frame standing as it rides, front (head tube and fork) towards **+X**, drive side (chainring) towards **−Y**, centre plane of the frame at Y = 0. In Blender and Plasticity that is the bike seen from the side in the *Front* view. Facing another way still works; only the first view changes.
+
+**Up axis:** FitFlat reads `.glb`/`.gltf` and `.obj` as **Y up** (the usual standard) and `.stl` as **Z up**. If the size shown at the top has height and width swapped, the model came in lying on its side: export again with the right up axis.
+
+**Only the frame:** export the frame (and fork) as one object, without wheels, components or a floor. Leave out one-sided parts if you can (derailleur hanger, disc mount): they move the middle that **Plane: auto** mirrors around.
+
+**Plasticity** — *File › Export*, *Wavefront OBJ (.obj)*:
+
+| Option | Setting for FitFlat |
+|---|---|
+| Topology | **Tris** |
+| Face Angle Tolerance | **0.15** (high poly) |
+| Edge Angle Tolerance | **0.15** |
+| Face Plane Tolerance | **0.005** (cm, = 0.05 mm) |
+| Max Width | about **0.4** cm (4 mm, the size FitFlat works with) |
+| Simplify Radial Surfaces | on (even rings around tubes) |
+| Remove Small Features | off |
+| Up Axis | **Y** |
+| Scale | 1, then pick the unit in FitFlat's *Check the model size* window |
+
+**Blender** — *File › Export › glTF 2.0*, format *glTF Binary (.glb)*: *Include › Selected Objects*, *Transform › +Y Up* on (default), *Mesh › Apply Modifiers* on. Or *Wavefront (.obj)* with *Up: Y*, *Forward: −Z* (defaults). Apply rotation and scale first (Ctrl+A).
+
+**CAD (SolidWorks, Fusion, Onshape, Rhino)** — export STL or OBJ with a fine surface deviation (chord tolerance about **0.05 mm**, angle about **10°**) and, if offered, a maximum edge length of about 4 mm.
+
+**How many triangles:** 50,000–300,000, evenly spread, is ideal. Round tubes need at least **32 sides** around (64 is better); long thin triangles from CAD hurt accuracy more than a low count. FitFlat splits large triangles down to about 4 mm itself (up to 400,000). Up to about 500,000 triangles runs smoothly; above about 2 million the browser can run out of memory. Thin out 3D scans to about 300,000–500,000 first (Blender: *Decimate* or *Remesh*).
+
 ### Build a frame from geometry
 **Frame from geometry** builds a frame from numbers:
 

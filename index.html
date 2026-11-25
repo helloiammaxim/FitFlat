@@ -2105,7 +2105,41 @@ ${weed ? `<g id="weed">\n${weed}</g>\n` : ''}
 ${opts.labels ? `<g id="labels">\n${lab}</g>\n` : ''}</svg>`;
   }
 
-  return { fitCurves, handlesFor, splitAt, computeRegion, flatten, weld, subdivide, topology, buildGrid, closestPoint, catmull, sampleOutline, solveDecal, pack, buildSVG, closestOnTri };
+  // a box tree over the triangles, so a view ray only tests the few it passes near (picking under the mouse on big models)
+  function buildBVH(mesh) {
+    const P = mesh.pos, T = mesh.tri, nf = T.length / 3, order = new Uint32Array(nf), cen = new Float32Array(nf * 3), tb = new Float32Array(nf * 6);
+    for (let f = 0; f < nf; f++) { order[f] = f; for (let d = 0; d < 3; d++) { const a = P[T[3*f]*3+d], b = P[T[3*f+1]*3+d], c = P[T[3*f+2]*3+d];
+      const lo = Math.min(a, b, c), hi = Math.max(a, b, c); tb[f*6+d] = lo; tb[f*6+3+d] = hi; cen[f*3+d] = (lo + hi) / 2; } }
+    const cap = Math.max(16, Math.ceil(nf / 2) * 2 + 8); let box = new Float32Array(cap * 6), kid = new Int32Array(cap * 2), rng = new Uint32Array(cap * 2), nn = 0;
+    const stack = [[0, nf, nn++]];
+    while (stack.length) { const [s0, e0, id] = stack.pop(); let lo = [1e30, 1e30, 1e30], hi = [-1e30, -1e30, -1e30], cl = [1e30, 1e30, 1e30], ch = [-1e30, -1e30, -1e30];
+      for (let i = s0; i < e0; i++) { const f = order[i]; for (let d = 0; d < 3; d++) { lo[d] = Math.min(lo[d], tb[f*6+d]); hi[d] = Math.max(hi[d], tb[f*6+3+d]); cl[d] = Math.min(cl[d], cen[f*3+d]); ch[d] = Math.max(ch[d], cen[f*3+d]); } }
+      for (let d = 0; d < 3; d++) { box[id*6+d] = lo[d]; box[id*6+3+d] = hi[d]; }
+      if (e0 - s0 <= 8) { kid[id*2] = -1; rng[id*2] = s0; rng[id*2+1] = e0; continue; }
+      const ax = [0, 1, 2].reduce((m, d) => ch[d] - cl[d] > ch[m] - cl[m] ? d : m, 0), mid = (cl[ax] + ch[ax]) / 2;
+      let i = s0, j = e0 - 1; while (i <= j) { if (cen[order[i]*3+ax] < mid) i++; else { const t = order[i]; order[i] = order[j]; order[j] = t; j--; } }
+      let m = i; if (m === s0 || m === e0) m = (s0 + e0) >> 1; // all centres in one spot: split by count
+      if (nn + 2 > box.length / 6) { const nb = new Float32Array(box.length * 2); nb.set(box); box = nb; const nk = new Int32Array(kid.length * 2); nk.set(kid); kid = nk; const nr = new Uint32Array(rng.length * 2); nr.set(rng); rng = nr; }
+      const l = nn++, r = nn++; kid[id*2] = l; kid[id*2+1] = r; stack.push([s0, m, l], [m, e0, r]); }
+    return { box, kid, rng, order };
+  }
+  // the nearest triangle a ray (origin o, direction d) hits, either side; null if none
+  function rayBVH(bvh, mesh, o, d) {
+    const { box, kid, rng, order } = bvh, P = mesh.pos, T = mesh.tri, inv = [1 / d[0], 1 / d[1], 1 / d[2]];
+    let best = Infinity, face = -1; const st = [0];
+    while (st.length) { const n = st.pop();
+      let t0 = 0, t1 = best; for (let k = 0; k < 3; k++) { let a = (box[n*6+k] - o[k]) * inv[k], b = (box[n*6+3+k] - o[k]) * inv[k]; if (a > b) { const t = a; a = b; b = t; } if (a > t0) t0 = a; if (b < t1) t1 = b; if (t0 > t1) break; }
+      if (t0 > t1) continue;
+      if (kid[n*2] >= 0) { st.push(kid[n*2], kid[n*2+1]); continue; }
+      for (let i = rng[n*2]; i < rng[n*2+1]; i++) { const f = order[i], A = T[3*f]*3, B = T[3*f+1]*3, C = T[3*f+2]*3;
+        const e1x = P[B]-P[A], e1y = P[B+1]-P[A+1], e1z = P[B+2]-P[A+2], e2x = P[C]-P[A], e2y = P[C+1]-P[A+1], e2z = P[C+2]-P[A+2];
+        const px = d[1]*e2z - d[2]*e2y, py = d[2]*e2x - d[0]*e2z, pz = d[0]*e2y - d[1]*e2x, det = e1x*px + e1y*py + e1z*pz; if (Math.abs(det) < 1e-12) continue;
+        const id = 1 / det, tx = o[0]-P[A], ty = o[1]-P[A+1], tz = o[2]-P[A+2], u = (tx*px + ty*py + tz*pz) * id; if (u < 0 || u > 1) continue;
+        const qx = ty*e1z - tz*e1y, qy = tz*e1x - tx*e1z, qz = tx*e1y - ty*e1x, v = (d[0]*qx + d[1]*qy + d[2]*qz) * id; if (v < 0 || u + v > 1) continue;
+        const t = (e2x*qx + e2y*qy + e2z*qz) * id; if (t > 1e-9 && t < best) { best = t; face = f; } } }
+    return face < 0 ? null : { face, t: best };
+  }
+  return { fitCurves, handlesFor, splitAt, computeRegion, flatten, weld, subdivide, topology, buildGrid, closestPoint, catmull, sampleOutline, solveDecal, pack, buildSVG, closestOnTri, buildBVH, rayBVH };
 })();
 if (typeof module !== 'undefined') module.exports = Core;
 
@@ -2237,7 +2271,8 @@ function prepModel(raw, sc) {
   if (mesh.tri.length / 3 < 350000) mesh = Core.subdivide(mesh, L, 400000);
   const topo = Core.topology(mesh); mesh._topo = topo;
   const grid = Core.buildGrid(mesh, Math.max(L, topo.medianEdge) * 2); grid.L = L;
-  return { mesh, topo, grid, L, diag, mn, mx, size, lineR: Math.max(diag * 0.0011, L * 0.12) };
+  const bvh = Core.buildBVH(mesh);
+  return { mesh, topo, grid, bvh, L, diag, mn, mx, size, lineR: Math.max(diag * 0.0011, L * 0.12) };
 }
 function buildModel() {
   const src = S.source;
@@ -3237,6 +3272,11 @@ function pickAt(x, y) {
   const hit = pickRaw(x, y, w, h); pickCache = { key, hit }; return hit && { face: hit.face, p: hit.p.slice() };
 }
 function pickRaw(x, y, w, h) {
+  if (S.model?.bvh) { // on the CPU through the box tree: no waiting for the graphics card on every mouse move
+    raycaster.setFromCamera({ x: x / w * 2 - 1, y: -(y / h) * 2 + 1 }, camera); const o = raycaster.ray.origin, d = raycaster.ray.direction;
+    const hit = Core.rayBVH(S.model.bvh, S.model.mesh, [o.x, o.y, o.z], [d.x, d.y, d.z]); if (!hit) return null;
+    return { face: hit.face, p: rayTriPoint(hit.face, o, d) };
+  }
   camera.setViewOffset(w, h, x, y, 1, 1);
   renderer.setRenderTarget(pickRT); renderer.setClearColor(0x000000, 0); renderer.clear();
   renderer.render(pickScene, camera);
