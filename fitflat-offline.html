@@ -400,7 +400,14 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 
 /* dialogs */
 dialog.geo{ border:0; border-radius:18px; padding:0; width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); background:var(--surface); color:var(--ink); box-shadow:0 24px 80px rgba(0,0,0,.25); }
-dialog.unitdlg{ width:min(480px, calc(100vw - 24px)); }
+dialog.unitdlg{ width:min(640px, calc(100vw - 24px)); }
+dialog.unitdlg .uprev{ position:relative; margin:8px 0; border-radius:10px; overflow:hidden; background:#16181c; }
+dialog.unitdlg .uprev canvas{ display:block; width:100%; height:260px; cursor:grab; }
+dialog.unitdlg .uhint{ position:absolute; left:10px; bottom:8px; font-size:12px; color:#aab; pointer-events:none; }
+dialog.unitdlg .urot{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+dialog.unitdlg .urot span{ font-size:12px; color:var(--muted, #999); margin-right:2px; }
+dialog.unitdlg .ax{ min-width:34px; font-weight:600; }
+dialog.unitdlg .ax-x{ color:#ff5a5a; } dialog.unitdlg .ax-y{ color:#6fd36f; } dialog.unitdlg .ax-z{ color:#5a9bff; }
 .intro{ list-style:none; margin:0; padding:0; }
 .intro li{ display:none; }
 .intro li.on{ display:grid; gap:5px; }
@@ -960,6 +967,14 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <p>Model files often do not say which unit they use. Pick the one that gives the real size; decals, stretch and the cut sheet are all measured from it.</p></header>
     <div class="body">
       <p class="note"><b id="unitName"></b> · <span id="unitTris"></span></p>
+      <div class="uprev"><canvas id="unitPrev" aria-label="Preview of the model as it will open"></canvas>
+        <div class="uhint">Front of the bike to the right, standing upright. Drag to look around.</div></div>
+      <div class="urot"><span>Turn 90°</span>
+        <button type="button" class="btn ax ax-x" data-ax="x" title="Turn 90° around X (red, front to back)">X</button>
+        <button type="button" class="btn ax ax-y" data-ax="y" title="Turn 90° around Y (green, side to side)">Y</button>
+        <button type="button" class="btn ax ax-z" data-ax="z" title="Turn 90° around Z (blue, up), e.g. to make the front point right">Z</button>
+        <button type="button" class="btn" id="unitUpright" title="Stand it up: longest side along the bike, thinnest across it">Upright</button>
+        <button type="button" class="btn" id="unitRotReset" title="Back to the file's own orientation">Reset</button></div>
       <div class="modes" id="unitList"></div>
     </div>
     <footer><span class="spacer"></span>
@@ -12897,20 +12912,62 @@ $('#gDelPreset').addEventListener('click', () => {
 $('#file').addEventListener('change', e => { const f = e.target.files[0]; if (f) openFile(f); e.target.value = ''; });
 // the tool works Y-up inside; Z-up files (STL from Blender, CAD, 3D printing) are turned so Z stays vertical
 function zUpToYUp(raw) { const p = raw.pos; for (let i = 0; i < p.length; i += 3) { const y = p[i+1], z = p[i+2]; p[i+1] = z; p[i+2] = -y; } return raw; }
-// before a model is built, show its size in each unit so a wrong scale is caught straight away
+// before a model is built: a 3D preview to check and turn its orientation, and its size in each unit so a wrong scale is caught
+let unitPv = null;
 function askUnits(raw, fmt, name) {
-  let mn = [1e30, 1e30, 1e30], mx = [-1e30, -1e30, -1e30];
-  for (let i = 0; i < raw.pos.length; i += 3) for (let d = 0; d < 3; d++) { mn[d] = Math.min(mn[d], raw.pos[i+d]); mx[d] = Math.max(mx[d], raw.pos[i+d]); }
-  const size = mx.map((v, d) => v - mn[d]), guess = guessUnits(raw, fmt), dlg = $('#unitDlg');
+  const guess = guessUnits(raw, fmt), dlg = $('#unitDlg'), q = new THREE.Quaternion();
   const fmtMm = v => v >= 100 ? Math.round(v) : v >= 10 ? v.toFixed(1) : v.toFixed(2);
+  let size = [0, 0, 0];
   const shown = u => [size[0], size[2], size[1]].map(v => fmtMm(v * UNIT[u])).join(' × ') + ' mm'; // Z up: length × width × height
   const looks = u => { const L = Math.max(...size) * UNIT[u]; return L < 100 ? 'very small' : L < 2500 ? 'bicycle size' : L < 7000 ? 'car size' : 'very large'; };
+  const list = () => { const cur = dlg.querySelector('input[name=unitPick]:checked')?.value || guess;
+    $('#unitList').innerHTML = ['mm', 'cm', 'm', 'in'].map(u => `<label><input type="radio" name="unitPick" value="${u}"${u === cur ? ' checked' : ''}><span>${{ mm: 'Millimetres', cm: 'Centimetres', m: 'Metres', in: 'Inches' }[u]}${u === guess ? ' <i>(detected)</i>' : ''}<small>${shown(u)} · ${looks(u)}</small></span></label>`).join(''); i18nTree?.($('#unitList')); };
   $('#unitName').textContent = name; $('#unitTris').textContent = `${Math.round(raw.idx.length / 3).toLocaleString()} triangles`;
-  $('#unitList').innerHTML = ['mm', 'cm', 'm', 'in'].map(u => `<label><input type="radio" name="unitPick" value="${u}"${u === guess ? ' checked' : ''}><span>${{ mm: 'Millimetres', cm: 'Centimetres', m: 'Metres', in: 'Inches' }[u]}${u === guess ? ' <i>(detected)</i>' : ''}<small>${shown(u)} · ${looks(u)}</small></span></label>`).join('');
+  // the preview: same view direction as the tool's first view (front of the bike to the right)
+  const cv = $('#unitPrev'), rd = new THREE.WebGLRenderer({ canvas: cv, antialias: true, alpha: true }); rd.setPixelRatio(Math.min(2, devicePixelRatio || 1));
+  const sc = new THREE.Scene(), cam = new THREE.PerspectiveCamera(35, 2, 0.1, 1e7);
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(raw.pos, 3));
+  geo.setIndex(raw.idx.length / 3 > 65535 ? new THREE.Uint32BufferAttribute(raw.idx, 1) : new THREE.Uint16BufferAttribute(raw.idx, 1)); geo.computeBoundingBox();
+  const c0 = geo.boundingBox.getCenter(new THREE.Vector3()); geo.translate(-c0.x, -c0.y, -c0.z); geo.computeVertexNormals(); geo.computeBoundingSphere();
+  const grp = new THREE.Group(), mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: 0xa9b6b1, roughness: 0.55, metalness: 0.1, side: THREE.DoubleSide })); grp.add(mesh); sc.add(grp);
+  sc.add(new THREE.HemisphereLight(0xffffff, 0x334455, 0.9)); const dl = new THREE.DirectionalLight(0xffffff, 0.8); dl.position.set(1, 2, 1.5); sc.add(dl);
+  const R = geo.boundingSphere.radius || 1, ext = new THREE.Group(); sc.add(ext);
+  const ctr = new THREE.OrbitControls(cam, cv); ctr.enableDamping = false;
+  const render = () => rd.render(sc, cam);
+  ctr.addEventListener('change', render);
+  const refit = () => { // ground under the model, axes at its corner, sizes, camera
+    grp.quaternion.copy(q); grp.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(grp, true), sz = bb.getSize(new THREE.Vector3()); size = [sz.x, sz.y, sz.z];
+    ext.clear(); const gs = Math.max(sz.x, sz.z) * 1.3, grid = new THREE.GridHelper(gs, 10, 0x445066, 0x2b3240); grid.position.y = bb.min.y; ext.add(grid);
+    const o = new THREE.Vector3(bb.min.x - R * 0.12, bb.min.y, bb.max.z + R * 0.12), L = R * 0.5;
+    ext.add(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), o, L, 0xff5a5a, L * 0.2, L * 0.1), new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), o, L, 0x6fd36f, L * 0.2, L * 0.1), new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), o, L, 0x5a9bff, L * 0.2, L * 0.1));
+    list(); render(); };
+  const size2 = () => { const w = cv.clientWidth || 600, h = cv.clientHeight || 260; rd.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
+  const look = () => { const d = new THREE.Vector3(0.25, 0.18, 1).normalize().multiplyScalar(R / Math.sin(cam.fov * Math.PI / 360) * 1.05); cam.position.copy(d); ctr.target.set(0, 0, 0); cam.near = R / 200; cam.far = R * 50; cam.updateProjectionMatrix(); ctr.update(); };
+  // turn 90° about the axes as shown (Z up): X = X, Y = −Z inside, Z = Y inside
+  const AX = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 0, -1), z: new THREE.Vector3(0, 1, 0) };
+  const turn = k => { q.premultiply(new THREE.Quaternion().setFromAxisAngle(AX[k], Math.PI / 2)); refit(); };
+  dlg.querySelectorAll('.urot .ax').forEach(b => b.onclick = () => turn(b.dataset.ax));
+  $('#unitRotReset').onclick = () => { q.identity(); refit(); };
+  // stand it up: of the 24 square turns, the one closest to now with the longest side along X, the thinnest across (Z inside), the middle one up
+  $('#unitUpright').onclick = () => {
+    const rots = [new THREE.Quaternion()], seen = new Set(['0,0,0,1']);
+    for (let i = 0; i < rots.length; i++) for (const k of ['x', 'y', 'z']) { const r = rots[i].clone().premultiply(new THREE.Quaternion().setFromAxisAngle(AX[k], Math.PI / 2));
+      const key = [r.x, r.y, r.z, r.w].map(v => Math.round(v * 1000) * Math.sign(r.w || 1)).join(','); if (!seen.has(key)) { seen.add(key); rots.push(r); } }
+    const s0 = (() => { grp.quaternion.identity(); grp.updateMatrixWorld(true); const v = new THREE.Box3().setFromObject(grp, true).getSize(new THREE.Vector3()); return [v.x, v.y, v.z]; })();
+    let best = null, bs = Infinity;
+    for (const r of rots) { const m = new THREE.Matrix4().makeRotationFromQuaternion(r).elements, sz = [0, 1, 2].map(row => [0, 1, 2].reduce((a, col) => a + Math.abs(m[col * 4 + row]) * s0[col], 0));
+      const ok = sz[0] >= sz[1] - 1e-6 && sz[1] >= sz[2] - 1e-6; if (!ok) continue; const sc2 = 1 - Math.abs(r.dot(q)); if (sc2 < bs) { bs = sc2; best = r; } }
+    if (best) { q.copy(best); refit(); } };
+  const close = () => { ctr.dispose(); rd.dispose(); geo.dispose(); unitPv = null; };
+  unitPv = { render };
   i18nTree?.(dlg);
   dlg.returnValue = ''; dlg.showModal();
-  $('#unitOk').onclick = () => { const u = dlg.querySelector('input[name=unitPick]:checked')?.value || guess; dlg.close(); $('#units').value = u; loadSource(raw, fmt, name); };
-  $('#unitCancel').onclick = () => dlg.close();
+  requestAnimationFrame(() => { size2(); look(); refit(); });
+  $('#unitOk').onclick = () => { const u = dlg.querySelector('input[name=unitPick]:checked')?.value || guess; dlg.close(); close(); $('#units').value = u;
+    if (Math.abs(q.w) < 0.9999) { const v = new THREE.Vector3(), p = raw.pos; for (let i = 0; i < p.length; i += 3) { v.set(p[i], p[i+1], p[i+2]).applyQuaternion(q); p[i] = v.x; p[i+1] = v.y; p[i+2] = v.z; } }
+    loadSource(raw, fmt, name); };
+  $('#unitCancel').onclick = () => { dlg.close(); close(); };
 }
 function openFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
@@ -18120,6 +18177,16 @@ const DE = {
   "Add three print-and-cut registration marks and keep pieces clear of them": "Drei Passermarken für Print-and-Cut hinzufügen und die Teile davon freihalten",
   "Weeding boxes": "Entgitterrahmen",
   "Stretch map": "Dehnungskarte",
+  "Front of the bike to the right, standing upright. Drag to look around.": "Vorderseite des Rads nach rechts, aufrecht stehend. Ziehen zum Umsehen.",
+  "Turn 90°": "90° drehen",
+  "Turn 90° around X (red, front to back)": "90° um X drehen (rot, vorne nach hinten)",
+  "Turn 90° around Y (green, side to side)": "90° um Y drehen (grün, seitlich)",
+  "Turn 90° around Z (blue, up), e.g. to make the front point right": "90° um Z drehen (blau, oben), z. B. damit die Front nach rechts zeigt",
+  "Upright": "Aufrichten",
+  "Reset": "Zurücksetzen",
+  "Stand it up: longest side along the bike, thinnest across it": "Aufstellen: längste Seite entlang des Rads, dünnste quer",
+  "Back to the file's own orientation": "Zurück zur Ausrichtung der Datei",
+  "Preview of the model as it will open": "Vorschau des Modells, wie es geöffnet wird",
   "Take all V-notches out of this decal again (Ctrl+Z brings them back)": "Alle V-Kerben wieder aus diesem Decal nehmen (Strg+Z holt sie zurück)",
   "Remove cuts": "Schnitte entfernen",
   "Add the stretch and excess colours as their own layer under the cut lines, with a legend, to check the pieces in other vector software. Hide or delete that layer before cutting": "Die Farben für Dehnung und Überschuss als eigene Ebene unter den Schnittlinien hinzufügen, mit Legende, um die Teile in anderer Vektorsoftware zu prüfen. Diese Ebene vor dem Schneiden ausblenden oder löschen",

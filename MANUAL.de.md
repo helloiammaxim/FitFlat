@@ -48,7 +48,7 @@ Der **?**-Knopf oben startet eine kurze Tour, die auf die wichtigsten Bedienelem
 
 
 ### Eigenes Modell öffnen
-**Öffnen** einer `.glb`-, `.gltf`-, `.obj`- oder `.stl`-Datei, oder die Datei auf die 3D-Ansicht ziehen. Das Fenster **Modellgröße prüfen** zeigt die Größe des Modells in Millimetern, Zentimetern, Metern und Zoll, die erkannte Einheit ist markiert — wähle die, die die echte Größe ergibt. Alles (Decals, Dehnung, Schneidebogen) wird daraus gemessen, und eine falsche Einheit lässt auch das Zoomen falsch wirken. Später änderst du sie über *Modelleinheit* in der oberen Leiste. STL-Dateien werden mit Z nach oben gelesen, wie Blender und CAD-Programme sie exportieren.
+**Öffnen** einer `.glb`-, `.gltf`-, `.obj`- oder `.stl`-Datei, oder die Datei auf die 3D-Ansicht ziehen. Das Fenster **Modellgröße prüfen** zeigt eine 3D-Vorschau des Modells, wie es geöffnet wird (Vorderseite des Rads nach rechts, aufrecht; ziehen zum Umsehen), und seine Größe in Millimetern, Zentimetern, Metern und Zoll, die erkannte Einheit ist markiert — wähle die, die die echte Größe ergibt. Liegt es falsch, dreh es mit **X**, **Y**, **Z** (je 90°, rot, grün, blau wie in Blender) oder drück **Aufrichten** (längste Seite entlang des Rads, dünnste quer); **Zurücksetzen** stellt die Ausrichtung der Datei wieder her. Die Größen ändern sich beim Drehen mit, und das Modell öffnet sich so, wie die Vorschau es zeigt. Alles (Decals, Dehnung, Schneidebogen) wird daraus gemessen, und eine falsche Einheit lässt auch das Zoomen falsch wirken. Später änderst du sie über *Modelleinheit* in der oberen Leiste. STL-Dateien werden mit Z nach oben gelesen, wie Blender und CAD-Programme sie exportieren.
 
 Das echte Rahmenmodell ergibt die genauesten Produktionsschnitte.
 

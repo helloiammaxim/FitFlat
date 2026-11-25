@@ -47,7 +47,7 @@ The **?** button at the top starts a short tour that points at the main controls
 ## 2. Getting a frame
 
 ### Open your own model
-**Open** a `.glb`, `.gltf`, `.obj` or `.stl` file, or drop it onto the 3D view. A **Check the model size** window shows the model's size in millimetres, centimetres, metres and inches, with the detected unit marked — pick the one that gives the real size. Everything (decals, stretch, the cut sheet) is measured from it, and a wrong unit also makes zooming feel wrong. You can change it later with *Model units* in the top bar. STL files are read Z-up, the way Blender and CAD programs export them.
+**Open** a `.glb`, `.gltf`, `.obj` or `.stl` file, or drop it onto the 3D view. A **Check the model size** window shows a 3D preview of the model as it will open (front of the bike to the right, standing upright; drag to look around) and its size in millimetres, centimetres, metres and inches, with the detected unit marked — pick the one that gives the real size. If it lies wrong, turn it with **X**, **Y**, **Z** (90° each, red, green, blue as in Blender) or press **Upright** (longest side along the bike, thinnest across it); **Reset** goes back to the file's own orientation. The sizes update as you turn it, and the model opens the way the preview shows it. Everything (decals, stretch, the cut sheet) is measured from it, and a wrong unit also makes zooming feel wrong. You can change it later with *Model units* in the top bar. STL files are read Z-up, the way Blender and CAD programs export them.
 
 The real frame model gives the most accurate production patterns.
 
