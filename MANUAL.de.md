@@ -73,6 +73,13 @@ Das echte Rahmenmodell ergibt die genauesten Produktionsschnitte.
 | Up Axis | **Y** |
 | Scale | 1, dann die Einheit in FitFlats Fenster *Modellgröße prüfen* wählen |
 
+**EXStar Hub (Einstar-Scanner)** — Scans liegen so, wie der Scan endete; erst den Rahmen ausrichten, dann als STL exportieren:
+
+1. **Aufräumen:** Ständer, Drehteller, Boden und lose Teile entfernen; kleine Löcher in den Rohren schließen (ein Loch, wo ein Decal hinkommt, macht dieses Decal kaputt).
+2. **Vereinfachen** (*Mesh Editing › Simplification*, 0–99 % weniger Dreiecke): Ziel etwa 300.000–500.000 Dreiecke. Ein Scan mit ein paar Millionen Dreiecken braucht einen hohen Wert (um 85–90); prüfen, dass die Rohrkanten rund bleiben.
+3. **Ausrichten** (*Align*: *Rotation*/*Offset* eingeben und *Move to*, oder *3-2-1-Ausrichtung* mit Ebene, Linie und Punkt): Rahmen steht wie beim Fahren, **Z nach oben**, vorne Richtung **+X**, Antriebsseite Richtung **−Y**, Mittelebene bei Y = 0. Das globale Koordinatensystem einschalten, um die Achsen zu sehen (rot X, grün Y, blau Z).
+4. **Exportieren** als **STL** (FitFlat liest STL mit Z nach oben) und in FitFlats *Modellgröße prüfen* **Millimeter** wählen. OBJ geht auch, aber FitFlat liest OBJ mit Y nach oben, dann käme der Rahmen liegend an.
+
 **Blender** — *Datei › Exportieren › glTF 2.0*, Format *glTF Binary (.glb)*: *Include › Selected Objects*, *Transform › +Y Up* an (Standard), *Mesh › Apply Modifiers* an. Oder *Wavefront (.obj)* mit *Up: Y*, *Forward: −Z* (Standard). Vorher Drehung und Maßstab anwenden (Strg+A).
 
 **CAD (SolidWorks, Fusion, Onshape, Rhino)** — STL oder OBJ mit feiner Flächenabweichung exportieren (Sehnentoleranz etwa **0,05 mm**, Winkel etwa **10°**) und, falls angeboten, maximaler Kantenlänge um 4 mm.

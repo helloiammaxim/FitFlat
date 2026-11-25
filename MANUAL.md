@@ -73,6 +73,13 @@ The real frame model gives the most accurate production patterns.
 | Up Axis | **Y** |
 | Scale | 1, then pick the unit in FitFlat's *Check the model size* window |
 
+**EXStar Hub (Einstar scanners)** — scans come in whatever position the scan ended, so line the frame up first, then export STL:
+
+1. **Clean up:** remove the stand, turntable, floor and floating bits; fill small holes in the tubes (a hole where a decal goes breaks that decal).
+2. **Simplify** (*Mesh Editing › Simplification*, 0–99 % fewer triangles): aim for about 300,000–500,000 triangles. A scan of a few million triangles needs a high value (around 85–90); check that tube edges stay round.
+3. **Align** (*Align*: type the *Rotation*/*Offset* and *Move to*, or *3-2-1 alignment* with a plane, line and point): frame standing as it rides, **Z up**, front towards **+X**, drive side towards **−Y**, centre plane at Y = 0. Turn on the global coordinate system to see the axes (red X, green Y, blue Z).
+4. **Export** as **STL** (FitFlat reads STL with Z up), and pick **Millimetres** in FitFlat's *Check the model size*. OBJ works too, but FitFlat reads OBJ with Y up, so the frame would come in lying down.
+
 **Blender** — *File › Export › glTF 2.0*, format *glTF Binary (.glb)*: *Include › Selected Objects*, *Transform › +Y Up* on (default), *Mesh › Apply Modifiers* on. Or *Wavefront (.obj)* with *Up: Y*, *Forward: −Z* (defaults). Apply rotation and scale first (Ctrl+A).
 
 **CAD (SolidWorks, Fusion, Onshape, Rhino)** — export STL or OBJ with a fine surface deviation (chord tolerance about **0.05 mm**, angle about **10°**) and, if offered, a maximum edge length of about 4 mm.
