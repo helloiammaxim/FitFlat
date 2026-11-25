@@ -398,6 +398,14 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 
 /* dialogs */
 dialog.geo{ border:0; border-radius:18px; padding:0; width:min(760px, calc(100vw - 24px)); max-height:calc(100vh - 40px); background:var(--surface); color:var(--ink); box-shadow:0 24px 80px rgba(0,0,0,.25); }
+#liveTip{ position:fixed; z-index:60; width:340px; padding:14px 16px; border-radius:12px; background:#1f2228; color:#e8eaee; box-shadow:0 10px 30px rgba(0,0,0,.45); border:1px solid #2f343d; font-size:13px; line-height:1.45; }
+#liveTip[hidden]{ display:none; }
+#restoreBar{ position:fixed; z-index:61; left:50%; top:64px; transform:translateX(-50%); display:flex; gap:10px; align-items:center; padding:10px 12px 10px 16px; border-radius:12px; background:#1f2228; color:#e8eaee; box-shadow:0 10px 30px rgba(0,0,0,.45); border:1px solid #2f343d; font-size:13px; }
+#restoreBar[hidden]{ display:none; } #restoreBar #restoreNo{ background:#2f343d; color:#e8eaee; border-color:#3a404b; }
+#liveTip p{ margin:6px 0; color:#c4c8d0; } #liveTip kbd{ font:inherit; padding:0 5px; border-radius:4px; background:#2f343d; }
+#liveTip label{ display:flex; gap:6px; align-items:center; margin:8px 0 10px; color:#aab; font-size:12px; }
+#liveTip .ltrow{ display:flex; gap:8px; justify-content:flex-end; }
+#liveTip #liveTipOn{ background:#2f343d; color:#e8eaee; border-color:#3a404b; }
 dialog.unitdlg{ width:min(640px, calc(100vw - 24px)); }
 dialog.unitdlg .uprev{ position:relative; margin:8px 0; border-radius:10px; overflow:hidden; background:#16181c; }
 dialog.unitdlg .uprev canvas{ display:block; width:100%; height:260px; cursor:grab; }
@@ -646,7 +654,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
             <label class="clip" id="clipWrap" title="How close a point must be to the centre plane to snap onto it. 0 snaps only when you drag across the plane.">Snap <input type="number" id="clipDist" value="2" min="0" step="0.5"> mm</label>
           </div>
           <div class="grp" aria-label="Unwrap">
-            <button class="btn tog" id="liveUnwrap" aria-pressed="true" title="Unwrap after every change (L). Turn off to shape the outline first, then press Unwrap">Live unwrap</button>
+            <button class="btn tog" id="liveUnwrap" aria-pressed="false" title="Unwrap after every change (L). Turn off to shape the outline first, then press Unwrap">Live unwrap</button>
             <button class="btn primary" id="unwrapNow" hidden title="Unwrap the decals you changed (U)">Unwrap</button>
           </div>
 
@@ -959,6 +967,14 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     </footer>
   </form>
 </dialog>
+<div id="restoreBar" role="alert" hidden><span id="restoreTxt"></span><button type="button" class="btn primary" id="restoreYes">Restore</button><button type="button" class="btn" id="restoreNo">Dismiss</button></div>
+<div id="liveTip" class="livetip" role="dialog" aria-labelledby="liveTipT" hidden>
+  <b id="liveTipT">Unwrap is paused while you edit</b>
+  <p>Shape the outline first, then press <b>Unwrap</b> (or <kbd>U</kbd>) to update the flat pattern and the stretch colours. The sheet and the export unwrap by themselves.</p>
+  <p>Turn on <b>Live unwrap</b> (<kbd>L</kbd>) to unwrap after every change: handy for small tweaks, slower on big models.</p>
+  <label><input type="checkbox" id="liveTipNo"> Don't show again</label>
+  <div class="ltrow"><button type="button" class="btn" id="liveTipOn">Turn on Live unwrap</button><button type="button" class="btn primary" id="liveTipOk">Got it</button></div>
+</div>
 <dialog class="geo unitdlg" id="unitDlg" aria-labelledby="unitTitle">
   <form method="dialog" onsubmit="return false">
     <header><h2 id="unitTitle">Check the model size</h2>
@@ -3133,9 +3149,23 @@ function placeTemplate(t) {
   svgImport = { ...r, name: t.name, aspect: t.h / t.w, w: t.w, h: t.h, rot: 0, mode: 'wrap', mirror: !!t.mirror && S.mirrorDefault };
   startPlacing(); flash(tr('Move over the model and click to place "{0}".').replace('{0}', t.name));
 }
-setTimeout(() => Store.get('projects', 'autosave').then(r => { if (r && !S.dirty) flash(tr('Your last session was saved automatically ({0}). Open it from Projects.').replace('{0}', fmtDate(r.updated))); }).catch(() => {}), 2500);
-// autosave: a copy of the work every half minute while something changed, offered again after a reload
-setInterval(() => { if (!S.dirty || !S.source || S.busy || press) return; const data = projectJSON(); Store.put('projects', { id: 'autosave', name: 'autosave', created: Date.now(), updated: Date.now(), thumb: viewThumb(), frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }).catch(() => {}); }, 30000);
+// after a reload or a crash: offer the last session right away, not just a note that fades
+setTimeout(() => Store.get('projects', 'autosave').then(r => { if (!r || S.dirty || !(r.decals > 0)) return;
+  const el = $('#restoreBar'); $('#restoreTxt').textContent = (r.decals === 1 ? tr('Your last session ({0}, 1 decal) was saved automatically.') : tr('Your last session ({0}, {1} decals) was saved automatically.')).replace('{0}', fmtDate(r.updated)).replace('{1}', r.decals);
+  el.hidden = false; $('#restoreYes').onclick = () => { el.hidden = true; openProjectRec('autosave'); }; $('#restoreNo').onclick = () => { el.hidden = true; };
+  setTimeout(() => { el.hidden = true; }, 60000); }).catch(() => {}), 1500);
+// autosave: a copy of the work a moment after every change, when the tab is hidden or closed, and every half minute;
+// offered again after a reload
+function autosaveNow() { if (!S.dirty || !S.source || press) return; try { const data = projectJSON(); let thumb = null; try { thumb = viewThumb(); } catch (e) {}
+  Store.put('projects', { id: 'autosave', name: 'autosave', created: Date.now(), updated: Date.now(), thumb, frame: S.source.name, decals: S.decals.filter(d => d.closed && !d.holeOf).length, bytes: data.length, data }).catch(() => {}); } catch (e) {} }
+let autoT = 0; function autosaveSoon() { clearTimeout(autoT); autoT = setTimeout(() => { if (S.busy || press) { autosaveSoon(); return; } autosaveNow(); }, 2000); }
+setInterval(() => { if (!S.busy) autosaveNow(); }, 30000);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') autosaveNow(); });
+addEventListener('pagehide', autosaveNow);
+// reloading or closing with unsaved changes: the browser asks first ("Leave site?")
+addEventListener('beforeunload', e => { if (!S.dirty || !S.decals.length) return; autosaveNow(); e.preventDefault(); e.returnValue = ''; });
+// no browser menu on right-click (its Reload lost work); text fields keep theirs for copy and paste
+document.addEventListener('contextmenu', e => { if (e.target.closest?.('input, textarea, select, [contenteditable="true"]')) return; e.preventDefault(); });
 // ---------- size grading: the same decals on every size of a geometry chart ----------
 S.gradeEnds = true;
 const curPreset = () => { const n = S.source?.presetName; return n && S.source?.tubes ? allPresets().find(p => p.name === n && p.sizes?.length > 1) : null; };
@@ -3434,8 +3464,8 @@ const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.clo
   ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken, seam: c.seam })) });
 const snapshot = () => JSON.stringify({ decals: S.decals.map(decalState), drawing: S.drawing?.id ?? null });
 // each entry is the state before a step, with the step's name and time
-function pushHistory(label) { HIST.undo.push({ s: snapshot(), label: label ? tr(label) : null, t: Date.now() }); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; renderHistorySoon(); }
-function histPush(s, label) { HIST.undo.push({ s, label: label ? tr(label) : null, t: Date.now() }); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; renderHistorySoon(); }
+function pushHistory(label) { HIST.undo.push({ s: snapshot(), label: label ? tr(label) : null, t: Date.now() }); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; renderHistorySoon(); autosaveSoon(); }
+function histPush(s, label) { HIST.undo.push({ s, label: label ? tr(label) : null, t: Date.now() }); if (HIST.undo.length > 150) HIST.undo.shift(); HIST.redo = []; S.dirty = true; renderHistorySoon(); autosaveSoon(); }
 function resetHistory() { HIST.undo = []; HIST.redo = []; renderHistorySoon(); }
 function applySnapshot(str) {
   const st = JSON.parse(str);
@@ -4334,7 +4364,7 @@ function solve(d) {
   setTimeout(() => { solveNow(d); setBusy(false); updateUI(); }, 20);
 }
 
-S.liveUnwrap = true; try { S.liveUnwrap = localStorage.getItem('decal-studio-live') !== '0'; } catch (e) {}
+S.liveUnwrap = false; try { S.liveUnwrap = localStorage.getItem('decal-studio-live2') === '1'; } catch (e) {} // off unless turned on
 const staleDecals = () => S.decals.filter(d => d.stale);
 // unwrap everything still waiting, right now (callers that need the flat shapes use this)
 function flushStale() { const L = staleDecals(); if (!L.length) return false; for (const d of L) { d.stale = false; solveNow(d); } return true; }
@@ -4342,8 +4372,21 @@ function unwrapNow() {
   const n = staleDecals().length; if (!n) return;
   setBusy(tr('Unwrapping…')); setTimeout(() => { flushStale(); setBusy(false); updateUI(); flash(n === 1 ? tr('Unwrapped.') : tr('Unwrapped {0} decals.').replace('{0}', n)); }, 20);
 }
+// on switching to Edit (once per visit, Live unwrap off): what Unwrap and Live unwrap do, with "Don't show again"
+let liveTipShown = false;
+function liveTip() {
+  if (liveTipShown || S.liveUnwrap) return; try { if (localStorage.getItem('decal-studio-livetip') === '0') return; } catch (e) {}
+  liveTipShown = true;
+  const ps = $('#liveTip').querySelectorAll('p'); i18nTree?.($('#liveTip'));
+  if (typeof LANG !== 'undefined' && LANG === 'de') { ps[0].innerHTML = 'Erst die Kontur formen, dann <b>Abwickeln</b> (oder <kbd>U</kbd>) drücken, um das flache Muster und die Dehnungsfarben zu aktualisieren. Bogen und Export wickeln selbst ab.';
+    ps[1].innerHTML = '<b>Live-Abwicklung</b> (<kbd>L</kbd>) einschalten, um nach jeder Änderung abzuwickeln: praktisch für kleine Korrekturen, langsamer bei großen Modellen.'; }
+  requestAnimationFrame(() => { const b = $('#unwrapNow'), el = $('#liveTip'); if (!el) return; const r = $('#liveUnwrap').getBoundingClientRect();
+    el.style.left = Math.max(8, Math.min(innerWidth - 360, r.left)) + 'px'; el.style.top = (r.bottom + 10) + 'px'; el.hidden = false; $('#liveTipOk').focus(); });
+}
+$('#liveTipOk').addEventListener('click', () => { $('#liveTip').hidden = true; if ($('#liveTipNo').checked) try { localStorage.setItem('decal-studio-livetip', '0'); } catch (e) {} });
+$('#liveTipOn').addEventListener('click', () => { $('#liveTip').hidden = true; if ($('#liveTipNo').checked) try { localStorage.setItem('decal-studio-livetip', '0'); } catch (e) {} setLiveUnwrap(true); });
 function setLiveUnwrap(on) {
-  S.liveUnwrap = on; try { localStorage.setItem('decal-studio-live', on ? '1' : '0'); } catch (e) {}
+  S.liveUnwrap = on; try { localStorage.setItem('decal-studio-live2', on ? '1' : '0'); } catch (e) {}
   $('#liveUnwrap').setAttribute('aria-pressed', String(on));
   if (on && staleDecals().length) unwrapNow(); else updateUI();
   flash(on ? tr('Live unwrap on: every change unwraps right away.') : tr('Live unwrap off: shape the outline, then press Unwrap (U).'));
@@ -4577,6 +4620,7 @@ function clearDecals() { for (const d of [...S.decals]) removeDecal(d); S.nextId
 
 // ---------- UI ----------
 function setMode(m) {
+  if (m === 'edit' && S.mode !== 'edit' && S.model) setTimeout(liveTip, 60); // the first time into Edit: how unwrapping works
   S.mode = m; S.cut = null; renderCutMark();
   if (m !== 'draw') S.drawing = null;
   else if (S.active && !S.active.closed) S.drawing = S.active; // carry on drawing an open line
@@ -4677,7 +4721,7 @@ $('#mirrorAxis').addEventListener('change', e => {
 function hintText() {
   if (!S.model) return 'Open a model or start a new file.';
   if (S.active && S.picked.length) return `${S.picked.length + 1} decals selected. Union joins them, Subtract cuts the blue ones out of ${S.active.name}, Intersect keeps only where all of them overlap. Shift-click another decal to add it, or a blue one to drop it.`;
-  if (S.active && !S.drawing && S.mode !== 'knife' && reliefTargets().includes(S.active) && reliefSuggest(S.active).length) return tr('{0} stretches too much. Click a ✂ tag on the model to cut there: a V-notch closes up on the frame, a slit leaves a narrow gap. Or press Relief cuts in the list to try them all. You can also draw your own V-notch with the Knife: start outside the decal and stop inside it.').replace('{0}', S.active.name);
+  if (S.active && !S.drawing && S.mode !== 'knife' && reliefTargets().includes(S.active) && reliefSuggest(S.active).some(c => c.kind === 'notch')) return tr('{0} has too much film in places. The Sheet tab shows suggested V-notches as red dashed lines: click one to cut it, or draw your own there with ✂. With the Knife on, the same lines show on the model.').replace('{0}', S.active.name);
   if (S.boolOp) return `${BOOL_NAMES[S.boolOp.op]}: click the second decal (on the model or in the list)${S.boolOp.op === 'difference' ? ' to cut away from ' + S.boolOp.a.name : ''}. Esc cancels.`;
   if (S.placing) return S.placeHit ? 'Check the orange preview. Alt + scroll resizes, Ctrl + scroll rotates (Shift for bigger steps). Apply (Enter) adds it; click elsewhere to move it.' : 'Move over the model to see the artwork, click to place a preview. Alt + scroll resizes, Ctrl + scroll rotates. Esc cancels.';
   if (S.mode === 'draw' && S.vline) return S.vline.pts.length < 3 ? 'Outline in the view: click on or off the model to add points, or drag to draw freehand. Where the line runs off the model, the decal follows the edge of the surface. Space + drag turns the view. Backspace removes the last point, Esc cancels.' : 'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.';
@@ -7811,7 +7855,7 @@ const DE = {
   "Like an installer pulls the film into place: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch) but never bigger, so the film goes on under tension instead of wrinkling": "Wie ein Folierer die Folie auf Spannung zieht: wo der Rahmen gewölbt ist, darf das Schnittteil etwas kleiner als die Fläche werden (bis 60 % der max. Dehnung), aber nie größer, damit die Folie unter Spannung sitzt statt Falten zu werfen",
   " Pull film tight (pattern may be a little smaller, never bigger)": " Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
   "Pull film tight (pattern may be a little smaller, never bigger)": "Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
-  "{0} stretches too much. Click a ✂ tag on the model to cut there: a V-notch closes up on the frame, a slit leaves a narrow gap. Or press Relief cuts in the list to try them all. You can also draw your own V-notch with the Knife: start outside the decal and stop inside it.": "{0} dehnt sich zu stark. Klick auf ein ✂-Schild am Modell, um dort zu schneiden: eine V-Kerbe schließt sich am Rahmen, ein Schlitz lässt einen schmalen Spalt. Oder drück Entlastungsschnitte in der Liste, um alle zu probieren. Eigene V-Kerben zeichnest du mit dem Messer: außerhalb des Decals anfangen und innen aufhören.",
+  "{0} has too much film in places. The Sheet tab shows suggested V-notches as red dashed lines: click one to cut it, or draw your own there with ✂. With the Knife on, the same lines show on the model.": "{0} hat stellenweise zu viel Folie. Der Bogen-Tab zeigt vorgeschlagene V-Kerben als rot gestrichelte Linien: Klick auf eine schneidet sie, oder zeichne dort mit ✂ deine eigene. Mit aktivem Messer erscheinen dieselben Linien am Modell.",
   "V-notch": "V-Kerbe",
   "That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.": "Diese V-Kerbe ließ sich hier nicht schneiden. Fang die Linie knapp außerhalb des Decal-Rands an und hör innen auf.",
   "V-notch cut: it opens {0}° on the sheet. Stretch {1}% → {2}%.": "V-Kerbe geschnitten: sie öffnet sich auf dem Bogen um {0}°. Dehnung {1} % → {2} %.",
@@ -7994,6 +8038,14 @@ const DE = {
   "Turn 90° around Y (green, side to side)": "90° um Y drehen (grün, seitlich)",
   "Turn 90° around Z (blue, up), e.g. to make the front point right": "90° um Z drehen (blau, oben), z. B. damit die Front nach rechts zeigt",
   "Upright": "Aufrichten",
+  "Your last session ({0}, {1} decals) was saved automatically.": "Deine letzte Sitzung ({0}, {1} Decals) wurde automatisch gespeichert.",
+  "Restore": "Wiederherstellen",
+  "Your last session ({0}, 1 decal) was saved automatically.": "Deine letzte Sitzung ({0}, 1 Decal) wurde automatisch gespeichert.",
+  "Dismiss": "Schließen",
+  "Unwrap is paused while you edit": "Abwickeln pausiert beim Bearbeiten",
+  "Don't show again": "Nicht mehr anzeigen",
+  "Turn on Live unwrap": "Live-Abwicklung einschalten",
+  "Got it": "Verstanden",
   "Reset": "Zurücksetzen",
   "Stand it up: longest side along the bike, thinnest across it": "Aufstellen: längste Seite entlang des Rads, dünnste quer",
   "Back to the file's own orientation": "Zurück zur Ausrichtung der Datei",

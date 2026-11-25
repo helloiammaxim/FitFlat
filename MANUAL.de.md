@@ -170,7 +170,7 @@ Zieh die pinken Anfasser, um die Kurve zu biegen; Alt-Ziehen trennt sie.
 - **Vereinfachen / Alle vereinfachen** mit Toleranz **±** in mm — entfernt Punkte, die die Form nicht braucht (dezimieren). Nützlich nach Freihandzeichnen oder SVG-Import.
 
 ### Live-Abwicklung
-Standardmäßig wird jedes Decal nach jeder Änderung sofort abgewickelt. Bei großen Rahmen bremst das beim Formen der Kontur. Schalte **Live-Abwicklung** aus (Taste **L**): Änderungen zeichnen dann nur die Kontur neu, das Decal zeigt **nicht abgewickelt** und fehlt noch auf dem Bogen. Drück **Abwickeln** (Taste **U**), wenn die Form fertig ist. Der Bogen-Tab, Export, Kombinieren und Entlastungsschnitte wickeln Wartendes von selbst ab.
+**Live-Abwicklung** ist standardmäßig aus: Änderungen zeichnen nur die Kontur neu, das Decal zeigt **nicht abgewickelt** und fehlt auf dem Bogen, bis du **Abwickeln** (Taste **U**) drückst, wenn die Form fertig ist. Schalte **Live-Abwicklung** ein (Taste **L**), um nach jeder Änderung abzuwickeln, praktisch für kleine Korrekturen, aber langsamer bei großen Rahmen. Beim ersten Wechsel in Bearbeiten erklärt ein Hinweis das (*Nicht mehr anzeigen* anhaken, um ihn auszublenden). Der Bogen-Tab, Export, Kombinieren und Entlastungsschnitte wickeln Wartendes von selbst ab.
 
 ---
 
@@ -339,7 +339,7 @@ Deine Arbeit wird **in diesem Browser** (auf diesem Computer) gespeichert. Der P
 
 - **Speichern** (Strg+S) speichert das Projekt unter Projekte; beim ersten Mal fragt es nach einem Namen. **Aktuelles als neu speichern** in Projekte behält eine eigene Kopie.
 - **Projekte** listet deine gespeicherten Projekte mit Bild, Rahmen und Anzahl der Decals. Suchen und sortieren; **Öffnen**, **Umbenennen**, **Duplizieren**, **Herunterladen** (eine `.json`-Datei) oder **Löschen**.
-- **Automatisch speichern**: während du arbeitest, wird alle halbe Minute eine Kopie als *Letzte Sitzung* gespeichert, damit nichts verloren geht, wenn der Browser schließt.
+- **Automatisch speichern**: eine Kopie wird als *Letzte Sitzung* etwa zwei Sekunden nach jeder Änderung gespeichert, beim Wechsel weg vom Tab oder beim Schließen und alle halbe Minute. Nach einem Neuladen oder Absturz bietet FitFlat sie sofort an: **Wiederherstellen** holt sie zurück (sie bleibt auch in Projekte). Neuladen oder Schließen mit ungespeicherten Änderungen lässt den Browser erst nachfragen (*Seite verlassen?*), und ein Rechtsklick in FitFlat öffnet nicht mehr das Browsermenü mit seinem *Neu laden*.
 - **Vorlagen** sind ein Rahmen mit den Decals, die du darauf immer verwendest (zum Beispiel für ein Radmodell). **Aktuelles als Vorlage speichern**, dann öffnet **Neu daraus** eine Kopie als neues Projekt; die Vorlage selbst bleibt unverändert.
 - **Decal-Vorlagen** sind einzelne Decals, gespeichert mit *In Bibliothek speichern* im Decal-Panel. **Platziere** eine auf jedem Rahmen wie SVG-Grafik: über das Modell fahren, klicken, anpassen, Anwenden. Lade alle Decal-Vorlagen als eine Datei herunter oder füge Vorlagen aus so einer Datei hinzu.
 - **Herunterladen** speichert eine Vorlage als SVG-Datei in mm, **Alle herunterladen** alle in einer Datei, **Aus Dateien hinzufügen…** lädt SVG-Dateien (je mit geschlossenen Umrissen, in mm) oder eine solche Datei.

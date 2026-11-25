@@ -170,7 +170,7 @@ Drag the pink handles to bend the curve; Alt-drag breaks them apart.
 - **Simplify / Simplify all** with tolerance **±** in mm — removes points the shape does not need (decimate). Useful after freehand drawing or SVG import.
 
 ### Live unwrap
-By default every change unwraps the decal right away. On big frames that can slow you down while you shape the outline. Turn **Live unwrap** off (key **L**): edits then only redraw the outline, the decal shows **not unwrapped**, and it stays off the sheet. Press **Unwrap** (key **U**) when the shape is done. Opening the Sheet tab, exporting, combining decals and relief cuts unwrap anything still waiting on their own.
+**Live unwrap** is off by default: edits only redraw the outline, the decal shows **not unwrapped**, and it stays off the sheet until you press **Unwrap** (key **U**) once the shape is done. Turn **Live unwrap** on (key **L**) to unwrap after every change, handy for small tweaks but slower on big frames. The first time you switch to Edit, a note explains this (tick *Don't show again* to hide it). Opening the Sheet tab, exporting, combining decals and relief cuts unwrap anything still waiting on their own.
 
 ---
 
@@ -339,7 +339,7 @@ Your work is kept **in this browser** (on this computer). The project name in th
 
 - **Save** (Ctrl+S) saves the project under Projects; the first time it asks for a name. **Save current as new** in Projects keeps a separate copy.
 - **Projects** lists your saved projects with a picture, the frame and the number of decals. Search and sort them; **Open**, **Rename**, **Duplicate**, **Download** (a `.json` file) or **Delete**.
-- **Autosave**: while you work, a copy is saved every half minute as *Last session*, so nothing is lost if the browser closes.
+- **Autosave**: a copy is saved as *Last session* about two seconds after every change, when you switch away from the tab or close it, and every half minute. After a reload or a crash FitFlat offers it straight away: **Restore** brings it back (it also stays in Projects). Reloading or closing the tab with unsaved changes makes the browser ask first (*Leave site?*), and right-clicking in FitFlat no longer opens the browser menu with its *Reload*.
 - **Starting points** are a frame with the decals you always use on it (for example one bike model). **Save current as starting point**, then **New from it** opens a copy as a new project; the starting point itself never changes.
 - **Decal templates** are single decals saved with *Save to library* in the Decal panel. **Place** one on any frame like SVG artwork: move over the model, click, adjust, Apply. **Download** saves one template as an SVG file in mm, **Download all** saves them all in one file, and **Add from files…** loads SVG files (each with closed outlines, in mm) or such a file.
 - **Templates folder…** (in the Decal templates tab) loads and keeps templates in a folder of their own, for example a shared folder on the company network, separate from where your projects are. Every template there is one SVG file, and any SVG you copy into that folder shows up as a template. **Stop using this folder** goes back to keeping templates with your projects.
