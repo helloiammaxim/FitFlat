@@ -49,6 +49,10 @@ The **?** button at the top starts a short tour that points at the main controls
 ### Open your own model
 **Open** a `.glb`, `.gltf`, `.obj` or `.stl` file, or drop it onto the 3D view. A **Check the model size** window shows a 3D preview of the model as it will open (front of the bike to the right, standing upright; drag to look around) and its size in millimetres, centimetres, metres and inches, with the detected unit marked — pick the one that gives the real size. If it lies wrong, turn it with **X**, **Y**, **Z** (90° each, red, green, blue as in Blender) or press **Upright** (longest side along the bike, thinnest across it); **Reset** goes back to the file's own orientation. The sizes update as you turn it, and the model opens the way the preview shows it. Everything (decals, stretch, the cut sheet) is measured from it, and a wrong unit also makes zooming feel wrong. You can change it later with *Model units* in the top bar. STL files are read Z-up, the way Blender and CAD programs export them.
 
+**Scans: Auto-align.** A scan (EXStar Hub, Artec, Polycam …) is rarely straight, and its bounding box is not centred on the frame, so mirrored decals land a little off. Press **Auto-align**: FitFlat finds the frame's real centre plane by matching the two sides (small one-sided parts like the derailleur hanger, brake mount or cable ports are ignored), straightens the frame, puts the front to the right and the BB down, and levels it along the chainstays. Mirroring then uses that plane, not the middle of the box. Check the preview: if the front or the bottom is the wrong way round, turn it with **Z** (twice) or **X** (twice). The scan's triangles do not need to match left and right; mirrored decals are laid onto the surface on the other side.
+
+**Make symmetric** (appears after Auto-align): keeps one half of the scan, the non-drive or the drive side, and mirrors it to the other side, so both sides are exactly the same. Mirrored decals and their cut pieces then match exactly, and scan noise cannot make the two pieces differ. Parts that exist on one side only are copied from the kept half or disappear, so keep the side that is closest to what the film has to cover.
+
 The real frame model gives the most accurate production patterns.
 
 
@@ -77,7 +81,7 @@ The real frame model gives the most accurate production patterns.
 
 1. **Clean up:** remove the stand, turntable, floor and floating bits; fill small holes in the tubes (a hole where a decal goes breaks that decal).
 2. **Simplify** (*Mesh Editing › Simplification*, 0–99 % fewer triangles): aim for about 300,000–500,000 triangles. A scan of a few million triangles needs a high value (around 85–90); check that tube edges stay round.
-3. **Align** (*Align*: type the *Rotation*/*Offset* and *Move to*, or *3-2-1 alignment* with a plane, line and point): frame standing as it rides, **Z up**, front towards **+X**, drive side towards **−Y**, centre plane at Y = 0. Turn on the global coordinate system to see the axes (red X, green Y, blue Z).
+3. **Align** (*Align*: type the *Rotation*/*Offset* and *Move to*, or *3-2-1 alignment* with a plane, line and point): frame standing as it rides, **Z up**, front towards **+X**, drive side towards **−Y**, centre plane at Y = 0. Turn on the global coordinate system to see the axes (red X, green Y, blue Z). You can also skip this step and press **Auto-align** when you open the scan in FitFlat; it finds the centre plane more precisely than lining it up by eye.
 4. **Export** as **STL** (FitFlat reads STL with Z up), and pick **Millimetres** in FitFlat's *Check the model size*. OBJ works too, but FitFlat reads OBJ with Y up, so the frame would come in lying down.
 
 **Blender** — *File › Export › glTF 2.0*, format *glTF Binary (.glb)*: *Include › Selected Objects*, *Transform › +Y Up* on (default), *Mesh › Apply Modifiers* on. Or *Wavefront (.obj)* with *Up: Y*, *Forward: −Z* (defaults). Apply rotation and scale first (Ctrl+A).

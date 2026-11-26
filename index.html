@@ -412,6 +412,10 @@ dialog.unitdlg .uprev canvas{ display:block; width:100%; height:260px; cursor:gr
 dialog.unitdlg .uhint{ position:absolute; left:10px; bottom:8px; font-size:12px; color:#aab; pointer-events:none; }
 dialog.unitdlg .urot{ display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
 dialog.unitdlg .urot span{ font-size:12px; color:var(--muted, #999); margin-right:2px; }
+dialog.unitdlg .usym{ display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; margin:0 0 10px; }
+dialog.unitdlg .usym small{ flex-basis:100%; font-size:12px; color:var(--muted, #999); line-height:1.4; }
+dialog.unitdlg .usym select{ padding:3px 6px; }
+dialog.unitdlg #unitAlignMsg{ margin:0 0 8px; }
 dialog.unitdlg .ax{ min-width:34px; font-weight:600; }
 dialog.unitdlg .ax-x{ color:#ff5a5a; } dialog.unitdlg .ax-y{ color:#6fd36f; } dialog.unitdlg .ax-z{ color:#5a9bff; }
 .intro{ list-style:none; margin:0; padding:0; }
@@ -988,7 +992,12 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <button type="button" class="btn ax ax-y" data-ax="y" title="Turn 90° around Y (green, side to side)">Y</button>
         <button type="button" class="btn ax ax-z" data-ax="z" title="Turn 90° around Z (blue, up), e.g. to make the front point right">Z</button>
         <button type="button" class="btn" id="unitUpright" title="Stand it up: longest side along the bike, thinnest across it">Upright</button>
+        <button type="button" class="btn primary" id="unitAlign" title="For scans: find the frame's real centre plane, straighten it, front to the right, upright. Mirroring then follows the frame, not the box around it">Auto-align</button>
         <button type="button" class="btn" id="unitRotReset" title="Back to the file's own orientation">Reset</button></div>
+      <p class="note" id="unitAlignMsg" hidden></p>
+      <div class="usym" id="unitSymWrap" hidden><label class="inline"><input type="checkbox" id="unitSym"> Make symmetric: use one half for both sides</label>
+        <select class="btn" id="unitSymSide" aria-label="Half to keep"><option value="nd">Keep the non-drive side</option><option value="d">Keep the drive side</option></select>
+        <small>Both sides become exactly the same, so mirrored decals and their cut pieces match exactly. Parts on one side only (derailleur hanger, brake mount) are copied from the kept half or disappear.</small></div>
       <div class="modes" id="unitList"></div>
     </div>
     <footer><span class="spacer"></span>
@@ -2170,7 +2179,122 @@ ${opts.labels ? `<g id="labels">\n${lab}</g>\n` : ''}</svg>`;
         const t = (e2x*qx + e2y*qy + e2z*qz) * id; if (t > 1e-9 && t < best) { best = t; face = f; } } }
     return face < 0 ? null : { face, t: best };
   }
-  return { fitCurves, handlesFor, splitAt, computeRegion, flatten, weld, subdivide, topology, buildGrid, closestPoint, catmull, sampleOutline, solveDecal, pack, buildSVG, closestOnTri, buildBVH, rayBVH };
+  /* Straighten a scanned frame. A frame is mirror-symmetric apart from small parts (derailleur hanger, brake mount, cable
+     ports), so: sample the surface, start from its main axes, then fit the mirror plane by matching every point to the
+     surface point nearest its mirror image, ignoring the worst 30 % of matches. Inside that plane the side view is levelled
+     (smallest box around it), the bottom is where the wide parts are (dropouts, BB) and the back is the widest end (rear
+     dropouts). Returns rows ex (front), ey (up), ez (across, = ex × ey) and the plane n·p = d, all in the file's coordinates. */
+  function alignScan(pos, idx, N = 8000) {
+    const nf = idx.length / 3, cum = new Float64Array(nf), fn = new Float64Array(nf * 3); let tot = 0;
+    for (let f = 0; f < nf; f++) { const a = idx[3*f]*3, b = idx[3*f+1]*3, c = idx[3*f+2]*3;
+      const ux = pos[b]-pos[a], uy = pos[b+1]-pos[a+1], uz = pos[b+2]-pos[a+2], vx = pos[c]-pos[a], vy = pos[c+1]-pos[a+1], vz = pos[c+2]-pos[a+2];
+      const nx = uy*vz - uz*vy, ny = uz*vx - ux*vz, nz = ux*vy - uy*vx, A = Math.hypot(nx, ny, nz);
+      if (A > 0) { fn[f*3] = nx / A; fn[f*3+1] = ny / A; fn[f*3+2] = nz / A; } tot += A / 2; cum[f] = tot; }
+    if (!(tot > 0)) return null;
+    let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) >>> 0) / 4294967296;
+    const P = new Float64Array(N * 3), Nm = new Float64Array(N * 3);
+    for (let i = 0; i < N; i++) { const t = rnd() * tot; let lo = 0, hi = nf - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (cum[m] < t) lo = m + 1; else hi = m; }
+      let r1 = rnd(), r2 = rnd(); if (r1 + r2 > 1) { r1 = 1 - r1; r2 = 1 - r2; }
+      const a = idx[3*lo]*3, b = idx[3*lo+1]*3, c = idx[3*lo+2]*3;
+      for (let d = 0; d < 3; d++) { P[i*3+d] = pos[a+d] + r1 * (pos[b+d] - pos[a+d]) + r2 * (pos[c+d] - pos[a+d]); Nm[i*3+d] = fn[lo*3+d]; } }
+    const cen = [0, 0, 0]; for (let i = 0; i < N; i++) for (let d = 0; d < 3; d++) cen[d] += P[i*3+d] / N;
+    const dot = (a, b) => a[0]*b[0] + a[1]*b[1] + a[2]*b[2], cr = (a, b) => [a[1]*b[2]-a[2]*b[1], a[2]*b[0]-a[0]*b[2], a[0]*b[1]-a[1]*b[0]], nz = v => { const l = Math.hypot(...v); return v.map(x => x / l); };
+    // main axes (Jacobi on the 3×3 covariance)
+    const C = [[0,0,0],[0,0,0],[0,0,0]]; for (let i = 0; i < N; i++) for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) C[a][b] += (P[i*3+a]-cen[a]) * (P[i*3+b]-cen[b]) / N;
+    const V = [[1,0,0],[0,1,0],[0,0,1]];
+    for (let sw = 0; sw < 30; sw++) for (const [p, q] of [[0,1],[0,2],[1,2]]) { if (Math.abs(C[p][q]) < 1e-15) continue;
+      const th = (C[q][q] - C[p][p]) / (2 * C[p][q]), t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th*th + 1)), c = 1 / Math.sqrt(t*t + 1), s = t * c;
+      for (let k = 0; k < 3; k++) { const a = C[k][p], b = C[k][q]; C[k][p] = c*a - s*b; C[k][q] = s*a + c*b; }
+      for (let k = 0; k < 3; k++) { const a = C[p][k], b = C[q][k]; C[p][k] = c*a - s*b; C[q][k] = s*a + c*b; }
+      for (let k = 0; k < 3; k++) { const a = V[k][p], b = V[k][q]; V[k][p] = c*a - s*b; V[k][q] = s*a + c*b; } }
+    const axes = [0, 1, 2].map(j => ({ v: [V[0][j], V[1][j], V[2][j]], e: C[j][j] })).sort((a, b) => a.e - b.e); // thinnest first
+    // nearest sample to a point: dense grid
+    const mn = [1e30,1e30,1e30], mx = [-1e30,-1e30,-1e30]; for (let i = 0; i < N; i++) for (let d = 0; d < 3; d++) { mn[d] = Math.min(mn[d], P[i*3+d]); mx[d] = Math.max(mx[d], P[i*3+d]); }
+    const diag = Math.hypot(mx[0]-mn[0], mx[1]-mn[1], mx[2]-mn[2]), h = Math.max(diag / 60, Math.sqrt(tot / N) * 2);
+    const D = [0, 1, 2].map(k => Math.max(1, Math.ceil((mx[k] - mn[k]) / h) + 1)), cl = (v, k) => Math.max(0, Math.min(D[k] - 1, Math.floor((v - mn[k]) / h)));
+    const start = new Int32Array(D[0] * D[1] * D[2] + 1), items = new Int32Array(N), ci = new Int32Array(N);
+    for (let i = 0; i < N; i++) { ci[i] = cl(P[i*3], 0) + D[0] * (cl(P[i*3+1], 1) + D[1] * cl(P[i*3+2], 2)); start[ci[i] + 1]++; }
+    for (let c = 0; c < start.length - 1; c++) start[c + 1] += start[c];
+    { const fill = start.slice(0, -1); for (let i = 0; i < N; i++) items[fill[ci[i]]++] = i; }
+    const cap = h * 2.5;
+    const near = (x, y, z) => { const cx = Math.floor((x - mn[0]) / h), cy = Math.floor((y - mn[1]) / h), cz = Math.floor((z - mn[2]) / h); let bd = cap * cap, bi = -1;
+      for (let c = Math.max(0, cz - 2); c <= Math.min(D[2] - 1, cz + 2); c++) for (let b = Math.max(0, cy - 2); b <= Math.min(D[1] - 1, cy + 2); b++) for (let a = Math.max(0, cx - 2); a <= Math.min(D[0] - 1, cx + 2); a++) {
+        const k = a + D[0] * (b + D[1] * c); for (let s = start[k]; s < start[k + 1]; s++) { const j = items[s], dd = (P[j*3]-x)**2 + (P[j*3+1]-y)**2 + (P[j*3+2]-z)**2; if (dd < bd) { bd = dd; bi = j; } } }
+      return [bi, Math.sqrt(bd)]; };
+    // mirror fit, point-to-plane: each point's mirror image should lie on the surface near it (along that surface's normal);
+    // a Gauss-Newton step on (tilt a, tilt b, offset d) per round, the worst 30 % of matches left out
+    const keep = Math.floor(N * 0.7), errs = new Float64Array(N), qi = new Int32Array(N), ord = new Int32Array(N);
+    const fit = (n0, rounds) => { let n = n0.slice(), d = dot(n, cen), score = Infinity;
+      for (let it = 0; it < rounds; it++) {
+        for (let i = 0; i < N; i++) { const x = P[i*3], y = P[i*3+1], z = P[i*3+2], s = 2 * (n[0]*x + n[1]*y + n[2]*z - d); const [j, e] = near(x - s*n[0], y - s*n[1], z - s*n[2]); qi[i] = j; errs[i] = e; ord[i] = i; }
+        ord.sort((a, b) => errs[a] - errs[b]); let se = 0; for (let k = 0; k < keep; k++) se += errs[ord[k]]; score = se / keep / diag;
+        const t1 = nz(cr(n, Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0])), t2 = cr(n, t1);
+        const A = [[0,0,0],[0,0,0],[0,0,0]], B = [0, 0, 0];
+        for (let k = 0; k < keep; k++) { const i = ord[k], j = qi[i]; if (j < 0) continue;
+          const p = [P[i*3], P[i*3+1], P[i*3+2]], m = [Nm[j*3], Nm[j*3+1], Nm[j*3+2]], sd = dot(n, p) - d, r = [p[0] - 2*sd*n[0], p[1] - 2*sd*n[1], p[2] - 2*sd*n[2]];
+          const e = (r[0]-P[j*3])*m[0] + (r[1]-P[j*3+1])*m[1] + (r[2]-P[j*3+2])*m[2], mn_ = dot(m, n);
+          const J = [-2 * (dot(t1, p) * mn_ + sd * dot(m, t1)), -2 * (dot(t2, p) * mn_ + sd * dot(m, t2)), 2 * mn_];
+          for (let a = 0; a < 3; a++) { B[a] -= J[a] * e; for (let b = 0; b < 3; b++) A[a][b] += J[a] * J[b]; } }
+        for (let a = 0; a < 3; a++) A[a][a] += 1e-9 * (A[0][0] + A[1][1] + A[2][2] + 1e-12);
+        const det = A[0][0]*(A[1][1]*A[2][2]-A[1][2]*A[2][1]) - A[0][1]*(A[1][0]*A[2][2]-A[1][2]*A[2][0]) + A[0][2]*(A[1][0]*A[2][1]-A[1][1]*A[2][0]); if (!Math.abs(det)) break;
+        const sol = [0, 1, 2].map(c => { const M = A.map((row, r) => row.map((v, k) => k === c ? B[r] : v)); return (M[0][0]*(M[1][1]*M[2][2]-M[1][2]*M[2][1]) - M[0][1]*(M[1][0]*M[2][2]-M[1][2]*M[2][0]) + M[0][2]*(M[1][0]*M[2][1]-M[1][1]*M[2][0])) / det; });
+        const lim = 0.1, sa = Math.max(-lim, Math.min(lim, sol[0])), sb = Math.max(-lim, Math.min(lim, sol[1])), sdd = Math.max(-diag * 0.05, Math.min(diag * 0.05, sol[2]));
+        n = nz([0, 1, 2].map(k => n[k] + sa * t1[k] + sb * t2[k])); d += sdd;
+        if (Math.hypot(sa, sb) < 2e-6 && Math.abs(sdd) < diag * 2e-6) break; }
+      return { n, d, score }; };
+    // the thinnest axis is nearly always the across one; the others are only tried briefly, and win only if clearly better
+    let best = { ...fit(axes[0].v, 30), i: 0 };
+    for (let i = 1; i < 3; i++) { const f = fit(axes[i].v, 6); if (f.score < best.score * 0.6) best = { ...fit(f.n, 30), i }; }
+    const n = best.n, d = best.d;
+    // the side view (2D in the plane): rear dropouts = the widest points; chainstays + BB = the most wide surface on one line from there
+    const e1 = nz(cr(n, Math.abs(n[0]) < 0.9 ? [1, 0, 0] : [0, 1, 0])), e2 = cr(n, e1);
+    const U = new Float64Array(N), Vv = new Float64Array(N), W = new Float64Array(N);
+    for (let i = 0; i < N; i++) { const p = [P[i*3], P[i*3+1], P[i*3+2]]; U[i] = dot(p, e1); Vv[i] = dot(p, e2); W[i] = Math.abs(dot(p, n) - d); }
+    const ws = Float64Array.from(W).sort(), wq = f => ws[Math.min(N - 1, Math.floor(N * f))];
+    const w97 = wq(0.97), med = arr => { const s = arr.slice().sort((a, b) => a - b); return s[s.length >> 1] || 0; };
+    const top = []; for (let i = 0; i < N; i++) if (W[i] >= w97) top.push(i);
+    const R = [med(top.map(i => U[i])), med(top.map(i => Vv[i]))];
+    const band = diag * 0.025, cand = []; for (let i = 0; i < N; i++) if (W[i] >= w97 * 0.35 && Math.hypot(U[i] - R[0], Vv[i] - R[1]) > diag * 0.06) cand.push(i);
+    let bestT = 0, bestC = -1;
+    for (let k = 0; k < 720; k++) { const t = k / 720 * 2 * Math.PI, c = Math.cos(t), s = Math.sin(t); let cnt = 0;
+      for (const i of cand) { const x = U[i] - R[0], y = Vv[i] - R[1], al = x*c + y*s; if (al > 0 && Math.abs(-x*s + y*c) < band) cnt++; }
+      if (cnt > bestC) { bestC = cnt; bestT = t; } }
+    // refine the line through those points
+    { const c = Math.cos(bestT), s = Math.sin(bestT); let sx = 0, sy = 0, m = 0;
+      for (const i of cand) { const x = U[i] - R[0], y = Vv[i] - R[1]; if (x*c + y*s > 0 && Math.abs(-x*s + y*c) < band) { sx += x; sy += y; m++; } }
+      if (m) bestT = Math.atan2(sy, sx); }
+    const cs2 = [Math.cos(bestT), Math.sin(bestT)];
+    // up: most of the frame (seat tube, top tube) sits above the chainstay line
+    let above = 0; for (let i = 0; i < N; i++) above += -(U[i] - R[0]) * cs2[1] + (Vv[i] - R[1]) * cs2[0];
+    const up2 = above >= 0 ? [-cs2[1], cs2[0]] : [cs2[1], -cs2[0]];
+    // level: the rear axle sits above the BB by about 16 % of the chainstay length (the BB drop), so turn the chainstay line up by that
+    const tilt = Math.atan(0.16), fx = [cs2[0] * Math.cos(tilt) + up2[0] * Math.sin(tilt), cs2[1] * Math.cos(tilt) + up2[1] * Math.sin(tilt)];
+    const ex = nz([0, 1, 2].map(k => fx[0] * e1[k] + fx[1] * e2[k])), upv = [0, 1, 2].map(k => up2[0] * e1[k] + up2[1] * e2[k]);
+    let ey = nz(cr(n, ex)); if (dot(ey, upv) < 0) ey = ey.map(v => -v);
+    const ez = cr(ex, ey), flip = dot(ez, n) < 0;
+    return { ex, ey, ez, n: flip ? n.map(v => -v) : n, d: flip ? -d : d, score: best.score, axis: best.i, sure: bestC / Math.max(1, cand.length) };
+  }
+  /* Make a mesh exactly mirror-symmetric about coordinate k = 0: keep the half with sign·x_k ≥ 0 (triangles across the
+     plane are clipped, cut points shared between neighbours), then add its mirror image. Points on the plane are shared. */
+  function symmetrize(pos, idx, k, sign) {
+    let mx = 0; for (let i = 0; i < pos.length; i++) mx = Math.max(mx, Math.abs(pos[i]));
+    const eps = mx * 1e-7, out = [], tri = [], side = new Map(), cut = new Map(), keepV = new Map();
+    const sd = v => { const x = sign * pos[v*3+k]; return Math.abs(x) <= eps ? 0 : x; };
+    const addV = p => { out.push(p[0], p[1], p[2]); return out.length / 3 - 1; };
+    const vtx = v => { let o = keepV.get(v); if (o === undefined) { const p = [pos[v*3], pos[v*3+1], pos[v*3+2]]; if (sd(v) === 0) p[k] = 0; o = addV(p); keepV.set(v, o); } return o; };
+    const cutV = (a, b) => { const key = a < b ? a + ',' + b : b + ',' + a; let o = cut.get(key); if (o === undefined) { const sa = sd(a), sb = sd(b), t = sa / (sa - sb), p = [0, 1, 2].map(d => pos[a*3+d] + t * (pos[b*3+d] - pos[a*3+d])); p[k] = 0; o = addV(p); cut.set(key, o); } return o; };
+    for (let f = 0; f < idx.length; f += 3) { const v = [idx[f], idx[f+1], idx[f+2]], s3 = v.map(sd);
+      if (s3.every(x => x >= 0)) { if (s3.some(x => x > 0)) tri.push(vtx(v[0]), vtx(v[1]), vtx(v[2])); continue; }
+      if (s3.every(x => x <= 0)) continue;
+      const poly = []; for (let i = 0; i < 3; i++) { const a = v[i], b = v[(i + 1) % 3], sa = s3[i], sb = s3[(i + 1) % 3];
+        if (sa >= 0) poly.push(vtx(a)); if ((sa > 0 && sb < 0) || (sa < 0 && sb > 0)) poly.push(cutV(a, b)); }
+      for (let i = 1; i + 1 < poly.length; i++) tri.push(poly[0], poly[i], poly[i + 1]); }
+    const n0 = out.length / 3, twin = new Int32Array(n0);
+    for (let i = 0; i < n0; i++) { if (out[i*3+k] === 0) twin[i] = i; else { const p = [out[i*3], out[i*3+1], out[i*3+2]]; p[k] = -p[k]; twin[i] = addV(p); } }
+    const t0 = tri.length; for (let i = 0; i < t0; i += 3) tri.push(twin[tri[i]], twin[tri[i+2]], twin[tri[i+1]]);
+    return { pos: out, idx: tri };
+  }
+  return { fitCurves, handlesFor, splitAt, computeRegion, flatten, weld, subdivide, topology, buildGrid, closestPoint, catmull, sampleOutline, solveDecal, pack, buildSVG, closestOnTri, buildBVH, rayBVH, alignScan, symmetrize };
 })();
 if (typeof module !== 'undefined') module.exports = Core;
 
@@ -2303,7 +2427,7 @@ function prepModel(raw, sc) {
   const topo = Core.topology(mesh); mesh._topo = topo;
   const grid = Core.buildGrid(mesh, Math.max(L, topo.medianEdge) * 2); grid.L = L;
   const bvh = Core.buildBVH(mesh);
-  return { mesh, topo, grid, bvh, L, diag, mn, mx, size, lineR: Math.max(diag * 0.0011, L * 0.12) };
+  return { mesh, topo, grid, bvh, L, diag, mn, mx, size, lineR: Math.max(diag * 0.0011, L * 0.12), sym: raw.sym >= 0 && raw.sym <= 2 ? raw.sym : null };
 }
 function buildModel() {
   const src = S.source;
@@ -2770,12 +2894,25 @@ function askUnits(raw, fmt, name) {
     ext.add(new THREE.ArrowHelper(new THREE.Vector3(1, 0, 0), o, L, 0xff5a5a, L * 0.2, L * 0.1), new THREE.ArrowHelper(new THREE.Vector3(0, 0, -1), o, L, 0x6fd36f, L * 0.2, L * 0.1), new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), o, L, 0x5a9bff, L * 0.2, L * 0.1));
     list(); render(); };
   const size2 = () => { const w = cv.clientWidth || 600, h = cv.clientHeight || 260; rd.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); };
-  const look = () => { const d = new THREE.Vector3(0.25, 0.18, 1).normalize().multiplyScalar(R / Math.sin(cam.fov * Math.PI / 360) * 1.05); cam.position.copy(d); ctr.target.set(0, 0, 0); cam.near = R / 200; cam.far = R * 50; cam.updateProjectionMatrix(); ctr.update(); };
+  const look = () => { grp.quaternion.copy(q); grp.updateMatrixWorld(true); const bc = new THREE.Box3().setFromObject(grp, true).getCenter(new THREE.Vector3());
+    const d = new THREE.Vector3(0.25, 0.18, 1).normalize().multiplyScalar(R / Math.sin(cam.fov * Math.PI / 360) * 1.05); cam.position.copy(bc).add(d); ctr.target.copy(bc); cam.near = R / 200; cam.far = R * 50; cam.updateProjectionMatrix(); ctr.update(); };
   // turn 90° about the axes as shown (Z up): X = X, Y = −Z inside, Z = Y inside
   const AX = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 0, -1), z: new THREE.Vector3(0, 1, 0) };
   const turn = k => { q.premultiply(new THREE.Quaternion().setFromAxisAngle(AX[k], Math.PI / 2)); refit(); };
   dlg.querySelectorAll('.urot .ax').forEach(b => b.onclick = () => turn(b.dataset.ax));
-  $('#unitRotReset').onclick = () => { q.identity(); refit(); };
+  let plane = null; // the fitted mirror plane (file coordinates), once Auto-align has run
+  const amsg = t => { const e = $('#unitAlignMsg'); e.hidden = !t; e.textContent = t ? tr(t) : ''; };
+  $('#unitSymWrap').hidden = true; $('#unitSym').checked = false;
+  $('#unitRotReset').onclick = () => { q.identity(); plane = null; amsg(''); $('#unitSymWrap').hidden = true; refit(); };
+  $('#unitAlign').onclick = () => {
+    const b = $('#unitAlign'); b.disabled = true; amsg('Finding the centre plane…');
+    setTimeout(() => { try {
+      const a = Core.alignScan(raw.pos, raw.idx); if (!a) { amsg('This model has no surface to align.'); return; }
+      const m = new THREE.Matrix4().makeBasis(new THREE.Vector3(...a.ex), new THREE.Vector3(...a.ey), new THREE.Vector3(...a.ez)).transpose();
+      q.setFromRotationMatrix(m); plane = { n: a.n, d: a.d }; $('#unitSymWrap').hidden = false;
+      amsg(a.score < 0.004 ? 'Aligned: the centre plane is found and the frame is straight. Check that the front points right and the bottom is down; if not, turn it with Z (twice) or X (twice).'
+        : 'Aligned as well as possible, but the two sides of this model do not match well (missing parts or a lot of extra parts on one side). Check the result before opening.');
+      size2(); look(); refit(); } catch (e) { console.error(e); amsg('Auto-align did not work on this model.'); } finally { b.disabled = false; } }, 30); };
   // stand it up: of the 24 square turns, the one closest to now with the longest side along X, the thinnest across (Z inside), the middle one up
   $('#unitUpright').onclick = () => {
     const rots = [new THREE.Quaternion()], seen = new Set(['0,0,0,1']);
@@ -2793,6 +2930,13 @@ function askUnits(raw, fmt, name) {
   requestAnimationFrame(() => { size2(); look(); refit(); });
   $('#unitOk').onclick = () => { const u = dlg.querySelector('input[name=unitPick]:checked')?.value || guess; dlg.close(); close(); $('#units').value = u;
     if (Math.abs(q.w) < 0.9999) { const v = new THREE.Vector3(), p = raw.pos; for (let i = 0; i < p.length; i += 3) { v.set(p[i], p[i+1], p[i+2]).applyQuaternion(q); p[i] = v.x; p[i+1] = v.y; p[i+2] = v.z; } }
+    delete raw.sym;
+    if (plane) { // move the fitted mirror plane to 0; if it lies across an axis, mirroring uses it from now on
+      const n = new THREE.Vector3(...plane.n).applyQuaternion(q), k = [n.x, n.y, n.z].findIndex(c => Math.abs(c) > 0.999), p = raw.pos;
+      if (k >= 0) { const sh = plane.d * Math.sign([n.x, n.y, n.z][k]); for (let i = k; i < p.length; i += 3) p[i] -= sh; raw.sym = k;
+        if ($('#unitSym').checked) { // the drive side is where the across axis (front × up) points, before any extra turn
+          const dv = new THREE.Vector3(...plane.n).applyQuaternion(q), sg = Math.sign([dv.x, dv.y, dv.z][k]) * ($('#unitSymSide').value === 'd' ? 1 : -1);
+          const r = Core.symmetrize(raw.pos, raw.idx, k, sg); raw.pos = r.pos; raw.idx = r.idx; } } }
     loadSource(raw, fmt, name); };
   $('#unitCancel').onclick = () => { dlg.close(); close(); };
 }
@@ -2830,7 +2974,7 @@ function projectJSON() {
   const src = S.source;
   return JSON.stringify({
     app: 'decal-unwrap', version: 1, name: src.name, fmt: src.fmt, units: S.units,
-    model: { pos: b64(new Float32Array(src.raw.pos)), idx: b64(new Uint32Array(src.raw.idx)) },
+    model: { pos: b64(new Float32Array(src.raw.pos)), idx: b64(new Uint32Array(src.raw.idx)), sym: src.raw.sym ?? undefined },
     sheet: S.sheet, film: S.film, ref: S.ref, mirrorAxis: S.mirrorAxis, mirrorDefault: S.mirrorDefault, clipDist: S.clipDist, modelOpacity: S.modelOpacity, grid: S.grid, views: S.views,
     frame: src.tubes ? { tubes: src.tubes, geo: src.geo, tubeSizes: src.tubeSizes, presetName: src.presetName, sizeIndex: src.sizeIndex } : null,
     presets: userPresets,
@@ -3336,7 +3480,7 @@ function loadProject(text, fname) {
     restoreDecals(pj.decals || [], null, fname);
   };
   if (pj.model?.pos) {
-    const raw = { pos: Array.from(unb64(pj.model.pos, Float32Array)), idx: Array.from(unb64(pj.model.idx, Uint32Array)) };
+    const raw = { pos: Array.from(unb64(pj.model.pos, Float32Array)), idx: Array.from(unb64(pj.model.idx, Uint32Array)) }; if (pj.model.sym >= 0 && pj.model.sym <= 2) raw.sym = pj.model.sym;
     $('#units').value = UNIT[pj.units] ? pj.units : 'auto';
     loadSource(raw, pj.fmt || 'obj', pj.name || fname, restore);
   } else if (S.model) { clearDecals(); restore(); }
@@ -3543,8 +3687,8 @@ $('#secHist').addEventListener('toggle', renderHistory);
 function mirrorPlane() {
   const m = S.model; if (!m) return null;
   const ext = [0,1,2].map(k => m.mx[k] - m.mn[k]);
-  const k = S.mirrorAxis === 'auto' ? ext.indexOf(Math.min(...ext)) : { x: 0, y: 1, z: 2 }[S.mirrorAxis];
-  return { k, c: (m.mn[k] + m.mx[k]) / 2 };
+  const k = S.mirrorAxis === 'auto' ? (m.sym ?? ext.indexOf(Math.min(...ext))) : { x: 0, y: 1, z: 2 }[S.mirrorAxis];
+  return { k, c: k === m.sym ? 0 : (m.mn[k] + m.mx[k]) / 2 }; // an auto-aligned scan has its fitted mirror plane at 0
 }
 function reflect(p) { const pl = mirrorPlane(), q = p.slice(); q[pl.k] = 2 * pl.c - q[pl.k]; return q; }
 function twinCtrl(d) {
@@ -8038,6 +8182,18 @@ const DE = {
   "Turn 90° around Y (green, side to side)": "90° um Y drehen (grün, seitlich)",
   "Turn 90° around Z (blue, up), e.g. to make the front point right": "90° um Z drehen (blau, oben), z. B. damit die Front nach rechts zeigt",
   "Upright": "Aufrichten",
+  "Auto-align": "Automatisch ausrichten",
+  "For scans: find the frame's real centre plane, straighten it, front to the right, upright. Mirroring then follows the frame, not the box around it": "Für Scans: die echte Mittelebene des Rahmens finden, ihn gerade stellen, Front nach rechts, aufrecht. Das Spiegeln folgt dann dem Rahmen, nicht der Box um ihn",
+  "Finding the centre plane…": "Mittelebene wird gesucht …",
+  "This model has no surface to align.": "Dieses Modell hat keine Fläche zum Ausrichten.",
+  "Aligned: the centre plane is found and the frame is straight. Check that the front points right and the bottom is down; if not, turn it with Z (twice) or X (twice).": "Ausgerichtet: Die Mittelebene ist gefunden und der Rahmen steht gerade. Prüfe, ob die Front nach rechts und das Tretlager nach unten zeigt; sonst mit Z (zweimal) oder X (zweimal) drehen.",
+  "Aligned as well as possible, but the two sides of this model do not match well (missing parts or a lot of extra parts on one side). Check the result before opening.": "So gut wie möglich ausgerichtet, aber die beiden Seiten passen nicht gut zusammen (fehlende Teile oder viele Anbauteile auf einer Seite). Prüfe das Ergebnis vor dem Öffnen.",
+  "Auto-align did not work on this model.": "Automatisches Ausrichten hat bei diesem Modell nicht geklappt.",
+  "Make symmetric: use one half for both sides": "Symmetrisch machen: eine Hälfte für beide Seiten nutzen",
+  "Half to keep": "Hälfte behalten",
+  "Keep the non-drive side": "Nicht-Antriebsseite behalten",
+  "Keep the drive side": "Antriebsseite behalten",
+  "Both sides become exactly the same, so mirrored decals and their cut pieces match exactly. Parts on one side only (derailleur hanger, brake mount) are copied from the kept half or disappear.": "Beide Seiten werden genau gleich, gespiegelte Decals und ihre Schnittteile passen also exakt. Teile, die nur auf einer Seite sind (Schaltauge, Bremsaufnahme), werden von der behaltenen Hälfte kopiert oder verschwinden.",
   "Your last session ({0}, {1} decals) was saved automatically.": "Deine letzte Sitzung ({0}, {1} Decals) wurde automatisch gespeichert.",
   "Restore": "Wiederherstellen",
   "Your last session ({0}, 1 decal) was saved automatically.": "Deine letzte Sitzung ({0}, 1 Decal) wurde automatisch gespeichert.",
