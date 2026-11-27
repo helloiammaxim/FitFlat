@@ -261,7 +261,7 @@ Choose **Knife** and click points in the view — on or off the model.
 
 - A line **across a decal** splits it. Draw past the edges.
 - Click the **first point again** to close a loop: *Apply cut* cuts that area out of the decals it overlaps, or leaves a hole if it lies inside one.
-- **Cut through** (on by default, key **T**) cuts every surface under the line, front and back. Off: only the visible side.
+- **Cut through** (on by default, key **T**) cuts every surface under the line, front and back. Off: only the visible side. It is only available with **Mirror** off: with Mirror on, the knife cuts the side you see and the cut is mirrored to the other side.
 - In mirror mode cuts are mirrored to the other side; a cut that starts or ends at the centre line continues across it.
 - **Apply cut** (Enter) applies it, **Clear** (Esc) removes the line, Backspace removes the last knife point.
 - Locked decals are not cut.
@@ -403,7 +403,7 @@ By default everything stays in the browser. In **Projects**, **Use a folder…**
 | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y) | Undo / redo |
 | Enter | Close shape · apply knife cut · apply placement |
 | Esc | Stop drawing · clear knife · cancel |
-| Backspace / Delete | Delete selected points · remove last knife or outline point |
+| Backspace / Delete | Delete selected points · with no points selected, the selected decal · remove last knife or outline point |
 | Ctrl+A | Select all points of the decal |
 | Ctrl+D | Duplicate the selected decal |
 | M | Merge selected points |

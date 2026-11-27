@@ -14504,7 +14504,7 @@ window.addEventListener('keydown', e => {
     if (e.key === 'Enter') { applyKnife(); e.preventDefault(); return; }
     if (e.key === 'Backspace' || e.key === 'Delete') { if (S.knifeClosed) { S.knifeClosed = false; S.knifeRuns.pop(); } else { S.knife.pop(); S.knifeRuns.pop(); } renderKnife(); updateUI(); e.preventDefault(); return; }
     if (e.key === 'Escape') { clearKnife(); return; }
-    if (!mod && e.key.toLowerCase() === 't') { setKnifeThrough(!S.knifeThrough); e.preventDefault(); return; }
+    if (!mod && e.key.toLowerCase() === 't') { if (S.mirrorDefault) flash('Mirror is on, so the cut is mirrored to the other side already. Turn Mirror off to cut every surface under the line.'); else setKnifeThrough(!S.knifeThrough); e.preventDefault(); return; }
   }
   if (e.key === 'Enter' && openTarget()) { finishShape(); e.preventDefault(); }
   if (S.boolOp && e.key === 'Escape') { S.boolOp = null; updateUI(); return; }
@@ -14626,6 +14626,11 @@ function openTarget() { const d = S.drawing || S.active; return d && !d.closed &
 function finishShape() { if (S.vline) { closeViewLine(); return; } const d = openTarget(); if (d) { pushHistory(); S.drawing = d; closeDrawing(); } }
 function closeDrawing() { const d = S.drawing; d.closed = true; S.drawing = null; S.sel = null; solve(d); }
 function refresh(d) { if (d.closed) solve(d); else { updateDecalVisual(d, true); updateUI(); } }
+function deleteDecal(d) {
+  pushHistory(tr('Deleted {0}').replace('{0}', d.name));
+  if (d.liveOf != null) applyCombo(d.liveOf, true); // a combined piece goes for good, the others stay
+  const part = d.partOf?.cid; removeDecal(d); if (part != null) recomputeCombo(part);
+}
 function deletePoints() {
   const L = selList();
   if (L.length) {
@@ -14638,7 +14643,11 @@ function deletePoints() {
     selectPoints(d, [Math.min(L[0], d.ctrl.length) - 1 < 0 ? 0 : Math.min(L[0], d.ctrl.length) - 1], false);
     refresh(d); return;
   }
-  if (S.drawing) { pushHistory(); S.drawing.ctrl.pop(); if (!S.drawing.ctrl.length) removeDecal(S.drawing); else { updateDecalVisual(S.drawing, true); updateUI(); } }
+  if (S.drawing) { pushHistory(); S.drawing.ctrl.pop(); if (!S.drawing.ctrl.length) removeDecal(S.drawing); else { updateDecalVisual(S.drawing, true); updateUI(); } return; }
+  // no points selected: the selected decal itself goes (Ctrl+Z brings it back)
+  const d = S.active; if (!d || !S.decals.includes(d)) return;
+  if (d.locked) { flash('This decal is locked. Unlock it in the list to delete it.'); return; }
+  const name = d.name; deleteDecal(d); S.active = null; S.sel = null; renderHandles(); updateUI(); flash(tr('Deleted {0}. Ctrl+Z brings it back.').replace('{0}', name));
 }
 function mergePoints() {
   const L = selList(); if (L.length < 2) { flash('Select two or more points to merge (Shift-click or Shift-drag a box).'); return; }
@@ -15116,7 +15125,7 @@ $('#stretch').addEventListener('click', () => { S.showStretch = !S.showStretch; 
 $('#mirror').addEventListener('click', () => {
   if (S.active) { pushHistory('Mirror'); S.active.mirror = !S.active.mirror; S.mirrorDefault = S.active.mirror; if (S.active.closed) solve(S.active); else updateDecalVisual(S.active, true); }
   else S.mirrorDefault = !S.mirrorDefault;
-  renderHandles(); updateUI();
+  if (S.mode === 'knife') renderKnife(); renderHandles(); updateUI();
 });
 function setSeamSnap(on) { S.seamSnap = on; $('#seamSnap').setAttribute('aria-pressed', String(on)); $('#clipWrap').classList.toggle('off', !on); flash(on ? 'Seam snap on: points near the centre plane snap onto it.' : 'Seam snap off: points stay where you put them; they only stop at the plane instead of crossing it.'); }
 $('#seamSnap').addEventListener('click', () => setSeamSnap(!S.seamSnap));
@@ -15137,8 +15146,8 @@ function hintText() {
   if (S.boolOp) return `${BOOL_NAMES[S.boolOp.op]}: click the second decal (on the model or in the list)${S.boolOp.op === 'difference' ? ' to cut away from ' + S.boolOp.a.name : ''}. Esc cancels.`;
   if (S.placing) return S.placeHit ? 'Check the orange preview. Alt + scroll resizes, Ctrl + scroll rotates (Shift for bigger steps). Apply (Enter) adds it; click elsewhere to move it.' : 'Move over the model to see the artwork, click to place a preview. Alt + scroll resizes, Ctrl + scroll rotates. Esc cancels.';
   if (S.mode === 'draw' && S.vline) return S.vline.pts.length < 3 ? 'Outline in the view: click on or off the model to add points, or drag to draw freehand. Where the line runs off the model, the decal follows the edge of the surface. Space + drag turns the view. Backspace removes the last point, Esc cancels.' : 'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.';
-  if (S.mode === 'knife' && S.knifeClosed) return S.knifeThrough ? 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal under it, front and back, leaving a hole if it sits inside. Esc clears it.' : 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal it overlaps on the visible side, leaving a hole if it sits inside. Esc clears it.';
-  if (S.mode === 'knife') return S.knife.length < 2 ? (S.knifeThrough ? 'Click to draw a knife line in the view, on or off the model; it cuts through every surface under it, front and back (T: visible side only). A line across a decal splits it; click the first point again to close a loop that cuts its area out.' : 'Click to draw a knife line in the view, on or off the model; it is projected onto the visible surface only (T: cut through). A line across a decal splits it; click the first point again to close a loop that cuts its area out.') : 'Keep clicking to bend the knife line. Apply cut (Enter) splits every decal it crosses; Backspace removes the last knife point, Esc clears it.';
+  if (S.mode === 'knife' && S.knifeClosed) return knifeThru() ? 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal under it, front and back, leaving a hole if it sits inside. Esc clears it.' : 'Closed knife loop: Apply cut (Enter) cuts this area out of every decal it overlaps on the visible side, leaving a hole if it sits inside. Esc clears it.';
+  if (S.mode === 'knife') return S.knife.length < 2 ? (knifeThru() ? 'Click to draw a knife line in the view, on or off the model; it cuts through every surface under it, front and back (T: visible side only). A line across a decal splits it; click the first point again to close a loop that cuts its area out.' : 'Click to draw a knife line in the view, on or off the model; it is projected onto the visible surface only (T: cut through). A line across a decal splits it; click the first point again to close a loop that cuts its area out.') : 'Keep clicking to bend the knife line. Apply cut (Enter) splits every decal it crosses; Backspace removes the last knife point, Esc clears it.';
   if (S.mode === 'cut') return S.cut ? 'Split: click a second spot on the same outline. The shape is divided along a straight line between the two spots. Esc cancels.' : 'Split: click two spots on an outline to divide it into two pieces along a straight line. Shift-click opens an outline at that spot; clicking an open line snips it. To cut one shape with another, use Subtract instead.';
   if (S.drawing) {
     const n = S.drawing.ctrl.length;
@@ -15480,7 +15489,7 @@ function updateUI() {
   $('#circWrap').hidden = S.mode !== 'draw' || S.drawShape !== 'circle';
   if (!S.placing && !(S.mode === 'draw' && (S.drawShape === 'pill' || S.drawShape === 'circle')) && !(press && press.type === 'shape')) $('#placeGhost').hidden = true;
   $('#shapeMid').hidden = S.mode !== 'draw' || !S.drawShape || S.drawShape === 'free' || !S.mirrorDefault; $('#shapeMid').setAttribute('aria-pressed', !!S.shapeMid);
-  $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', S.knifeThrough); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
+  $('#knifeBar').hidden = S.mode !== 'knife'; $('#knifeThrough').setAttribute('aria-pressed', knifeThru()); $('#knifeThrough').disabled = !!S.mirrorDefault; $('#knifeThrough').title = tr(S.mirrorDefault ? 'Mirror is on, so the cut is mirrored to the other side already. Turn Mirror off to cut every surface under the line' : 'On: cut every surface under the line, front and back. Off: cut only the visible side (T)'); $('#knifeApply').disabled = S.knife.length < 2; $('#knifeClear').disabled = !S.knife.length;
   $('#lsStraight').setAttribute('aria-pressed', S.lineStyle !== 'curved'); $('#lsCurved').setAttribute('aria-pressed', S.lineStyle === 'curved');
   for (const id of ['#modeDraw','#modeEdit','#stretch','#fit','#mirror','#mirrorAxis','#ortho','#gridBtn']) $(id).disabled = !has;
   $('#stretch').setAttribute('aria-pressed', S.showStretch);
@@ -15547,9 +15556,7 @@ function renderList() {
     li.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
       if (b.dataset.a === 'capply') { applyCombo(d.liveOf); return; }
       if (b.dataset.a === 'csplit') { undoCombo(d.liveOf); return; }
-      if (b.dataset.a === 'del') { pushHistory(tr('Deleted {0}').replace('{0}', d.name));
-        if (d.liveOf != null) applyCombo(d.liveOf, true); // a combined piece goes for good, the others stay
-        const part = d.partOf?.cid; removeDecal(d); if (part != null) { recomputeCombo(part); } }
+      if (b.dataset.a === 'del') deleteDecal(d);
       if (b.dataset.a === 'relief') { applyRelief(d); return; }
       if (b.dataset.a === 'undart') { pushHistory('Removed relief cuts'); delete d.darts; delete d.dartV; solve(d); return; }
       if (b.dataset.a === 'dup') { duplicateDecal(d); return; }
@@ -16080,6 +16087,8 @@ function knifeRun(a, b) { const r = projectKnifeSeg(a, b); r.layers = layerSampl
 
 // ---------- cut through: every surface layer under the knife line, not just the visible one ----------
 S.knifeThrough = true;
+// with Mirror on the cut is mirrored to the other side already, so Cut through only applies with Mirror off
+const knifeThru = () => S.knifeThrough && !S.mirrorDefault;
 let layerCache = null;
 function layerBins() { // triangles binned by where they land on screen, for the current view
   camera.updateMatrixWorld();
@@ -16162,7 +16171,7 @@ function throughPaths() {
 }
 // all knife lines to cut with: just the visible side, or every layer
 function knifeLines() {
-  if (!S.knifeThrough) return [knifeSamples()];
+  if (!knifeThru()) return [knifeSamples()];
   const { open, loops } = throughPaths();
   return [...open, ...loops.map(K => { const D = [...K, ...K.slice(1), K[0]].map((q, i) => ({ ...q, brk: i === 0 })); D.loop = K; return D; })];
 }
@@ -16269,7 +16278,7 @@ function renderKnife() {
   const grp = new THREE.Group(), k = hOff() * 1.5;
   let run = [];
   const flush = () => { if (run.length >= 2) { const l = fatLine(run, false, lineMat('#FFB000', 2.5, 1, false)); l.material.dashed = true; l.material.dashSize = 3; l.material.gapSize = 2; l.material.needsUpdate = true; l.computeLineDistances(); grp.add(l); } run = []; };
-  const lines = S.knifeThrough ? (({ open, loops }) => [...open, ...loops.map(K => [...K, { ...K[0], brk: false }])])(throughPaths()) : [knifeSamples()];
+  const lines = knifeThru() ? (({ open, loops }) => [...open, ...loops.map(K => [...K, { ...K[0], brk: false }])])(throughPaths()) : [knifeSamples()];
   for (const smp of lines) { for (const s of smp) { if (s.brk) flush(); run.push(offsetPt(s.point, s.face, k)); } flush(); }
   const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(S.knife.flatMap(c => c.face != null ? offsetPt(c.w, c.face, k) : c.w), 3));
   grp.add(new THREE.Points(g, new THREE.PointsMaterial({ size: 10, sizeAttenuation: false, map: diamond, color: 0xFFB000, alphaTest: 0.4, transparent: true, depthTest: false })));
@@ -16410,7 +16419,7 @@ function applyKnife() {
     // (so a mirrored decal is cut once where you drew, not again where the line passes its mirror copy behind)
     const pre = new Set(S.decals);
     let r = knifeCutAll(withMirror([knifeSamples()]), before);
-    if (S.knifeThrough) {
+    if (knifeThru()) {
       const touched = new Set(r ? S.decals.filter(d => !pre.has(d)) : []);
       const lines = knifeLines(), mirrorOnly = withMirror(lines).filter(K => !lines.includes(K));
       const pre2 = new Set(S.decals);
@@ -16423,7 +16432,7 @@ function applyKnife() {
       }
     }
     if (!r && knifeDart(before)) { setBusy(false); return; }
-    if (!r) { setBusy(false); flash(S.knifeThrough ? 'The knife line has to cross a decal outline twice. Draw it past the edges.' : 'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
+    if (!r) { setBusy(false); flash(knifeThru() ? 'The knife line has to cross a decal outline twice. Draw it past the edges.' : 'The knife line has to cross a decal outline twice on the visible side. Draw it past the edges.'); return; }
     resymmetrize();
     setBusy(false);
     histPush(before, 'Knife cut'); clearKnife(); S.active = null; renderHandles(); updateUI();
@@ -17173,7 +17182,7 @@ function applyKnifeLoopThrough() {
   }, 20);
 }
 function applyKnifeLoop() {
-  if (S.knifeThrough) { applyKnifeLoopThrough(); return; }
+  if (knifeThru()) { applyKnifeLoopThrough(); return; }
   const K = knifeSamples(); if (K.some((s, i) => i > 0 && s.brk)) { flash('The knife loop has to stay on the model all the way round.'); return; }
   const ctrl = knifePath(K, -1, K.length - 1).map(s => ({ p: s.point.slice(), face: s.face, type: 'corner' }));
   if (ctrl.length < 3) { flash('The knife loop is too small.'); return; }
@@ -18565,6 +18574,10 @@ const DE = {
   "Stick to model": "Aufs Modell kleben",
   "Unstick": "Lösen",
   "Adjust": "Anpassen",
+  "This decal is locked. Unlock it in the list to delete it.": "Dieses Decal ist gesperrt. Entsperre es in der Liste, um es zu löschen.",
+  "Deleted {0}. Ctrl+Z brings it back.": "{0} gelöscht. Strg+Z holt es zurück.",
+  "Mirror is on, so the cut is mirrored to the other side already. Turn Mirror off to cut every surface under the line": "Spiegeln ist an, der Schnitt wird also schon auf die andere Seite gespiegelt. Schalte Spiegeln aus, um jede Fläche unter der Linie zu schneiden",
+  "Mirror is on, so the cut is mirrored to the other side already. Turn Mirror off to cut every surface under the line.": "Spiegeln ist an, der Schnitt wird also schon auf die andere Seite gespiegelt. Schalte Spiegeln aus, um jede Fläche unter der Linie zu schneiden.",
   "Aligned: the pink plane is the centre plane the mirror will use, and the frame is straight. Check that the front points right and the bottom is down; if not, turn it with Z (twice) or X (twice).": "Ausgerichtet: Die pinke Ebene ist die Mittelebene, an der gespiegelt wird, und der Rahmen steht gerade. Prüfe, ob die Front nach rechts und das Tretlager nach unten zeigt; sonst mit Z (zweimal) oder X (zweimal) drehen.",
   "Everything is unwrapped already.": "Alles ist schon abgewickelt.",
   "Stick as plane": "Als Ebene fixieren",

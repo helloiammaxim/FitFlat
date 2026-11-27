@@ -261,7 +261,7 @@ Wähle **Messer** und klicke Punkte in der Ansicht — auf oder neben dem Modell
 
 - Eine Linie **über ein Decal** teilt es. Zieh sie über die Ränder hinaus.
 - Klicke **erneut auf den ersten Punkt**, um eine Schleife zu schließen: *Schnitt anwenden* schneidet diese Fläche aus den überlappten Decals oder lässt ein Loch, wenn sie innen liegt.
-- **Durchschneiden** (standardmäßig an, Taste **T**) schneidet jede Fläche unter der Linie, vorne und hinten. Aus: nur die sichtbare Seite.
+- **Durchschneiden** (standardmäßig an, Taste **T**) schneidet jede Fläche unter der Linie, vorne und hinten. Aus: nur die sichtbare Seite. Es gibt das nur bei ausgeschaltetem **Spiegeln**: Mit Spiegeln schneidet das Messer die Seite, die du siehst, und der Schnitt wird auf die andere Seite gespiegelt.
 - Im Spiegelmodus werden Schnitte auf die andere Seite gespiegelt; ein Schnitt, der an der Mittellinie beginnt oder endet, läuft darüber hinweg weiter.
 - **Schnitt anwenden** (Enter) wendet an, **Löschen** (Esc) entfernt die Linie, Rücktaste entfernt den letzten Messerpunkt.
 - Gesperrte Decals werden nicht geschnitten.
@@ -404,7 +404,7 @@ Standardmäßig bleibt alles im Browser. In **Projekte** speichert **Ordner verw
 | Strg+Z / Strg+Umschalt+Z (Strg+Y) | Rückgängig / Wiederholen |
 | Enter | Form schließen · Messerschnitt anwenden · Platzierung anwenden |
 | Esc | Zeichnen beenden · Messer löschen · Abbrechen |
-| Rücktaste / Entf | Ausgewählte Punkte löschen · letzten Messer- oder Konturpunkt entfernen |
+| Rücktaste / Entf | Ausgewählte Punkte löschen · ohne ausgewählte Punkte das ausgewählte Decal · letzten Messer- oder Konturpunkt entfernen |
 | Strg+A | Alle Punkte des Decals auswählen |
 | Strg+D | Ausgewähltes Decal duplizieren |
 | M | Ausgewählte Punkte zusammenführen |
