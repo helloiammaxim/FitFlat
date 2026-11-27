@@ -63,6 +63,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 
 /* iOS style segmented control */
 .seg{ display:inline-flex; background:var(--fill); border-radius:9px; padding:2px; gap:0; }
+#theme button{ display:inline-grid; place-items:center; padding-inline:9px; }
 .seg button{ border:0; background:transparent; padding:5px 12px; border-radius:7px; cursor:pointer; font-weight:500; font-size:13px; color:var(--ink); }
 .seg button[aria-pressed="true"], .seg button[aria-selected="true"]{ background:var(--surface); box-shadow:0 1px 3px rgba(0,0,0,.12), 0 0 0 .5px rgba(0,0,0,.04); }
 .grp .seg{ background:transparent; padding:0; }
@@ -611,36 +612,63 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 .geo .derived{ grid-column:1 / -1; background:var(--paper); border-radius:10px; padding:8px 10px; font-size:12.5px; color:var(--ink); }
 .geo .derived:empty{ display:none; }
 
+/* header: one calm toolbar, the rarely changed options in Settings */
+.top{ gap:8px; padding:7px 12px; min-height:52px; box-sizing:border-box; z-index:30; } /* above the panels, so its menu is too */
+.titleblock{ display:flex; flex-direction:column; justify-content:center; min-width:0; line-height:1.15; margin-left:4px; }
+.titleblock .projname{ padding:2px 6px; margin-left:-6px; font-size:13.5px; }
+.titleblock .projname .chev{ width:10px; height:10px; fill:none; stroke:var(--muted); stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+.titleblock .modelinfo{ font-size:11.5px; padding-left:0; max-width:420px; }
+.tgroup{ display:inline-flex; gap:2px; padding:2px; border-radius:10px; background:var(--fill); }
+.tbtn{ all:unset; box-sizing:border-box; display:inline-flex; align-items:center; justify-content:center; gap:6px; height:30px; min-width:32px; padding:0 7px; border-radius:8px; color:var(--ink); cursor:pointer; font-size:13px; font-weight:500; }
+.tbtn:hover{ background:var(--fill2); } .tbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+.tbtn[aria-expanded="true"]{ background:var(--fill2); }
+.tbtn svg{ width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; flex:none; }
+.tbtn.wide svg{ width:22px; }
+.tgroup .tbtn{ height:28px; min-width:30px; }
+.top .tbtn.wide{ background:var(--fill); padding:0 10px 0 8px; }
+.top .tbtn.wide:hover{ background:var(--fill2); }
+.top .savebtn{ height:30px; padding:0 14px; border-radius:8px; font-weight:600; }
+.tsep{ width:1px; height:20px; background:var(--line); margin:0 2px; }
+.tmenu{ position:absolute; top:calc(100% + 6px); right:12px; width:290px; padding:8px; border-radius:14px; background:var(--surface); border:1px solid var(--line); box-shadow:0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08); display:flex; flex-direction:column; gap:2px; z-index:20; }
+.tmenu[hidden]{ display:none; }
+.tmenu .trow{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 6px; font-size:13px; }
+.tmenu .trow > span{ color:var(--muted); }
+.tmenu .trow + .trow{ border-top:1px solid var(--line); }
+.tmenu select.btn{ width:auto; min-width:120px; background:var(--fill); }
+@media (max-width: 900px){ .tbtn.wide span{ display:none; } .titleblock .modelinfo{ display:none; } }
+
 </style>
 </head>
 <body>
 <div class="app">
   <header class="top">
     <div class="brand"><svg class="mark" aria-hidden="true" viewBox="236 112 594 860"><defs><linearGradient id="ffgback" gradientUnits="userSpaceOnUse" x1="250" x2="561" y1="0" y2="0"><stop offset="0" stop-color="#edeefc"/><stop offset="1" stop-color="#a0a4fa"/></linearGradient><linearGradient id="ffgarcFar1" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcFar0" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcNear1" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgarcNear0" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgfront" gradientUnits="userSpaceOnUse" x1="564" x2="719" y1="0" y2="0"><stop offset="0" stop-color="#0033f8"/><stop offset="1" stop-color="#4258fb"/></linearGradient></defs><path d="M250.6,194.4 L561.0,130.0 L561.0,289.1 L410.4,320.3 L410.4,479.4 L561.0,448.2 L561.0,607.3 L410.4,638.6 L410.4,797.7 L250.6,830.9 Z" fill="url(#ffgback)"/><path d="M561.0,448.2 C596.5,440.8 637.2,438.6 676.3,442.0 C715.3,445.4 750.3,454.1 775.4,466.7 C800.5,479.4 814.2,495.1 814.2,511.3 L814.2,670.5 C814.2,654.2 800.5,638.5 775.4,625.9 C750.3,613.2 715.3,604.5 676.3,601.1 C637.2,597.8 596.5,600.0 561.0,607.3 Z" fill="url(#ffgarcFar1)"/><path d="M561.0,130.0 C596.5,122.6 637.2,120.4 676.3,123.8 C715.3,127.1 750.3,135.9 775.4,148.5 C800.5,161.1 814.2,176.9 814.2,193.1 L814.2,352.2 C814.2,336.0 800.5,320.2 775.4,307.6 C750.3,295.0 715.3,286.3 676.3,282.9 C637.2,279.5 596.5,281.7 561.0,289.1 Z" fill="url(#ffgarcFar0)"/><path d="M814.2,511.3 C814.2,524.4 805.4,537.2 788.6,548.4 C771.8,559.5 747.8,568.6 719.2,574.5 L719.2,733.6 C747.8,727.7 771.8,718.7 788.6,707.5 C805.4,696.4 814.2,683.5 814.2,670.5 Z" fill="url(#ffgarcNear1)"/><path d="M814.2,193.1 C814.2,206.2 805.4,219.0 788.6,230.1 C771.8,241.3 747.8,250.3 719.2,256.3 L719.2,415.4 C747.8,409.4 771.8,400.4 788.6,389.3 C805.4,378.1 814.2,365.3 814.2,352.2 Z" fill="url(#ffgarcNear0)"/><path d="M408.8,320.7 L719.2,256.3 L719.2,415.4 L564.0,447.6 L564.0,606.7 L719.2,574.5 L719.2,733.6 L564.0,765.8 L564.0,925.0 L408.8,957.2 Z" fill="url(#ffgfront)"/></svg><span class="bname" translate="no">FitFlat</span></div>
-    <button class="projname" id="projName" title="Your projects: open, rename, duplicate or start from a template"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span></button>
-    <span class="modelinfo" id="modelinfo"></span>
+    <div class="titleblock">
+      <button class="projname" id="projName" title="Your projects: open, rename, duplicate or start from a template"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
+      <span class="modelinfo" id="modelinfo"></span>
+    </div>
     <span class="spacer"></span>
-    <button class="btn" id="introBtn" title="How it works: a short walkthrough and the manual" aria-label="How it works">?</button>
-    <div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div>
-    <button class="btn" id="themeBtn" title="Colours: follow the system, light or dark">Auto</button>
-    <div class="grp" aria-label="Panel layout">
-      <select class="btn layoutsel" id="layoutSel" aria-label="Panel layout" title="Panel layout: where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown">
-        <option value="draw">Layout: Drawing</option><option value="edit">Layout: Editing</option><option value="clean">Layout: Clean</option>
+    <div class="tgroup" role="group" aria-label="File">
+      <button class="tbtn" id="demo" title="New: start over with the start frame" aria-label="New"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 2.75H6A1.75 1.75 0 0 0 4.25 4.5v11A1.75 1.75 0 0 0 6 17.25h8a1.75 1.75 0 0 0 1.75-1.75V7L11.5 2.75z"/><path d="M11.25 2.9V7.25h4.35M10 9.5v5M7.5 12h5"/></svg></button>
+      <label class="tbtn" tabindex="0" title="Open a frame model (.glb, .obj, .stl), a saved project (.json) or SVG artwork" aria-label="Open"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.75 6V14.5A1.75 1.75 0 0 0 4.5 16.25h11a1.75 1.75 0 0 0 1.75-1.75V7.75A1.75 1.75 0 0 0 15.5 6H10L8.25 3.75H4.5A1.75 1.75 0 0 0 2.75 5.5z"/></svg><input type="file" id="file" accept=".glb,.gltf,.obj,.stl,.json,.svg" hidden></label>
+      <label class="tbtn" tabindex="0" title="Import SVG: place SVG artwork on the frame as editable decals" aria-label="Import SVG"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 15.5C6 6 12 13 16.5 4.5"/><rect x="2" y="14" width="3" height="3" rx=".6"/><rect x="15" y="3" width="3" height="3" rx=".6"/><path d="M3.5 15.5L8 6.5M16.5 4.5L12.5 13" stroke-dasharray="1.6 1.6"/></svg><input type="file" id="importSvg" accept=".svg,image/svg+xml" hidden></label>
+    </div>
+    <button class="tbtn wide" id="geoBtn" title="Build a frame from geometry numbers or change its size"><svg viewBox="0 0 24 20" aria-hidden="true"><circle cx="5" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><path d="M5 13l4-7h7l3 7M9 6l3.5 7H5M12.5 13L16 6M8 4h3M15 4h2.5"/></svg><span>Frame</span></button>
+    <button class="btn primary savebtn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button>
+    <span class="tsep" aria-hidden="true"></span>
+    <button class="tbtn" id="settingsBtn" title="Settings: language, appearance, panel layout, model units" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h8M14.5 5.5H17M3 14.5h2.5M9 14.5h8"/><circle cx="12.75" cy="5.5" r="1.75"/><circle cx="7.25" cy="14.5" r="1.75"/></svg></button>
+    <button class="tbtn" id="introBtn" title="How it works: a short walkthrough and the manual" aria-label="How it works"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M7.9 7.7a2.2 2.2 0 1 1 3.1 2c-.6.3-1 .8-1 1.5v.4"/><circle cx="10" cy="14.1" r=".2" fill="currentColor"/></svg></button>
+    <button class="btn" id="libBtn" title="Your saved projects and decal templates, kept in this browser" hidden>Projects</button>
+    <div class="tmenu" id="settingsPop" role="dialog" aria-label="Settings" hidden>
+      <div class="trow"><span>Language</span><div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div></div>
+      <div class="trow"><span>Appearance</span><div class="seg" id="theme" role="group" aria-label="Colours"><button data-theme="auto" aria-pressed="true" title="Colours: same as your system" aria-label="Same as your system"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg></button><button data-theme="light" aria-pressed="false" title="Light" aria-label="Light"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.05 3.05l1.13 1.13M11.82 11.82l1.13 1.13M3.05 12.95l1.13-1.13M11.82 4.18l1.13-1.13"/></g></svg></button><button data-theme="dark" aria-pressed="false" title="Dark" aria-label="Dark"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button></div></div>
+      <div class="trow"><span>Panel layout</span><select class="btn" id="layoutSel" aria-label="Panel layout" title="Where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown">
+        <option value="draw">Drawing</option><option value="edit">Editing</option><option value="clean">Clean</option>
         <option disabled>──────</option><option value="keep" title="Keep the current arrangement as the layout shown">Keep current…</option>
-      </select>
-    </div>
-    <div class="grp" aria-label="Frame">
-      <button class="btn" id="geoBtn" title="Build a frame from geometry numbers or change its size">Frame from geometry</button>
-      <select class="btn" id="units" aria-label="Model units" title="Model units">
+      </select></div>
+      <div class="trow"><span>Model units</span><select class="btn" id="units" aria-label="Model units" title="Model units">
         <option value="auto" id="unitsAuto">Auto</option><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option><option value="in">inch</option>
-      </select>
-    </div>
-    <div class="grp" aria-label="File">
-      <button class="btn" id="demo" title="Start over with the start frame">New</button>
-      <button class="btn" id="libBtn" title="Your saved projects and decal templates, kept in this browser">Projects</button>
-      <label class="btn" tabindex="0" title="Open a frame model (.glb, .obj, .stl), a saved project (.json) or SVG artwork">Open<input type="file" id="file" accept=".glb,.gltf,.obj,.stl,.json,.svg" hidden></label>
-      <label class="btn" tabindex="0" title="Place SVG artwork on the frame as editable decals">Import SVG<input type="file" id="importSvg" accept=".svg,image/svg+xml" hidden></label>
-      <button class="btn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button>
+      </select></div>
     </div>
   </header>
   <main class="layout">
@@ -2416,10 +2444,10 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { 
 function setTheme(t, init) {
   if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else { delete document.documentElement.dataset.theme; t = 'auto'; }
   try { localStorage.setItem('fitflat-theme', t); } catch (e) {}
-  $('#themeBtn').textContent = { auto: 'Auto', light: 'Light', dark: 'Dark' }[t]; $('#themeBtn').dataset.t = t; if (typeof tr === 'function' && !init) $('#themeBtn').textContent = tr($('#themeBtn').textContent);
+  document.querySelectorAll('#theme button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.theme === t)));
   modelMat.color.set(css('--model')); if (!init) renderSheet();
 }
-$('#themeBtn').addEventListener('click', () => setTheme({ auto: 'light', light: 'dark', dark: 'auto' }[$('#themeBtn').dataset.t || 'auto']));
+document.querySelectorAll('#theme button').forEach(b => b.addEventListener('click', () => setTheme(b.dataset.theme)));
 try { setTheme(localStorage.getItem('fitflat-theme') || 'auto', true); } catch (e) { setTheme('auto', true); }
 
 const dot = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
@@ -2901,6 +2929,11 @@ function readGeo() {
   return { geo, tubes };
 }
 $('#geoBtn').addEventListener('click', geoDialog);
+{ const pop = $('#settingsPop'), btn = $('#settingsBtn');
+  const set = on => { pop.hidden = !on; btn.setAttribute('aria-expanded', String(on)); };
+  btn.addEventListener('click', e => { e.stopPropagation(); set(pop.hidden); });
+  addEventListener('pointerdown', e => { if (!pop.hidden && !e.target.closest('#settingsPop, #settingsBtn')) set(false); }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !pop.hidden) { set(false); btn.focus(); e.stopPropagation(); } }, true); }
 $('#gCancel').addEventListener('click', () => $('#geoDlg').close());
 $('#gBuild').addEventListener('click', () => {
   const r = readGeo(); if (r.error) { $('#gMsg').textContent = r.error; return; }
@@ -3304,7 +3337,7 @@ $('#tplList').addEventListener('click', async e => {
 function libTab(t) { t = t === true ? 'tpl' : t === false ? 'proj' : t; for (const [tab, pan, k] of [['#tabProj', '#libProj', 'proj'], ['#tabStart', '#libStart', 'start'], ['#tabTpl', '#libTpl', 'tpl']]) { $(tab).setAttribute('aria-selected', String(t === k)); $(pan).hidden = t !== k; } }
 $('#tabProj').addEventListener('click', () => libTab('proj')); $('#tabTpl').addEventListener('click', () => libTab('tpl')); $('#tabStart').addEventListener('click', () => libTab('start'));
 $('#libSearch').addEventListener('input', renderLibSoon); $('#libSort').addEventListener('change', renderLib);
-$('#projName').addEventListener('click', () => { libTab('proj'); $('#libMsg').textContent = ''; $('#libDlg').showModal(); renderLib(); });
+$('#projName').addEventListener('click', async () => { libTab('proj'); $('#libMsg').textContent = ''; if (S.storeMode === 'folder' && FOLDER.handle && !FOLDER.ok) await folderPerm(true); $('#libDlg').showModal(); renderLib(); });
 // starting points: a frame with its usual decals, opened as a new project each time
 $('#startSave').addEventListener('click', async () => {
   if (!S.source) return; const name = prompt(tr('Name for this starting point:'), S.project.name || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return;
@@ -8639,7 +8672,7 @@ const DE = {
   "Starting points": "Vorlagen",
   "Undo history": "Rückgängig-Verlauf",
   "Untitled project": "Unbenanntes Projekt",
-  "Panel layout": "Panel-Anordnung",
+  "Panel layout": "Anordnung",
   "Your projects: open, rename, duplicate or start from a template": "Deine Projekte: öffnen, umbenennen, duplizieren oder aus einer Vorlage beginnen",
   "New project from this starting point": "Neues Projekt aus dieser Vorlage",
   "No starting points yet. Set up a frame with the decals you always use, then click Save current as starting point.": "Noch keine Vorlagen. Richte einen Rahmen mit den Decals ein, die du immer verwendest, und klicke dann auf Aktuelles als Vorlage speichern.",
@@ -8796,7 +8829,7 @@ const DE = {
   "Adjust": "Anpassen",
   "Unwrap the selected decal, or all changed decals when none is selected (U)": "Das ausgewählte Decal abwickeln, oder alle geänderten, wenn keins ausgewählt ist (U)",
   "Unwrapped {0}. {1} more changed: press Unwrap with nothing selected to do them too (export does them anyway).": "{0} abgewickelt. {1} weitere geändert: Abwickeln ohne Auswahl macht sie auch (der Export macht sie sowieso).",
-  "Colours: follow the system, light or dark": "Farben: wie das System, hell oder dunkel", "Light": "Hell", "Dark": "Dunkel",
+  "Colours: follow the system, light or dark": "Farben: wie das System, hell oder dunkel", "Colours: same as your system": "Farben: wie dein System", "Same as your system": "Wie dein System", "Colours": "Farben", "Light": "Hell", "Dark": "Dunkel",
   "Piece": "Teil", "{0} on the sheet": "{0} auf dem Bogen", "{0} on the sheet (both sides)": "{0} auf dem Bogen (beide Seiten)", "auto": "auto",
   "Turn the piece 90° to the left on the sheet": "Das Teil auf dem Bogen 90° nach links drehen", "Turn the piece 90° to the right on the sheet": "Das Teil auf dem Bogen 90° nach rechts drehen",
   "Turn the piece by this angle on the sheet (arrow keys in the box: 1°, Shift: 15°)": "Das Teil auf dem Bogen um diesen Winkel drehen (Pfeiltasten im Feld: 1°, Umschalt: 15°)",
@@ -8862,6 +8895,9 @@ const DE = {
   "The photo is on the model now. Turn the view to check it; Unstick to line it up again.": "Das Foto liegt jetzt auf dem Modell. Dreh die Ansicht zum Prüfen; mit Lösen kannst du es neu ausrichten.",
   "Keep current…": "Aktuelle behalten…", "Keep the current arrangement as the layout shown": "Die aktuelle Anordnung als gezeigtes Layout behalten",
   "Layout: Drawing": "Layout: Zeichnen",
+  "Drawing": "Zeichnen", "Editing": "Bearbeiten", "Clean": "Aufgeräumt", "Settings": "Einstellungen", "Language": "Sprache", "Appearance": "Darstellung", "Panel layout": "Anordnung", "Model units": "Modelleinheiten", "Frame": "Rahmen", "New": "Neu", "Open": "Öffnen",
+  "New: start over with the start frame": "Neu: mit dem Startrahmen neu beginnen", "Import SVG: place SVG artwork on the frame as editable decals": "SVG importieren: SVG-Grafik als bearbeitbare Decals auf den Rahmen setzen", "Settings: language, appearance, panel layout, model units": "Einstellungen: Sprache, Darstellung, Panel-Anordnung, Modelleinheiten",
+  "Where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown": "Wo die Panels sitzen und welche eingeklappt sind. Aktuelle behalten speichert deine eigene Anordnung im gezeigten Layout",
   "Layout: Editing": "Layout: Bearbeiten",
   "Layout: Clean": "Layout: Aufgeräumt",
   "Keep current as this layout": "Aktuelle Anordnung als dieses Layout behalten",

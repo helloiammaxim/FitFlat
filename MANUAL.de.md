@@ -47,7 +47,7 @@ Noch kein Scan? **Rahmen aus Geometrie** baut einen Rahmen aus der Geometrietabe
 
 ## 1. Die Oberfläche
 
-- **Obere Leiste** — Sprache (EN | DE), Farben (*Auto* folgt der Hell/Dunkel-Einstellung deines Systems; klicken für *Hell* oder *Dunkel*), *Rahmen aus Geometrie*, Modelleinheit und die Dateischaltflächen *Neu*, *Öffnen*, *SVG importieren*, *Speichern*.
+- **Obere Leiste** — der Projektname (anklicken für deine Projekte) mit dem Modell und seiner Größe darunter; rechts die Dateischaltflächen *Neu*, *Öffnen* und *SVG importieren* (Maus darüber zeigt ihre Namen), *Rahmen* (Rahmen aus Geometrie bauen), *Speichern*, **Einstellungen** und **?** (Rundgang und Handbuch). **Einstellungen** enthält Sprache (EN | DE), Darstellung (wie das System, hell oder dunkel), Panel-Anordnung und Modelleinheit.
 - **Werkzeuge** (links) — *Zeichnen*, *Bearbeiten*, *Messer*.
 - **Werkzeugoptionen** (oben) — Rückgängig/Wiederholen und die Optionen des aktuellen Werkzeugs, dazu *Spiegeln*.
 - **Tipps** (unten links) — zeigen, was der nächste Klick bewirkt. Mit der ⓘ-Taste einklappen.
