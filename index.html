@@ -385,6 +385,16 @@ details.sec.fold > summary:focus-visible{ outline:2px solid var(--accent); }
 .libwbtns .btn{ padding:5px 10px; font-size:13px; }
 .chk{ display:flex; align-items:center; gap:8px; font-size:13.5px; margin-top:10px; color:var(--muted); }
 .swatch{ width:10px; height:10px; border-radius:50%; background:var(--c); }
+button.swatch{ width:16px; height:16px; padding:0; border:2px solid transparent; box-shadow:0 0 0 1px var(--line); cursor:pointer; flex:none; }
+button.swatch:hover{ box-shadow:0 0 0 2px var(--ink); }
+#colorPop{ position:fixed; z-index:60; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px; box-shadow:0 10px 30px rgba(0,0,0,.35); width:212px; }
+#colorPop .cgrid{ display:grid; grid-template-columns:repeat(8, 1fr); gap:6px; }
+#colorPop .cgrid button{ width:20px; height:20px; border-radius:50%; padding:0; border:2px solid transparent; background:var(--c); box-shadow:0 0 0 1px var(--line); cursor:pointer; }
+#colorPop .cgrid button[aria-pressed="true"]{ border-color:var(--surface); box-shadow:0 0 0 2px var(--accent); }
+#colorPop .crow{ display:flex; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--muted); }
+#colorPop input[type=color]{ width:28px; height:22px; padding:0; border:1px solid var(--line); border-radius:6px; background:none; cursor:pointer; }
+#colorPop input[type=text]{ width:72px; font:inherit; font-size:12px; padding:3px 6px; border:1px solid var(--line); border-radius:6px; background:var(--fill); color:var(--ink); }
+#colorPop label{ display:flex; align-items:center; gap:6px; cursor:pointer; }
 .row input.name{ border:0; background:transparent; font-weight:600; padding:2px 0; min-width:0; width:100%; }
 .row input.name:focus{ outline:none; }
 .row .acts{ display:flex; flex-wrap:wrap; gap:2px; opacity:.55; transition:opacity .12s; grid-column:2 / -1; margin-left:-7px; }
@@ -2363,6 +2373,10 @@ if (typeof module !== 'undefined') module.exports = Core;
 (() => {
 const $ = s => document.querySelector(s);
 const PALETTE = ['#E5007E','#1F8A70','#2F6FDE','#E07A00','#7A4FD0','#0097A7','#B5452B','#5B7F12'];
+const SWATCHES = [...PALETTE, '#D2413A', '#F2B705', '#00B37E', '#FF6FB5', '#5AC8FA', '#8E8E93', '#1C1C1E', '#F5F5F7'];
+// new decals take the chosen colour, or the next one of the palette
+let NEW_COLOR = null; try { NEW_COLOR = (s => /^#[0-9a-f]{6}$/i.test(s || '') ? s : null)(localStorage.getItem('fitflat-newcolor')); } catch (e) {}
+const nextColor = id => NEW_COLOR || PALETTE[(id - 1) % PALETTE.length];
 const UNIT = { mm: 1, cm: 10, m: 1000, in: 25.4 };
 
 const S = {
@@ -4416,7 +4430,7 @@ window.addEventListener('keyup', e => { if (e.code === 'Space') spaceDown = fals
 function startDrawing() {
   S.dirty = true;
   const id = S.nextId++;
-  const d = { id, name: `Decal ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl: [], closed: false, flip: false, mirror: S.mirrorDefault, side: 0, res: null, twin: null, obj: [] };
+  const d = { id, name: `Decal ${id}`, color: nextColor(id), ctrl: [], closed: false, flip: false, mirror: S.mirrorDefault, side: 0, res: null, twin: null, obj: [] };
   S.decals.push(d); S.drawing = d; S.active = d; return d;
 }
 const atStart = d => d.ctrl.length > 1 && S.sel?.decal === d && selList().length === 1 && selList()[0] === 0;
@@ -4940,7 +4954,7 @@ const comboFocus = () => comboOfDecal(S.active);
 const partFocus = () => S.active?.partOf?.cid ?? (S.active?.holeOf ? S.decals.find(x => x.id === S.active.holeOf)?.partOf?.cid : undefined);
 const isShown = d => !d.partOf || partFocus() === d.partOf.cid;
 const pickable = d => !d.locked && isShown(d);
-const lookOf = d => (S.active === d ? 'a' : '') + (isPicked(d) ? 's' : '') + (d.partOf || d.liveOf != null ? (comboFocus() === comboOfDecal(d) ? 'f' : 'n') + (partFocus() === comboOfDecal(d) ? 'p' : '') : '');
+const lookOf = d => d.color + (S.active === d ? 'a' : '') + (isPicked(d) ? 's' : '') + (d.partOf || d.liveOf != null ? (comboFocus() === comboOfDecal(d) ? 'f' : 'n') + (partFocus() === comboOfDecal(d) ? 'p' : '') : '');
 function restyle() { for (const x of S.decals) if (x.closed && x._look !== lookOf(x)) updateDecalVisual(x, false); }
 function setActive(d) { S.picked = d ? S.picked.filter(x => x !== d) : []; S.active = d; if (!d || S.sel?.decal !== d) S.sel = null; S.drawing = S.mode === 'draw' && d && !d.closed ? d : null; restyle(); renderHandles(); updateUI(); }
 function removeDecal(d, quiet) {
@@ -5087,7 +5101,7 @@ function duplicateDecal(d) {
   if (d.holeOf) d = S.decals.find(x => x.id === d.holeOf) || d;
   pushHistory('Duplicate');
   const copyOf = (src, holeOf) => { const id = S.nextId++;
-    const n = { id, name: holeOf ? src.name : copyName(src.name), color: holeOf ? src.color : PALETTE[(id - 1) % PALETTE.length], ctrl: src.ctrl.map(cloneC), closed: true, flip: !!src.flip, mirror: !!src.mirror, seamOpen: !!src.seamOpen, seamFlip: !!src.seamFlip, side: src.side || 0, res: null, twin: null, obj: [] };
+    const n = { id, name: holeOf ? src.name : copyName(src.name), color: holeOf ? src.color : nextColor(id), ctrl: src.ctrl.map(cloneC), closed: true, flip: !!src.flip, mirror: !!src.mirror, seamOpen: !!src.seamOpen, seamFlip: !!src.seamFlip, side: src.side || 0, res: null, twin: null, obj: [] };
     if (src.notches?.length) n.notches = src.notches.map(q => ({ ...q, m: q.m.slice(), t: q.t.slice() }));
     if (holeOf) n.holeOf = holeOf; S.decals.push(n); return n; };
   const nd = copyOf(d); for (const h of holesOf(d)) copyOf(h, nd.id);
@@ -5442,6 +5456,33 @@ function stretchBadge(r) {
   return `<span class="badge ${cls}" title="${tip}">${pct < 0.1 ? '<0.1' : pct.toFixed(1)}% stretch</span>`;
 }
 
+// colour of a decal: a few picks, any colour, and whether new decals take it too
+function setDecalColor(d, c, quiet) {
+  if (!/^#[0-9a-f]{6}$/i.test(c) || d.color === c) return; if (!quiet) pushHistory('Colour');
+  for (const x of [d, ...S.decals.filter(h => h.holeOf === d.id)]) { x.color = c; updateDecalVisual(x, false); }
+  renderList(); renderSheet();
+}
+function closeColorPop() { $('#colorPop')?.remove(); removeEventListener('pointerdown', colorPopAway, true); }
+function colorPopAway(e) { if (!e.target.closest('#colorPop, button.swatch')) closeColorPop(); }
+function openColorPop(d, anchor) {
+  if ($('#colorPop')?.dataset.d === String(d.id)) { closeColorPop(); return; } closeColorPop();
+  const pop = document.createElement('div'); pop.id = 'colorPop'; pop.dataset.d = d.id; pop.setAttribute('role', 'dialog'); pop.setAttribute('aria-label', tr('Colour'));
+  pop.innerHTML = `<div class="cgrid">${SWATCHES.map(c => `<button data-c="${c}" style="--c:${c}" title="${c}" aria-label="${c}" aria-pressed="${c.toLowerCase() === (d.color || '').toLowerCase()}"></button>`).join('')}</div>
+    <div class="crow"><input type="color" value="${/^#[0-9a-f]{6}$/i.test(d.color) ? d.color : '#888888'}" aria-label="${esc(tr('Any colour'))}" title="${esc(tr('Any colour'))}"><input type="text" value="${esc(d.color || '')}" maxlength="7" spellcheck="false" aria-label="Hex"></div>
+    <div class="crow"><label><input type="checkbox" ${NEW_COLOR && NEW_COLOR === d.color ? 'checked' : ''}> ${esc(tr('Use for new decals'))}</label></div>`;
+  document.body.appendChild(pop);
+  const r = anchor.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  pop.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.left)) + 'px'; pop.style.top = (r.bottom + h + 8 < innerHeight ? r.bottom + 6 : Math.max(8, r.top - h - 6)) + 'px';
+  const pick = (c, quiet) => { setDecalColor(d, c, quiet); pop.querySelectorAll('.cgrid button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.c.toLowerCase() === c.toLowerCase()))); pop.querySelector('input[type=color]').value = c; pop.querySelector('input[type=text]').value = c; if (pop.querySelector('input[type=checkbox]').checked) setNewColor(c); };
+  pop.querySelectorAll('.cgrid button').forEach(b => b.addEventListener('click', () => pick(b.dataset.c)));
+  let first = true; const cin = pop.querySelector('input[type=color]'); // dragging in the system picker: one undo step for the whole drag
+  cin.addEventListener('input', () => { pick(cin.value, !first); first = false; }); cin.addEventListener('change', () => { first = true; });
+  const tin = pop.querySelector('input[type=text]'); tin.addEventListener('change', () => { let v = tin.value.trim(); if (!v.startsWith('#')) v = '#' + v; if (/^#[0-9a-f]{3}$/i.test(v)) v = '#' + [...v.slice(1)].map(x => x + x).join(''); if (/^#[0-9a-f]{6}$/i.test(v)) pick(v.toUpperCase()); else tin.value = d.color; });
+  pop.querySelector('input[type=checkbox]').addEventListener('change', e => setNewColor(e.target.checked ? d.color : null));
+  pop.addEventListener('keydown', e => { if (e.key === 'Escape') { e.stopPropagation(); closeColorPop(); anchor.focus?.(); } });
+  setTimeout(() => addEventListener('pointerdown', colorPopAway, true));
+}
+function setNewColor(c) { NEW_COLOR = c; try { c ? localStorage.setItem('fitflat-newcolor', c) : localStorage.removeItem('fitflat-newcolor'); } catch (e) {} }
 function renderList() {
   const ul = $('#list'); ul.innerHTML = '';
   if (!S.decals.length) { ul.innerHTML = `<li class="empty">${S.model ? 'No decals yet. Click on the model to place the first point.' : 'Load a model to begin.'}</li>`; return; }
@@ -5463,11 +5504,12 @@ function renderList() {
     if (d.closed && d.merged && d.res && !d.res.error) info += `<div class="info"><span class="tw">Symmetric</span><span>one piece, mirrored across the centre</span></div>`;
     else if (d.closed && d.mirror && d.twin) info += d.twin.res?.error ? `<div class="err">Mirror: ${d.twin.res.error}</div>` : `<div class="info"><span class="tw">Mirror</span>${dims('m' + d.id, d.twin.res)}</div>`;
     const plain = !d.partOf && d.liveOf == null; // parts and live pieces get their own short set of actions
-    li.innerHTML = `<span class="swatch" style="--c:${safeColor(d.color) || '#888'}"></span><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.darts?.length ? `<button data-a="undart" title="${esc(tr('Take all V-notches out of this decal again (Ctrl+Z brings them back)'))}">${esc(tr('Remove cuts'))} (${d.darts.length})</button>` : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
+    li.innerHTML = `<button class="swatch" data-a="color" style="--c:${safeColor(d.color) || '#888'}" title="${esc(tr('Colour'))}" aria-label="${esc(tr('Colour'))}"></button><input class="name" aria-label="Decal name" value="${esc(d.name)}"><span class="acts">${d.partOf ? `<button data-a="del" title="${esc(tr('Take this shape out of the combination'))}">${esc(tr('Remove'))}</button>` : ''}${d.liveOf != null && !d.holeOf ? `<button data-a="capply" title="${esc(tr('Fix the combination: the originals go and this becomes an ordinary outline'))}">${esc(tr('Apply'))}</button><button data-a="csplit" title="${esc(tr('Undo the combination and get the originals back'))}">${esc(tr('Separate'))}</button>` : ''}${d.holeOf ? '<button data-a="unhole" title="Make this a separate piece instead of a hole">Detach</button>' : ''}${plain ? '' : '<!--'}<button data-a="mir" aria-pressed="${!!d.mirror}" title="Add a mirrored copy on the other side of the frame">Mirror</button>${d.mirror ? '<button data-a="applymir" title="Turn the mirrored part into real outline you can edit">Apply</button>' : ''}${d.mirror && d.closed && d.ctrl.filter(c => c.plane).length > 1 ? '<button data-a="join" aria-pressed="' + !!d.mergedMap + '" title="Join both sides into one piece along the centre line. Off: two separate mirrored pieces that only meet there">Join</button>' : ''}${isWrapped(d) || (centreRuns(d).length > 1 && !centreRuns(d)[0].ring) ? '<button data-a="seam" title="This piece goes all the way round a tube, so it opens along one seam (the dashed line). Choose where">Seam</button>' : ''}${d.closed ? '<button data-a="flip" aria-pressed="' + !!d.flip + '" title="Invert the shape: the film covers the area outside the outline instead of inside">Invert</button>' : ''}${d.darts?.length ? `<button data-a="undart" title="${esc(tr('Take all V-notches out of this decal again (Ctrl+Z brings them back)'))}">${esc(tr('Remove cuts'))} (${d.darts.length})</button>` : ''}${plain ? '' : '-->'}${d.partOf ? '<!--' : ''}<button data-a="dup" title="Duplicate this decal (Ctrl+D)">Duplicate</button><button data-a="lock" aria-pressed="${!!d.locked}" title="${d.locked ? 'Locked: it cannot be picked or changed on the model. Click to unlock' : 'Lock it, so you can draw over it without picking it'}">${d.locked ? LOCK_SVG : UNLOCK_SVG}</button><button data-a="del" title="Delete this decal">Delete</button>${d.partOf ? '-->' : ''}</span>${info}`;
     li.addEventListener('click', e => { if (e.target.dataset.a || e.target.matches('input')) return; if (S.boolOp) { runBoolean(S.boolOp.op, S.boolOp.a, [d]); return; } if (e.shiftKey && S.active && S.active !== d) { toggleSecond(d); return; } setActive(d); });
     li.querySelector('input').addEventListener('focus', () => { if (S.active !== d) { S.active = d; renderHandles(); li.classList.add('active'); } });
     li.querySelector('input').addEventListener('change', e => { d.name = e.target.value || d.name; renderSheet(); });
     li.querySelectorAll('button').forEach(b => b.addEventListener('click', () => {
+      if (b.dataset.a === 'color') { openColorPop(d, b); return; }
       if (b.dataset.a === 'capply') { applyCombo(d.liveOf); return; }
       if (b.dataset.a === 'csplit') { undoCombo(d.liveOf); return; }
       if (b.dataset.a === 'del') deleteDecal(d);
@@ -6017,7 +6059,7 @@ const UNLOCK_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" 
 const cloneC = c => ({ ...c, p: c.p.slice(), hin: c.hin && c.hin.slice(), hout: c.hout && c.hout.slice() });
 function newDecalFrom(src, ctrl, closed, suffix) {
   const id = S.nextId++;
-  const d = { id, name: `${src.name} ${suffix}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed, flip: src.flip, mirror: src.mirror, side: src.side, res: null, twin: null, obj: [] };
+  const d = { id, name: `${src.name} ${suffix}`, color: nextColor(id), ctrl, closed, flip: src.flip, mirror: src.mirror, side: src.side, res: null, twin: null, obj: [] };
   S.decals.splice(S.decals.indexOf(src) + 1, 0, d); return d;
 }
 function cutClick(hit, shift) {
@@ -6404,7 +6446,7 @@ function closeViewLine() {
   const ctrl = o.ctrl;
   S.vline = null;
   const id = S.nextId++;
-  const d = { id, name: `Decal ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
+  const d = { id, name: `Decal ${id}`, color: nextColor(id), ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
   mirrorNewDecal(d);
   S.decals.push(d); S.active = d; S.sel = null; S.dirty = true;
   setBusy('Unwrapping…');
@@ -7479,7 +7521,7 @@ function makeShape(p) {
   }
   pushHistory('Added shape');
   const id = S.nextId++, name = tr({ rect: 'Rectangle', circle: 'Circle', poly: `${o.pts.length}-gon`, pill: 'Pill' }[S.drawShape]);
-  const d = { id, name: `${name} ${id}`, color: PALETTE[(id - 1) % PALETTE.length], ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
+  const d = { id, name: `${name} ${id}`, color: nextColor(id), ctrl, closed: true, flip: false, mirror: false, side: 0, res: null, twin: null, obj: [] };
   mirrorNewDecal(d);
   S.decals.push(d); S.active = d; S.sel = null;
   const r = parseFloat($('#shapeRound').value);
@@ -7745,7 +7787,7 @@ function applyPlacement() {
   const made = [];
   for (const sh of S.placeShapes) {
     const id = S.nextId++;
-    const d = { id, name: im.shapes.length > 1 ? `${im.name} ${sh.si + 1}` : im.name, color: PALETTE[(id - 1) % PALETTE.length], ctrl: sh.ctrl, closed: true, flip: false, mirror: im.mirror, side: 0, res: null, twin: null, obj: [], _si: sh.si, _hole: sh.holeOf };
+    const d = { id, name: im.shapes.length > 1 ? `${im.name} ${sh.si + 1}` : im.name, color: nextColor(id), ctrl: sh.ctrl, closed: true, flip: false, mirror: im.mirror, side: 0, res: null, twin: null, obj: [], _si: sh.si, _hole: sh.holeOf };
     S.decals.push(d); made.push(d);
   }
   for (const d of made) { if (d._hole != null) { const par = made.find(x => x._si === d._hole); if (par) { d.holeOf = par.id; d.color = par.color; d.name = par.name + ' hole'; } } }
@@ -8743,6 +8785,7 @@ const DE = {
   "Count in stretch": "In Dehnung einrechnen",
   "On: the unwrap treats the notch as a slit, so the film may open or close there as the frame needs, and the stretch colours and numbers count it. Off: the notch is only cut out of the finished flat piece": "An: Die Abwicklung behandelt die Kerbe als Schlitz, die Folie darf sich dort öffnen oder schließen, wie der Rahmen es braucht, und Dehnungsfarben und -werte zählen sie mit. Aus: Die Kerbe wird nur aus dem fertigen flachen Teil geschnitten",
   "Notch out of stretch": "Kerbe aus Dehnung genommen",
+  "Colour": "Farbe", "Any colour": "Beliebige Farbe", "Use for new decals": "Für neue Decals verwenden",
   "A notch in a hole's edge is cut out of the flat piece only, so it does not count in the stretch.": "Eine Kerbe am Rand eines Lochs wird nur aus dem flachen Teil geschnitten, sie zählt also nicht in der Dehnung mit.",
   "The notches do not lower the stretch here, so the unwrap keeps the film closed at them.": "Die Kerben senken die Dehnung hier nicht, also hält die Abwicklung die Folie an ihnen geschlossen.",
   "Notch counted in stretch": "Kerbe in Dehnung eingerechnet",

@@ -300,7 +300,7 @@ Wandle Live-Text vorher in deinem Grafikprogramm in Pfade um.
 
 ## 11. Die Decal-Liste
 
-Jede Zeile zeigt den Namen des Decals (anklicken zum Umbenennen), seine flache Größe in mm und seine **Dehnung**:
+Jede Zeile zeigt die Farbe des Decals (auf den Punkt klicken, um eine aus der Palette, eine beliebige Farbe oder einen Hex-Code zu wählen; *Für neue Decals verwenden* gibt sie auch neuen Decals; Löcher behalten die Farbe ihres Decals), seinen Namen (anklicken zum Umbenennen), seine flache Größe in mm und seine **Dehnung**:
 
 - grün — liegt flach ohne Dehnung;
 - gelb — leichte Dehnung, für Folie meist kein Problem;

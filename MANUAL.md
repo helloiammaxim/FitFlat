@@ -300,7 +300,7 @@ Convert live text to outlines in your design app first.
 
 ## 11. The decal list
 
-Each row shows the decal's name (click to rename), its flat size in mm and its **stretch**:
+Each row shows the decal's colour (click the dot to pick one from the palette, any colour, or a hex code; *Use for new decals* makes new decals take it too; holes keep their decal's colour), its name (click to rename), its flat size in mm and its **stretch**:
 
 - green — lies flat without stretching;
 - amber — slight stretch, usually fine for film;
