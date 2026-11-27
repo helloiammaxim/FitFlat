@@ -851,7 +851,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       </div>
       <div class="tabpane" data-pane="sheet">
       <div class="mat" id="matBox">
-        <div class="matbar" role="group" aria-label="Sheet zoom"><button type="button" id="shOut" title="Zoom out">−</button><button type="button" id="shIn" title="Zoom in (or scroll over the sheet)">+</button><button type="button" id="shFit" title="Show the whole sheet (double-click)">Fit</button><button type="button" id="shNotch" aria-pressed="false" title="Notch tool: click a piece's edge to cut a V-notch with a rounded tip there. Width, length and tip radius below; save your own as templates">V</button><button type="button" id="shCut" hidden title="Cut on the sheet: drag from the edge of a piece into it. The cut is wrapped back onto the frame" aria-pressed="false">✂</button><button type="button" id="shBig" title="Big view (Esc closes)" aria-pressed="false">⤢</button></div>
+        <div class="matbar" role="group" aria-label="Sheet zoom"><button type="button" id="shOut" title="Zoom out">−</button><button type="button" id="shIn" title="Zoom in (or scroll over the sheet)">+</button><button type="button" id="shFit" title="Show the whole sheet (double-click)">Fit</button><button type="button" id="shNotch" aria-pressed="false" title="Notch tool: click a piece's edge to cut a V-notch with a rounded tip there. Width, length and tip radius below; save your own as templates"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4L8.1 15.9M14.5 14.5L20 20M8.1 8.1L12 12"/></svg></button><button type="button" id="shCut" hidden title="Cut on the sheet: drag from the edge of a piece into it. The cut is wrapped back onto the frame" aria-pressed="false">✂</button><button type="button" id="shBig" title="Big view (Esc closes)" aria-pressed="false">⤢</button></div>
         <svg id="sheet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut sheet preview"></svg>
         <div class="matmeta"><span id="matSize"></span><span id="matCount"></span></div>
       </div>
@@ -3306,7 +3306,7 @@ function templateFromSVG(text, fname) {
 }
 // a decal's flat outline (with holes) as a template, in mm
 async function saveTemplate(d) {
-  flushStale();
+  if (staleDecals().length) { flushStaleThen(() => saveTemplate(d)); return; }
   const pc = solvedPieces().find(p => p.id === 'd' + d.id); if (!pc) { flash('Unwrap this decal first.'); return; }
   let rings = pc.curves && pc.curves.every(Boolean) ? pc.curves.map(r => ({ c: r })) : [pc.poly, ...(pc.holes || [])].map(r => ({ p: r }));
   // lie it straight: the turn that gives the smallest box, long side across
@@ -3542,9 +3542,9 @@ function restoreDecals(list, msg, fname) {
       if (Number.isFinite(d._live)) d.liveOf = cid(d._live);
       delete d._hole; delete d._part; delete d._live;
     }
-    S.restoring = true; try { for (const d of made) { if (d.closed && d.ctrl.length >= 3) solveNow(d); else updateDecalVisual(d, true); } } finally { S.restoring = false; }
-    S.active = null; S.dirty = !!msg; resetHistory(); setBusy(false); renderHandles(); updateUI();
-    flash(msg || `Opened ${fname} with ${S.decals.length} decal${S.decals.length === 1 ? '' : 's'}.`);
+    unwrapEach(made, d => { S.restoring = true; try { if (d.closed && d.ctrl.length >= 3) solveNow(d); else updateDecalVisual(d, true); } finally { S.restoring = false; } }, () => {
+      S.active = null; S.dirty = !!msg; resetHistory(); renderHandles(); updateUI();
+      flash(msg || `Opened ${fname} with ${S.decals.length} decal${S.decals.length === 1 ? '' : 's'}.`); });
   }, 30);
 }
 function loadProject(text, fname) {
@@ -4623,9 +4623,21 @@ S.liveUnwrap = false; try { S.liveUnwrap = localStorage.getItem('decal-studio-li
 const staleDecals = () => S.decals.filter(d => d.stale);
 // unwrap everything still waiting, right now (callers that need the flat shapes use this)
 function flushStale() { const L = staleDecals(); if (!L.length) return false; for (const d of L) { d.stale = false; solveNow(d); } return true; }
+// unwrap a list of decals one at a time, with the page drawn in between: one long run makes the browser offer "Wait / Exit page"
+function unwrapEach(list, each, done) {
+  const L = list.slice(), n = L.length; let i = 0;
+  const step = () => {
+    if (i >= n) { setBusy(false); done && done(); return; }
+    setBusy(n > 1 ? tr('Unwrapping {0} of {1}…').replace('{0}', i + 1).replace('{1}', n) : tr('Unwrapping…'));
+    requestAnimationFrame(() => setTimeout(() => { const d = L[i++]; try { if (S.decals.includes(d)) each(d); } catch (e) { console.error(e); } step(); }, 0));
+  };
+  step();
+}
+// everything still waiting for an unwrap, one decal at a time; then goes on with what needs the flat shapes
+function flushStaleThen(then) { const L = staleDecals(); if (!L.length) { then(); return; } unwrapEach(L, d => { d.stale = false; solveNow(d); }, () => { updateUI(); then(); }); }
 function unwrapNow() {
   const n = staleDecals().length; if (!n) return;
-  setBusy(tr('Unwrapping…')); setTimeout(() => { flushStale(); setBusy(false); updateUI(); flash(n === 1 ? tr('Unwrapped.') : tr('Unwrapped {0} decals.').replace('{0}', n)); }, 20);
+  flushStaleThen(() => flash(n === 1 ? tr('Unwrapped.') : tr('Unwrapped {0} decals.').replace('{0}', n)));
 }
 // on switching to Edit (once per visit, Live unwrap off): what Unwrap and Live unwrap do, with "Don't show again"
 let liveTipShown = false;
@@ -4671,7 +4683,7 @@ function setFilm(f, quiet) {
   const lg = $('#legStretch'); if (lg) lg.textContent = tr('{0}%+ stretch').replace('{0}', S.film.max);
   const lf = $('#legFold'); if (lf) lf.textContent = tr('{0}%+ folds').replace('{0}', +(S.film.max * 0.5).toFixed(2));
   if (!quiet && filmShrink() !== before && S.decals.length) { // the patterns change: unwrap again
-    setBusy(tr('Unwrapping…')); setTimeout(() => { for (const d of S.decals) if (!d.stale && !d.partOf) solveNow(d); reliefCache.map.clear(); reliefKey = ''; setBusy(false); updateUI(); }, 20); return; }
+    unwrapEach(S.decals.filter(d => !d.stale && !d.partOf), solveNow, () => { reliefCache.map.clear(); reliefKey = ''; updateUI(); }); return; }
   if (!quiet) { for (const d of S.decals) if (d.closed && d.res) updateDecalVisual(d, false); reliefKey = ''; renderRelief?.(); renderList(); renderSheet(); }
 }
 // where the flat piece is bigger than the frame the film has too much material and folds: shown in blue
@@ -5258,7 +5270,7 @@ function setDartV(d, k, th) {
 function addDarts(d, list) { const n0 = d.darts?.length || 0, vs = (d.dartV || []).slice(0, n0); while (vs.length < n0) vs.push(null);
   d.darts = [...(d.darts || []), ...list.map(x => x[0])]; d.dartV = [...vs, ...list.map(x => typeof x[1] === 'number' ? x[1] : null)]; }
 function applyRelief(d, only) {
-  flushStale();
+  if (staleDecals().length) { flushStaleThen(() => applyRelief(d, only)); return; }
   let cuts = reliefSuggest(d); if (only) cuts = cuts.filter((c, i) => only.includes(i));
   const saddles = cuts.filter(c => c.kind !== 'notch').length; cuts = cuts.filter(c => c.kind === 'notch');
   if (!cuts.length) { flash(saddles ? tr('The stretch left is at saddle-shaped spots: there the edge comes out a little short and is stretched into place (red), a cut wouldn\'t help. If it\'s more than your film can take, split the decal there with the Knife.') : tr('{0} lies flat enough; no relief cuts needed.').replace('{0}', d.name)); return; }
@@ -5675,6 +5687,26 @@ function notchAtSheet(q) {
   const back = p => (twin ? reflect(p) : p).map(v => +v.toFixed(4));
   return { d, p: hit.p, twin, m: back(M.point), t: back(T.point), uvM: E.P, inw };
 }
+// the notches on the frame too: each V's outline mapped back from the flat piece onto the surface (both sides of a mirrored decal)
+let notchObj = null, notchKey3 = '';
+function renderNotches3D() {
+  const list = S.model ? S.decals.filter(d => d.notches?.length && d.res && !d.res.error && !d.stale && isShown(d)) : [];
+  const key = list.map(d => `${d.id}:${d.res._v}:${d.twin?.res?._v || ''}:${JSON.stringify(d.notches)}`).join('|') + '|' + (S.notch.sel ? S.notch.sel.d + '.' + S.notch.sel.i : '');
+  if (key === notchKey3) return; notchKey3 = key;
+  if (notchObj) { scene.remove(notchObj); notchObj.children.forEach(disposeObj); notchObj = null; }
+  if (!list.length) return;
+  const grp = new THREE.Group(), k = hOff() * 1.6;
+  for (const d of list) for (const tw of d.mirror && d.twin?.res && !d.twin.res.error && !d.mergedMap ? [false, true] : [false]) {
+    const res = tw ? d.twin.res : d.res, tri = flatTris(res);
+    d.notches.forEach((n, i) => { for (const mir of d.mirror && d.mergedMap ? [false, true] : [false]) {
+      const q = notchUV(d, n, tw, mir); if (!q) continue; const ring = notchRing(q.M, q.T, n), on = !!(S.notch.sel && S.notch.sel.d === d.id && S.notch.sel.i === i);
+      let run = []; const flush = () => { if (run.length >= 2) grp.add(fatLine(run, false, lineMat(on ? '#FFD60A' : '#FF9F0A', on ? 3 : 2))); run = []; };
+      for (let j = 0; j < ring.length; j++) { const a = ring[j], b = ring[(j + 1) % ring.length], m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 0.6));
+        for (let t = 0; t < m; t++) { const h = flatTo3(tri, [a[0] + (b[0] - a[0]) * t / m, a[1] + (b[1] - a[1]) * t / m]); if (h) run.push(offsetPt(h.point, h.face, k)); else flush(); } }
+      flush(); } });
+  }
+  grp.children.forEach(o => o.renderOrder = 11); scene.add(grp); notchObj = grp;
+}
 function setNotchMode(on) {
   S.notch.on = on; if (!on) { S.notch.sel = null; S.notch.drag = null; }
   $('#shNotch').setAttribute('aria-pressed', String(on)); $('#sheet').classList.toggle('notching', on); $('#notchBar').hidden = !on;
@@ -5780,7 +5812,7 @@ function renderSheet() {
     if (sh.weed) { const g2 = Math.max(1, sh.gap) / 2; s += `<rect x="${p.x - g2}" y="${oy + p.y - g2}" width="${p.w + 2*g2}" height="${p.h + 2*g2}" fill="none" stroke="#7FB6FF" stroke-width="0.6" pointer-events="none"/>`; }
     if (sh.labels) { const fs = Math.max(sh.w/160, Math.min(sh.w/60, p.h/4)); s += `<text x="${p.x + p.w/2}" y="${oy + p.y + p.h/2 + fs*0.35}" font-size="${fs}" text-anchor="middle" fill="#FFFFFF" font-family="Barlow, Arial, sans-serif" pointer-events="none">${esc(info.name)}</text>`; }
   }
-  svg.innerHTML = s + sugg; sheetVB();
+  svg.innerHTML = s + sugg; sheetVB(); renderNotches3D();
   svg.querySelectorAll('.ssug').forEach(g => g.addEventListener('click', e => { e.stopPropagation(); const d = S.decals.find(x => x.id === +g.dataset.d); if (d) applyRelief(d, [+g.dataset.i]); }));
   svg.querySelectorAll('.vh circle').forEach(cEl => { const g = cEl.parentNode;
     cEl.addEventListener('pointerdown', e => { e.stopPropagation(); e.preventDefault(); const [tx, ty, ux, uy, L] = g.dataset.t.split(',').map(Number); S.vDrag = { g, d: +g.dataset.d, k: +g.dataset.k, tx, ty, ux, uy, L, th: null }; try { cEl.setPointerCapture(e.pointerId); } catch (er) {} g.querySelector('.vpre').setAttribute('opacity', '1'); });
@@ -6805,7 +6837,7 @@ function halveSymmetric(d, src) {
   return d.ctrl.length >= 3;
 }
 function runBoolean(op, A, Bs) {
-  S.boolOp = null; flushStale();
+  S.boolOp = null; if (staleDecals().length) { flushStaleThen(() => runBoolean(op, A, Bs)); return; }
   if (!Array.isArray(Bs)) Bs = [Bs];
   const up = d => d.holeOf ? S.decals.find(x => x.id === d.holeOf) || d : d;
   A = up(A); Bs = Bs.map(up).filter((B, i, all) => B !== A && all.indexOf(B) === i);
@@ -7579,12 +7611,10 @@ function applyPlacement() {
   for (const d of made) { if (d._hole != null) { const par = made.find(x => x._si === d._hole); if (par) { d.holeOf = par.id; d.color = par.color; d.name = par.name + ' hole'; } } }
   for (const d of made) { delete d._si; delete d._hole; }
   stopPlacing();
-  setBusy('Unwrapping artwork…');
-  setTimeout(() => {
-    for (const d of made) solveNow(d);
+  unwrapEach(made, solveNow, () => {
     S.active = made[0] || null; S.sel = null; setBusy(false); renderHandles(); updateUI();
     flash(`Added ${made.length} shape${made.length === 1 ? '' : 's'} from ${im.name}. Ctrl+Z removes them again.`);
-  }, 20);
+  });
 }
 function placeSVG(hit) { S.placeHit = hit; $('#placeGhost').hidden = true; previewPlacement(); }
 function placeParamsChanged() {
@@ -7928,16 +7958,14 @@ canvas.addEventListener('pointerleave', () => { $('#placeGhost').hidden = true; 
 // ---------- export ----------
 let downloadsApi = null;
 if (window.claude?.use) window.claude.use('downloads').then(d => { downloadsApi = d; }).catch(() => {});
-$('#export').addEventListener('click', async () => {
-  if (flushStale()) updateUI();
+$('#export').addEventListener('click', () => flushStaleThen(async () => {
   const pieces = solvedPieces(); if (!pieces.length) return; const sh = S.sheet, r = cutSheetSVG(pieces, S.source?.name);
   if (await saveFile(baseName() + '_cut_sheet.svg', r.svg, $('#exportNote'))) $('#exportNote').textContent += ` (${r.nodes} ${tr('nodes')}${sh.curves !== false ? ', ' + tr('smooth curves') : ''})`;
-});
-$('#exportDxf').addEventListener('click', async () => {
-  if (flushStale()) updateUI();
+}));
+$('#exportDxf').addEventListener('click', () => flushStaleThen(async () => {
   const pieces = solvedPieces(); if (!pieces.length) return; const r = cutSheetSVG(pieces);
   await saveFile(baseName() + '_cut_sheet.dxf', cutSheetDXF(r.pk, S.sheet.w, r.names), $('#exportNote'));
-});
+}));
 
 updateUI();
 // ---------- floating panels: drag by the grip, drop near an edge to pin it there; the pin button frees or docks a panel ----------
@@ -8553,6 +8581,7 @@ const DE = {
   "Stick to model": "Aufs Modell kleben",
   "Unstick": "Lösen",
   "Adjust": "Anpassen",
+  "Unwrapping {0} of {1}…": "Abwickeln {0} von {1} …",
   "This notch cuts the piece in two, so only the bigger part is kept. Make it shorter or narrower.": "Diese Kerbe schneidet das Teil in zwei Stücke, nur das größere bleibt. Mach sie kürzer oder schmaler.",
   "Notch tool: click a piece's edge to cut a V-notch with a rounded tip there. Width, length and tip radius below; save your own as templates": "Kerben-Werkzeug: Klick auf den Rand eines Teils schneidet dort eine V-Kerbe mit runder Spitze. Breite, Länge und Spitzenradius darunter; eigene als Vorlage speichern",
   "V-notch": "V-Kerbe", "Notch template": "Kerbenvorlage", "Width": "Breite", "Length": "Länge", "Tip r": "Spitze r",
