@@ -2,7 +2,7 @@
 
 **[English version](MANUAL.md)**
 
-FitFlat ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeichnest die Decals direkt auf einen 3D-Rahmen; das Werkzeug wickelt jedes davon verzerrungsfrei ab, ordnet die Teile auf einem Bogen an und exportiert eine SVG für deinen Plotter oder Schneideplotter.
+FitFlat ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeichnest die Decals direkt auf einen 3D-Rahmen, meist einen 3D-Scan des echten Rahmens; das Werkzeug wickelt jedes davon verzerrungsfrei ab, ordnet die Teile auf einem Bogen an und exportiert eine SVG für deinen Plotter oder Schneideplotter.
 
 Öffne `index.html` in einem aktuellen Browser (Chrome, Edge, Safari, Firefox). Keine Installation nötig. Deine Arbeit bleibt auf deinem Rechner.
 
@@ -11,6 +11,8 @@ FitFlat ist ein Browser-Werkzeug für Rahmenschutzfolie am Fahrrad. Du zeichnest
 Der **?**-Knopf oben startet eine kurze Tour, die auf die wichtigsten Bedienelemente zeigt: 3D-Ansicht, Zeichnen, Bearbeiten und die drei Reiter Decals, Ansicht und Bogen. Beim ersten Besuch erscheint sie von selbst.
 
 ## Inhalt
+
+- [Schnellstart mit einem Scan](#schnellstart-mit-einem-scan)
 
 1. [Die Oberfläche](#1-die-oberfläche)
 2. [Einen Rahmen laden](#2-einen-rahmen-laden)
@@ -28,6 +30,18 @@ Der **?**-Knopf oben startet eine kurze Tour, die auf die wichtigsten Bedienelem
 14. [Panels und Sprache](#14-panels-und-sprache)
 15. [Tastenkürzel](#15-tastenkürzel)
 16. [Tipps und Problemlösung](#16-tipps-und-problemlösung)
+
+---
+
+## Schnellstart mit einem Scan
+
+1. **Exportiere** den Scan aus deiner Scanner-Software als **STL** in Millimetern (Einstellungen für EXStar Hub und andere: [Das Modell vorbereiten](#das-modell-vorbereiten-export-einstellungen)).
+2. **Öffne** ihn in FitFlat, wähl **Millimeter**, drück **Automatisch ausrichten** und hak **Symmetrisch machen** an, wenn beide Seiten gleich sein sollen. Dann **Modell öffnen**.
+3. **Zeichne** die Decals auf den Rahmen (Taste **D**). Mit **Spiegeln** folgt die andere Seite.
+4. Prüf die **Dehnungsfarben**. Wo ein Teil rot ist, setz die vorgeschlagenen V-Kerben im Tab Bogen.
+5. Wähl im Tab **Bogen** Folie und Bogengröße, dann **SVG herunterladen** (oder **DXF**) für deinen Plotter.
+
+Noch kein Scan? **Rahmen aus Geometrie** baut einen Rahmen aus der Geometrietabelle eines Herstellers ([Abschnitt 2](#rahmen-aus-geometrie-bauen)).
 
 ---
 
@@ -110,7 +124,7 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 - **Drehen:** Hintergrund ziehen, oder Alt bzw. Leertaste halten und ziehen (auch über dem Modell).
 - **Verschieben:** mit rechts ziehen.
 - **Zoomen:** scrollen — es zoomt um den Punkt unter dem Mauszeiger — oder mit der mittleren Taste ziehen. Auch ein Trackpad-Pinch zoomt.
-- **Präzision:** Halte beim Scrollen, Drehen oder Verschieben der Ansicht **Alt** gedrückt, dann bewegt sie sich mit einem Fünftel der Geschwindigkeit.
+- **Präzision:** Halte beim Scrollen, Drehen oder Verschieben der Ansicht **Alt** gedrückt, dann bewegt sie sich mit einem Fünftel der Geschwindigkeit. (In Bearbeiten mit ausgewähltem Decal skaliert Alt + Scrollen stattdessen das Decal.)
 - **Ansicht-Panel:** *Ansicht von* Vorne, Hinten, Links, Rechts, Oben, Unten; *Drehen* in 45°-Schritten; und **Gespeicherte Ansichten** (dreh das Modell in einen passenden Winkel und klicke *Ansicht speichern*).
 - **Ortho** schaltet auf orthografische Ansicht (ohne Perspektive) — ideal mit den Achsenansichten für genaue Layouts.
 - **Raster** zeigt ein Raster und kann Punkte daran fangen (2,5D: das Raster bestimmt die Position in der Ebene, die Rahmenoberfläche die Tiefe). Abstand, Ebene und *Fangen* stellst du im Raster-Teil des Ansicht-Panels ein.
@@ -386,6 +400,7 @@ Standardmäßig bleibt alles im Browser. In **Projekte** speichert **Ordner verw
 
 | Taste | Aktion |
 |---|---|
+| D / V / K | Zeichnen / Bearbeiten / Messer |
 | Strg+Z / Strg+Umschalt+Z (Strg+Y) | Rückgängig / Wiederholen |
 | Enter | Form schließen · Messerschnitt anwenden · Platzierung anwenden |
 | Esc | Zeichnen beenden · Messer löschen · Abbrechen |
@@ -395,10 +410,11 @@ Standardmäßig bleibt alles im Browser. In **Projekte** speichert **Ordner verw
 | M | Ausgewählte Punkte zusammenführen |
 | F | Auf Auswahl zoomen |
 | L | Live-Abwicklung an / aus |
-| U | Geänderte Decals abwickeln (bei ausgeschalteter Live-Abwicklung) |
+| U oder Umschalt+Leertaste | Geänderte Decals abwickeln (bei ausgeschalteter Live-Abwicklung) |
 | Pfeiltasten (Umschalt) | Ausgewählte Punkte schieben |
 | X / Y / Z (beim Ziehen) | Bewegung auf eine Achse sperren |
 | Strg + Scrollen / Alt + Scrollen | Decal oder Auswahl drehen / skalieren (Umschalt: größere Schritte) |
+| Alt + Scrollen / Ziehen (in Bearbeiten nichts ausgewählt) | Präzision: Ansicht mit einem Fünftel der Geschwindigkeit zoomen, drehen und verschieben |
 | T | Messer: Durchschneiden an/aus |
 | Q | Spiegel: Naht-Fang an/aus |
 | 1 / 3 / 7 | Ansicht rechts / vorne / oben (Strg: links / hinten / unten) |

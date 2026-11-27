@@ -2,7 +2,7 @@
 
 **[Deutsche Version](MANUAL.de.md)**
 
-FitFlat is a browser tool for making bicycle frame protection film. You draw the decals directly on a 3D frame; the tool unwraps each one flat without distortion, packs the pieces on a sheet and exports an SVG for your plotter or cutter.
+FitFlat is a browser tool for making bicycle frame protection film. You draw the decals directly on a 3D frame, usually a 3D scan of the real frame; the tool unwraps each one flat without distortion, packs the pieces on a sheet and exports an SVG for your plotter or cutter.
 
 Open `index.html` in a current browser (Chrome, Edge, Safari, Firefox). Nothing to install. Your work stays on your computer.
 
@@ -11,6 +11,8 @@ Open `index.html` in a current browser (Chrome, Edge, Safari, Firefox). Nothing 
 The **?** button at the top starts a short tour that points at the main controls: the 3D view, Draw, Edit and the three tabs Decals, View and Sheet. It appears by itself on your first visit.
 
 ## Contents
+
+- [Quick start with a scan](#quick-start-with-a-scan)
 
 1. [The screen](#1-the-screen)
 2. [Getting a frame](#2-getting-a-frame)
@@ -28,6 +30,18 @@ The **?** button at the top starts a short tour that points at the main controls
 14. [Panels and language](#14-panels-and-language)
 15. [Keyboard shortcuts](#15-keyboard-shortcuts)
 16. [Tips and troubleshooting](#16-tips-and-troubleshooting)
+
+---
+
+## Quick start with a scan
+
+1. **Export** the scan from your scanner software as **STL** in millimetres (settings for EXStar Hub and others: [Preparing the model](#preparing-the-model-export-settings)).
+2. **Open** it in FitFlat, pick **Millimetres**, press **Auto-align**, and tick **Make symmetric** if you want both sides identical. Then **Open model**.
+3. **Draw** the decals on the frame (key **D**). With **Mirror** on, the other side follows.
+4. Check the **stretch** colours. Where a piece is red, add the suggested V-notches on the Sheet tab.
+5. On the **Sheet** tab pick your film and sheet size, then **Download SVG** (or **DXF**) for your plotter.
+
+No scan yet? **Frame from geometry** builds a frame from a brand's geometry chart ([section 2](#build-a-frame-from-geometry)).
 
 ---
 
@@ -110,7 +124,7 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 - **Turn:** drag the background, or hold Alt or Space and drag (also over the model).
 - **Pan:** right-drag.
 - **Zoom:** scroll — it zooms around the point under the cursor — or middle-drag. A trackpad pinch zooms too.
-- **Precision:** hold **Alt** while scrolling, turning or sliding the view, and it moves at a fifth of the speed.
+- **Precision:** hold **Alt** while scrolling, turning or sliding the view, and it moves at a fifth of the speed. (In Edit with a decal selected, Alt + scroll sizes the decal instead.)
 - **View panel:** *Look from* Front, Back, Left, Right, Top, Bottom; *Turn* by 45°; and **Saved views** (turn the model to an angle you like and click *Save view*).
 - **Ortho** switches to an orthographic view (no perspective) — good with the axis views for exact layouts.
 - **Grid** shows a grid and can snap points to it (2.5D: the grid sets the position in the plane, the frame surface gives the depth). Set the step, the plane and *Snap* in the Grid part of the View panel.
@@ -385,6 +399,7 @@ By default everything stays in the browser. In **Projects**, **Use a folder…**
 
 | Key | Action |
 |---|---|
+| D / V / K | Draw / Edit / Knife |
 | Ctrl+Z / Ctrl+Shift+Z (Ctrl+Y) | Undo / redo |
 | Enter | Close shape · apply knife cut · apply placement |
 | Esc | Stop drawing · clear knife · cancel |
@@ -394,10 +409,11 @@ By default everything stays in the browser. In **Projects**, **Use a folder…**
 | M | Merge selected points |
 | F | Zoom to selection |
 | L | Live unwrap on / off |
-| U | Unwrap changed decals (when Live unwrap is off) |
+| U or Shift+Space | Unwrap changed decals (when Live unwrap is off) |
 | Arrow keys (Shift) | Nudge selected points |
 | X / Y / Z (while dragging) | Lock the move to an axis |
 | Ctrl + scroll / Alt + scroll | Turn / size the decal or selection (Shift: bigger steps) |
+| Alt + scroll / drag (nothing selected in Edit) | Precision: zoom, turn and slide the view at a fifth of the speed |
 | T | Knife: cut through on/off |
 | Q | Mirror: seam snap on/off |
 | 1 / 3 / 7 | Right / front / top view (Ctrl: left / back / bottom) |
