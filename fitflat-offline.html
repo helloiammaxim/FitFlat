@@ -14592,7 +14592,7 @@ window.addEventListener('keydown', e => {
   }
   if (e.key === 'Escape') { if (S.cut) { S.cut = null; renderCutMark(); } else if (S.drawing) { S.drawing = null; updateUI(); flash('Stopped drawing. The line stays open; click it to keep editing.'); } else if (S.sel) { S.sel = null; renderHandles(); updateUI(); } }
   if ((e.key === 'Backspace' || e.key === 'Delete') && S.notch.sel && removeSelNotch()) { e.preventDefault(); return; }
-  if (e.key === 'Escape' && S.notch.on) { setNotchMode(false); return; }
+  if (e.key === 'Escape' && S.notch.on) { if (S.notch.sel) deselectNotch(); else if (S.notch.add) setNotchAdd(false); else setNotchMode(false); return; }
   if (e.key === 'Backspace' || e.key === 'Delete') { deletePoints(); e.preventDefault(); }
   if (!mod && e.key.toLowerCase() === 'm' && selList().length >= 2) { mergePoints(); e.preventDefault(); }
   if (!mod && e.key.toLowerCase() === 'f' && S.model) { zoomToSelection(); e.preventDefault(); }
@@ -15869,7 +15869,9 @@ function sheetZoom(k, cx, cy) {
   const big = on => { $('#matBox').classList.toggle('big', on); $('#shBig').setAttribute('aria-pressed', String(on)); $('#notchBig').textContent = tr(on ? 'Smaller' : 'Enlarge'); S.sheetView = on && S.notch.on ? piecesView() : null; sheetVB(); };
   $('#notchBig').addEventListener('click', () => big(!$('#matBox').classList.contains('big')));
   $('#shBig').addEventListener('click', () => big(!$('#matBox').classList.contains('big')));
-  window.addEventListener('keydown', e => { if (e.key === 'Escape' && $('#matBox').classList.contains('big')) { big(false); e.stopPropagation(); } }, true);
+  window.addEventListener('keydown', e => { if (e.key !== 'Escape' || e.target.closest?.('input, textarea, select')) return;
+    if (S.notch.on && S.notch.sel) { deselectNotch(); e.stopPropagation(); return; } // Esc: first lets go of the notch, then leaves the big view
+    if ($('#matBox').classList.contains('big')) { big(false); e.stopPropagation(); } }, true);
 }
 // ---------- cutting on the sheet: a straight cut drawn on a flat piece, wrapped back onto the frame as a relief cut ----------
 function sheetToPiece(sx, sy) {
@@ -15962,6 +15964,28 @@ function flattenRing(curve, step) { // a fitted ring of cubic segments as fine p
     for (let i = 0; i < k; i++) { const t = i / k, u = 1 - t; pts.push([0, 1].map(j => u*u*u*a[j] + 3*u*u*t*b[j] + 3*u*t*t*c[j] + t*t*t*e[j])); } } return pts;
 }
 // the piece with its notches cut out: the outline becomes fine straight segments, the holes keep their curves
+// a dense closed outline back to a few clean curves: it is cut into runs at its sharp corners (the notch mouths, the
+// outline's own corners), and each run is fitted with lines and Béziers within the cut tolerance
+function refitRing(ring, tol) {
+  const R0 = ring.filter((q, i) => { const r = ring[(i + 1) % ring.length]; return Math.hypot(r[0] - q[0], r[1] - q[1]) > 1e-6; }); if (R0.length < 3) return null;
+  let R = []; R0.forEach((q, i) => { const r = R0[(i + 1) % R0.length], m = Math.max(1, Math.ceil(Math.hypot(r[0] - q[0], r[1] - q[1]) / 0.4)); for (let j = 0; j < m; j++) R.push([q[0] + (r[0] - q[0]) * j / m, q[1] + (r[1] - q[1]) * j / m]); }); // even spacing, every original point kept
+  const n = R.length; if (n < 6) return null;
+  const at = (i, w, dir) => { let acc = 0, j = i; for (let k = 0; k < n; k++) { const j2 = (j + dir + n) % n; acc += Math.hypot(R[j2][0] - R[j][0], R[j2][1] - R[j][1]); j = j2; if (acc >= w) break; } return R[j]; };
+  const sharp = R.map((q, i) => { const a = at(i, 0.8, -1), b = at(i, 0.8, 1), u = [q[0] - a[0], q[1] - a[1]], v = [b[0] - q[0], b[1] - q[1]], lu = Math.hypot(...u), lv = Math.hypot(...v);
+    return lu > 1e-9 && lv > 1e-9 && (u[0] * v[0] + u[1] * v[1]) / (lu * lv) < Math.cos(30 * Math.PI / 180); });
+  // one corner per bend: the sharpest point of each run of flagged points
+  const turn = i => { const a = R[(i - 1 + n) % n], q = R[i], b = R[(i + 1) % n], u = [q[0] - a[0], q[1] - a[1]], v = [b[0] - q[0], b[1] - q[1]]; return Math.abs(Math.atan2(u[0] * v[1] - u[1] * v[0], u[0] * v[0] + u[1] * v[1])); };
+  const corners = []; for (let i = 0; i < n; i++) if (sharp[i] && !(sharp[(i - 1 + n) % n] && turn((i - 1 + n) % n) >= turn(i)) && !(sharp[(i + 1) % n] && turn((i + 1) % n) > turn(i))) corners.push(i);
+  const startAt = corners.length ? corners[0] : 0; R = [...R.slice(startAt), ...R.slice(0, startAt)];
+  const cs = new Set(corners.map(i => (i - startAt + n) % n)), sharpAt = new Set(cs); cs.add(0);
+  // long runs are split again at smooth points, so every run is a simple stretch of the outline
+  const base = [...cs].sort((a, b) => a - b), starts = [];
+  base.forEach((a, k) => { const b = k + 1 < base.length ? base[k + 1] : n, parts = Math.max(1, Math.ceil((b - a) / Math.max(8, Math.floor(n / 6)))); for (let j = 0; j < parts; j++) starts.push(a + Math.round((b - a) * j / parts)); });
+  const samples = new Array(n), sharpStart = [];
+  starts.forEach((a, k) => { const b = k + 1 < starts.length ? starts[k + 1] : n; let L = 0; const acc = [0]; for (let i = a + 1; i <= b; i++) { L += Math.hypot(R[i % n][0] - R[i - 1][0], R[i % n][1] - R[i - 1][1]); acc.push(L); }
+    for (let i = a; i < b; i++) samples[i] = { seg: k, t: L > 1e-9 ? acc[i - a] / L : 0 }; sharpStart.push(sharpAt.has(a)); });
+  try { return Core.fitCurves(R, samples, tol, () => true, 0, sg => sharpStart[sg]); } catch (e) { return null; }
+}
 function withNotches(d, twin, pc) {
   if (!d.notches?.length) return pc;
   const rings = notchRings(d, twin).map(r => r.map(([x, y]) => [x, -y])); if (!rings.length) return pc;
@@ -15970,7 +15994,8 @@ function withNotches(d, twin, pc) {
   let res; try { res = polygonClipping.difference(touch ? [close(dense), ...holeD.map(close)] : [close(dense)], ...rings.map(r => [close(r)])); } catch (e) { return pc; }
   if (!res?.length) return pc;
   const area = r => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]); return Math.abs(a); };
-  const seg = ring => ring.map((q, i) => { const r2 = ring[(i + 1) % ring.length]; return [q, q, r2, r2]; });
+  const lines = ring => ring.map((q, i) => { const r2 = ring[(i + 1) % ring.length]; return [q, q, r2, r2]; });
+  const seg = ring => refitRing(ring, Math.max(0.01, +S.sheet.tol || 0.1)) || lines(ring); // clean curves again after the notches are cut out
   res.sort((a, b) => area(b[0]) - area(a[0])); const ring = res[0][0].slice(0, -1);
   if (!touch) return { ...pc, split: res.length > 1, poly: ring, curves: [seg(ring), ...pc.curves.slice(1)] };
   const hs = res[0].slice(1).map(h => h.slice(0, -1)); // a notch in a hole's edge: the holes come back with the V cut into them
@@ -16055,7 +16080,13 @@ function setNotchMode(on) {
   if (on) { S.sheetCut = false; $('#shCut').setAttribute('aria-pressed', 'false'); $('#sheet').classList.remove('cutting'); renderNotchBar(); flash(S.notch.add ? 'Notch tool: click a piece\'s edge on the sheet to cut a V-notch there.' : 'Notch tool: click a notch to select it, or press Add notch.'); }
   renderSheet();
 }
+function deselectNotch() { if (!S.notch.sel) return; S.notch.sel = null; renderSheet(); renderNotchBar(); }
+// a click on the empty sheet (not a drag) lets go of the selected notch
+{ let down = null; const sh = $('#sheet');
+  sh.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; }, true);
+  sh.addEventListener('click', e => { if (!S.notch.on || S.notch.add || !down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return; if (!e.target.closest('.nt, path[data-id]')) deselectNotch(); }); }
 function setNotchAdd(on) {
+  if (on && S.notch.sel) { S.notch.sel = null; renderSheet(); renderNotchBar(); } // a new notch takes the numbers in the panel, not the selected one's
   S.notch.add = on; $('#ntSelM').setAttribute('aria-pressed', String(!on)); $('#ntAddM').setAttribute('aria-pressed', String(on));
   $('#sheet').classList.toggle('adding', on && S.notch.on); if (!on) notchGhost(null); renderPieceBar();
 }
