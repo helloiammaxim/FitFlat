@@ -292,7 +292,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 #sheet .ssug:hover line:first-child{ stroke:#E5007E; }
 #sheet path, #sheet rect, #sheet line, #sheet circle, #sheet polyline, #sheet polygon{ vector-effect:non-scaling-stroke; }
 .mat{ position:relative; }
-.notchbar{ margin:8px 12px 0; padding:10px 12px; border-radius:12px; background:var(--fill); display:grid; gap:8px; font-size:12.5px; }
+.notchbar{ margin:8px 12px 12px; padding:10px 12px; border-radius:12px; background:var(--fill); display:grid; gap:8px; font-size:12.5px; }
 .notchbar .nrow{ display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
 .notchbar .nnum label{ display:flex; align-items:center; gap:4px; color:var(--muted); }
 .notchbar input[type=number]{ width:56px; border:0; background:var(--surface, #fff); border-radius:6px; padding:4px 6px; color:var(--ink); font-variant-numeric:tabular-nums; }
@@ -13245,7 +13245,7 @@ function projectJSON() {
     frame: src.tubes ? { tubes: src.tubes, geo: src.geo, tubeSizes: src.tubeSizes, presetName: src.presetName, sizeIndex: src.sizeIndex } : null,
     presets: userPresets,
     decals: S.decals.filter(d => d.ctrl.length).map(d => ({
-      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir, sheetRot: Number.isFinite(d.sheetRot) ? d.sheetRot : undefined, notches: d.notches?.length ? d.notches.map(n => ({ m: n.m.map(v => +v.toFixed(4)), t: n.t.map(v => +v.toFixed(4)), w: n.w, L: n.L, r: n.r, relief: n.relief ? true : undefined })) : undefined, darts: d.darts?.length ? d.darts.map(p => p.map(q => q.map(v => +v.toFixed(4)))) : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? +d.dartV[i].toFixed(2) : null) : undefined,
+      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir, sheetRot: Number.isFinite(d.sheetRot) ? d.sheetRot : undefined, notches: d.notches?.length ? d.notches.map(n => ({ m: n.m.map(v => +v.toFixed(4)), t: n.t.map(v => +v.toFixed(4)), w: n.w, L: n.L, r: n.r, relief: n.relief && !n.hole ? true : undefined, hole: n.hole ? true : undefined })) : undefined, darts: d.darts?.length ? d.darts.map(p => p.map(q => q.map(v => +v.toFixed(4)))) : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? +d.dartV[i].toFixed(2) : null) : undefined,
       ctrl: d.ctrl.map(c => ({ p: r3(c.p), type: c.type || 'auto', hin: r3(c.hin), hout: r3(c.hout), plane: !!c.plane, seam: c.seam })),
     })),
   });
@@ -13759,7 +13759,7 @@ function restoreDecals(list, msg, fname) {
       if (!ctrl.length) continue;
       const d = { id, name: safeName(dd.name) || `Decal ${id}`, color: safeColor(dd.color) || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, seamOpen: !!dd.seamOpen, seamFlip: !!dd.seamFlip, res: null, twin: null, obj: [], _hole: dd.holeOf, _part: dd.partOf, _live: dd.liveOf, seamDir: Array.isArray(dd.seamDir) && dd.seamDir.length === 3 && dd.seamDir.every(Number.isFinite) ? dd.seamDir : undefined,
         sheetRot: Number.isFinite(dd.sheetRot) ? Math.max(-180, Math.min(180, dd.sheetRot)) : undefined,
-        notches: Array.isArray(dd.notches) ? dd.notches.filter(n => n && [n.m, n.t].every(p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite)) && [n.w, n.L, n.r].every(Number.isFinite)).slice(0, 64).map(n => ({ m: n.m, t: n.t, w: Math.max(0.1, Math.min(80, n.w)), L: Math.max(0.5, Math.min(150, n.L)), r: Math.max(0, Math.min(20, n.r)), ...(n.relief === true ? { relief: true } : {}) })) : undefined,
+        notches: Array.isArray(dd.notches) ? dd.notches.filter(n => n && [n.m, n.t].every(p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite)) && [n.w, n.L, n.r].every(Number.isFinite)).slice(0, 64).map(n => ({ m: n.m, t: n.t, w: Math.max(0.1, Math.min(80, n.w)), L: Math.max(0.5, Math.min(150, n.L)), r: Math.max(0, Math.min(20, n.r)), ...(n.hole === true ? { hole: true } : n.relief === true ? { relief: true } : {}) })) : undefined,
         darts: Array.isArray(dd.darts) ? dd.darts.filter(p => Array.isArray(p) && p.length >= 2 && p.length <= 64 && p.every(q => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite))).slice(0, 24) : undefined,
         dartV: Array.isArray(dd.darts) && Array.isArray(dd.dartV) && dd.dartV.length === dd.darts.length && dd.darts.every(p => Array.isArray(p) && p.length >= 2 && p.length <= 64 && p.every(q => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite))) ? dd.dartV.slice(0, 24).map(x => typeof x === 'number' && isFinite(x) ? Math.max(0, Math.min(60, x)) : null) : undefined };
       S.decals.push(d); made.push(d);
@@ -14831,7 +14831,7 @@ function notchSlit(n) {
   const r = out.length >= 3 ? out : null; if (notchSlitCache.size > 500) notchSlitCache.clear(); notchSlitCache.set(key, r); return r;
 }
 function notchDarts(d, merged) {
-  const out = []; (d.notches || []).forEach((n, ni) => { if (!n.relief) return; const P = notchSlit(n); if (!P) return; out.push(Object.assign(P.slice(), { v: undefined, ni, mir: false }));
+  const out = []; (d.notches || []).forEach((n, ni) => { if (!n.relief || n.hole) return; const P = notchSlit(n); if (!P) return; out.push(Object.assign(P.slice(), { v: undefined, ni, mir: false }));
     if (d.mirror && merged) { const M = P.map(q => reflect(q).map(v => +v.toFixed(4))); if (!P.every((q, i) => dist3(q, M[i]) < 4)) out.push(Object.assign(M, { v: undefined, ni, mir: true })); } });
   return out;
 }
@@ -15850,14 +15850,14 @@ function notchDown(e) {
     S.notch.sel = { d: +el.dataset.d, i: +el.dataset.i }; const sel = selNotch(); S.notch.drag = { n: { w: sel.n.w, L: sel.n.L, r: sel.n.r }, x: q.x, y: q.y, moved: false };
     renderSheet(); renderNotchBar(); return true; }
   const c = notchAtSheet(q); if (!c) { S.notch.sel = null; renderSheet(); renderNotchBar(); flash('Click on a piece, near the edge where the notch should go.'); return true; }
-  pushHistory('Added notch'); (c.d.notches ||= []).push({ m: c.m, t: c.t, w: S.notch.w, L: S.notch.L, r: S.notch.r, ...(S.notch.relief ? { relief: true } : {}) });
-  S.notch.sel = { d: c.d.id, i: c.d.notches.length - 1 }; if (!e.shiftKey) setNotchAdd(false); notchGhost(null); if (S.notch.relief) notchResolve(c.d, c.d.res?.stretchMax || 0); else { renderSheet(); renderNotchBar(); } notchSplitWarn(c.d); return true;
+  pushHistory('Added notch'); (c.d.notches ||= []).push({ m: c.m, t: c.t, w: S.notch.w, L: S.notch.L, r: S.notch.r, ...(c.hole ? { hole: true } : S.notch.relief ? { relief: true } : {}) });
+  S.notch.sel = { d: c.d.id, i: c.d.notches.length - 1 }; if (!e.shiftKey) setNotchAdd(false); notchGhost(null); if (S.notch.relief && !c.hole) notchResolve(c.d, c.d.res?.stretchMax || 0); else { renderSheet(); renderNotchBar(); } notchSplitWarn(c.d); return true;
 }
 function notchUp(e) {
   const D = S.notch.drag; S.notch.drag = null; notchGhost(null); const q = sheetPt(e.clientX, e.clientY), sel = selNotch(); if (!q || !sel) return;
   if (Math.hypot(q.x - D.x, q.y - D.y) < 1.5) return; // a click: only selected
   const c = notchAtSheet(q); if (!c || c.d !== sel.d) { flash('Drag the notch along the edge of its own piece.'); renderSheet(); return; }
-  pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; if (sel.n.relief) notchResolve(sel.d); else { renderSheet(); renderNotchBar(); } notchSplitWarn(sel.d);
+  pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; if (c.hole) { sel.n.hole = true; delete sel.n.relief; } else delete sel.n.hole; if (sel.n.relief) notchResolve(sel.d); else { renderSheet(); renderNotchBar(); } notchSplitWarn(sel.d);
 }
 function sheetCutStart(e) {
   const q = sheetPt(e.clientX, e.clientY); if (!q) return; const hit = sheetToPiece(q.x, q.y); // may start just outside a piece: the piece is then the one the drag ends in
@@ -15924,21 +15924,26 @@ function withNotches(d, twin, pc) {
   if (!d.notches?.length) return pc;
   const rings = notchRings(d, twin).map(r => r.map(([x, y]) => [x, -y])); if (!rings.length) return pc;
   const dense = pc.curves[0] ? flattenRing(pc.curves[0], 0.4) : pc.poly, close = r => [...r, r[0]];
-  let res; try { res = polygonClipping.difference([close(dense)], ...rings.map(r => [close(r)])); } catch (e) { return pc; }
+  const holeD = pc.curves.slice(1).map(c => flattenRing(c, 0.4)), touch = holeD.some(h => { try { return rings.some(r => polygonClipping.intersection([close(h)], [close(r)]).length); } catch (e) { return false; } });
+  let res; try { res = polygonClipping.difference(touch ? [close(dense), ...holeD.map(close)] : [close(dense)], ...rings.map(r => [close(r)])); } catch (e) { return pc; }
   if (!res?.length) return pc;
   const area = r => { let a = 0; for (let i = 0, j = r.length - 1; i < r.length; j = i++) a += (r[j][0] + r[i][0]) * (r[j][1] - r[i][1]); return Math.abs(a); };
+  const seg = ring => ring.map((q, i) => { const r2 = ring[(i + 1) % ring.length]; return [q, q, r2, r2]; });
   res.sort((a, b) => area(b[0]) - area(a[0])); const ring = res[0][0].slice(0, -1);
-  return { ...pc, split: res.length > 1, poly: ring, curves: [ring.map((q, i) => { const r2 = ring[(i + 1) % ring.length]; return [q, q, r2, r2]; }), ...pc.curves.slice(1)] };
+  if (!touch) return { ...pc, split: res.length > 1, poly: ring, curves: [seg(ring), ...pc.curves.slice(1)] };
+  const hs = res[0].slice(1).map(h => h.slice(0, -1)); // a notch in a hole's edge: the holes come back with the V cut into them
+  return { ...pc, split: res.length > 1, poly: ring, holes: hs, curves: [seg(ring), ...hs.map(seg)] };
 }
 // the nearest edge point of a flat outline, with the direction pointing out of the piece
-function nearestEdge(O, uv) {
-  let best = null; for (let i = 0; i < O.length; i++) { const a = O[i], b = O[(i + 1) % O.length], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1e-12;
+function nearestEdge(O, uv, holes) { // holes: the piece's hole outlines, in the same coordinates (a notch can go into a hole's edge too)
+  let best = null; [O, ...(holes || [])].forEach((R, ri) => { for (let i = 0; i < R.length; i++) { const a = R[i], b = R[(i + 1) % R.length], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1e-12;
     const t = Math.max(0, Math.min(1, ((uv[0] - a[0]) * dx + (uv[1] - a[1]) * dy) / l2)), P = [a[0] + dx * t, a[1] + dy * t], dd = Math.hypot(uv[0] - P[0], uv[1] - P[1]);
-    if (!best || dd < best.dd) best = { P, dd, dir: [dx / Math.sqrt(l2), dy / Math.sqrt(l2)] }; }
+    if (!best || dd < best.dd) best = { P, dd, dir: [dx / Math.sqrt(l2), dy / Math.sqrt(l2)], ri }; } });
   if (!best) return null;
-  const inO = pt => { let c = false; for (let a = 0, b = O.length - 1; a < O.length; b = a++) { const [xi, yi] = O[a], [xj, yj] = O[b]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const inR = (R, pt) => { let c = false; for (let a = 0, b = R.length - 1; a < R.length; b = a++) { const [xi, yi] = R[a], [xj, yj] = R[b]; if ((yi > pt[1]) !== (yj > pt[1]) && pt[0] < (xj - xi) * (pt[1] - yi) / (yj - yi) + xi) c = !c; } return c; };
+  const inO = pt => inR(O, pt) && !(holes || []).some(H => inR(H, pt)); // on the film
   let out = [best.dir[1], -best.dir[0]]; if (inO([best.P[0] + out[0] * 0.5, best.P[1] + out[1] * 0.5])) out = [-out[0], -out[1]];
-  return { P: best.P, out, dd: best.dd };
+  return { P: best.P, out, dd: best.dd, hole: best.ri > 0 };
 }
 // a notch for the piece under a sheet point: anchored on the frame (points stored on the original side of a mirrored decal)
 function notchAtSheet(q) {
@@ -15948,13 +15953,14 @@ function notchAtSheet(q) {
 }
 function notchAtUV(d, twin, uv) {
   const res = twin ? d.twin?.res : d.res; if (!res?.outline) return null;
-  const E = nearestEdge(res.outline, uv); if (!E) return null;
+  const kids = cutsOf(d), holes = kids.map(k => holeRings(res, k, twin)).filter(Boolean).map(r => r.map(([x, y]) => [x, -y]));
+  const E = nearestEdge(res.outline, uv, holes); if (!E) return null;
   const tri = flatTris(res), inw = [-E.out[0], -E.out[1]];
   const M = flatTo3(tri, [E.P[0] + inw[0] * 0.4, E.P[1] + inw[1] * 0.4]); let T = null;
   for (const k of [3, 1.5, 0.8]) { T = flatTo3(tri, [E.P[0] + inw[0] * k, E.P[1] + inw[1] * k]); if (T) break; }
   if (!M || !T) return null;
   const back = p => (twin ? reflect(p) : p).map(v => +v.toFixed(4));
-  return { d, twin, m: back(M.point), t: back(T.point), uvM: E.P, inw, out: E.out };
+  return { d, twin, m: back(M.point), t: back(T.point), uvM: E.P, inw, out: E.out, hole: E.hole };
 }
 // the notches on the frame too: each V's outline mapped back from the flat piece onto the surface (both sides of a mirrored decal)
 let notchObj = null, notchKey3 = '';
@@ -16019,7 +16025,7 @@ function renderNotchBar() {
   const cur = all.findIndex(t => t.w === v.w && t.L === v.L && t.r === v.r);
   $('#notchTpl').innerHTML = (cur < 0 ? `<option value="-1">${esc(tr('Custom'))}</option>` : '') + all.map((t, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${esc(t.builtin ? tr(t.name) : t.name)} · ${t.w} × ${t.L}, r ${t.r}</option>`).join('');
   $('#notchW').value = v.w; $('#notchL').value = v.L; $('#notchR').value = v.r;
-  $('#notchDelTpl').disabled = !(cur >= NOTCH_BUILTIN.length); $('#notchDel').hidden = !sel; $('#notchRelief').setAttribute('aria-pressed', String(!!(sel ? sel.n.relief : S.notch.relief)));
+  $('#notchDelTpl').disabled = !(cur >= NOTCH_BUILTIN.length); $('#notchDel').hidden = !sel; $('#notchRelief').setAttribute('aria-pressed', String(!!(sel ? sel.n.relief : S.notch.relief))); $('#notchRelief').disabled = !!sel?.n.hole;
   $('#notchHead').textContent = tr(sel ? 'Selected notch' : 'New notches');
 }
 function setNotchVals(o) { // the numbers go to the selected notch, or to the next new one
@@ -16041,9 +16047,10 @@ $('#notchDel').addEventListener('click', removeSelNotch);
 // slide the selected notch along its edge (arrow keys: 1 mm, Shift: 5 mm)
 function nudgeSelNotch(step) {
   const sel = selNotch(); if (!sel) return false; const q = notchUV(sel.d, sel.n, false, false), O = sel.d.res?.outline; if (!q || !O) return false;
-  const E = nearestEdge(O, q.M); if (!E) return false;
+  const holes = cutsOf(sel.d).map(k => holeRings(sel.d.res, k, false)).filter(Boolean).map(r => r.map(([x, y]) => [x, -y]));
+  const E = nearestEdge(O, q.M, holes); if (!E) return false;
   const c = notchAtUV(sel.d, false, [E.P[0] - E.out[1] * step, E.P[1] + E.out[0] * step]); if (!c) return false;
-  pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; if (sel.n.relief) { clearTimeout(nudgeSelNotch.t); renderSheet(); nudgeSelNotch.t = setTimeout(() => notchResolve(sel.d), 350); } else { renderSheet(); renderNotchBar(); } return true;
+  pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; if (c.hole) { sel.n.hole = true; delete sel.n.relief; } else delete sel.n.hole; if (sel.n.relief) { clearTimeout(nudgeSelNotch.t); renderSheet(); nudgeSelNotch.t = setTimeout(() => notchResolve(sel.d), 350); } else { renderSheet(); renderNotchBar(); } return true;
 }
 addEventListener('keydown', e => { if (!S.notch.on || e.target.closest?.('input, textarea, select, [contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === 'a' || e.key === 'A') { setNotchAdd(!S.notch.add); e.preventDefault(); e.stopPropagation(); return; }
@@ -16056,6 +16063,7 @@ function notchResolve(d, was) {
     if (was != null) flash(tr('Stretch {0}% → {1}%.').replace('{0}', (was * 100).toFixed(1)).replace('{1}', ((d.res?.stretchMax || 0) * 100).toFixed(1)) + (d.notchNoHelp ? ' ' + tr('The notches do not lower the stretch here, so the unwrap keeps the film closed at them.') : '')); }, 20);
 }
 $('#notchRelief').addEventListener('click', () => { const sel = selNotch();
+  if (sel?.n.hole) { flash('A notch in a hole\'s edge is cut out of the flat piece only, so it does not count in the stretch.'); return; }
   if (!sel) { S.notch.relief = !S.notch.relief; renderNotchBar(); return; }
   pushHistory(sel.n.relief ? 'Notch out of stretch' : 'Notch counted in stretch'); if (sel.n.relief) delete sel.n.relief; else sel.n.relief = true; notchResolve(sel.d, sel.d.res?.stretchMax || 0); });
 // the notch outline drawn over the sheet: for selecting and dragging, and as the preview where a click would put one
@@ -18924,6 +18932,7 @@ const DE = {
   "Count in stretch": "In Dehnung einrechnen",
   "On: the unwrap treats the notch as a slit, so the film may open or close there as the frame needs, and the stretch colours and numbers count it. Off: the notch is only cut out of the finished flat piece": "An: Die Abwicklung behandelt die Kerbe als Schlitz, die Folie darf sich dort öffnen oder schließen, wie der Rahmen es braucht, und Dehnungsfarben und -werte zählen sie mit. Aus: Die Kerbe wird nur aus dem fertigen flachen Teil geschnitten",
   "Notch out of stretch": "Kerbe aus Dehnung genommen",
+  "A notch in a hole's edge is cut out of the flat piece only, so it does not count in the stretch.": "Eine Kerbe am Rand eines Lochs wird nur aus dem flachen Teil geschnitten, sie zählt also nicht in der Dehnung mit.",
   "The notches do not lower the stretch here, so the unwrap keeps the film closed at them.": "Die Kerben senken die Dehnung hier nicht, also hält die Abwicklung die Folie an ihnen geschlossen.",
   "Notch counted in stretch": "Kerbe in Dehnung eingerechnet",
   "Show the cut sheet big, to place notches comfortably (Esc goes back)": "Den Schneidebogen groß zeigen, um Kerben bequem zu setzen (Esc zurück)",
