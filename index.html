@@ -296,13 +296,14 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .notchbar select{ padding:4px 8px; font-size:12.5px; }
 .notchbar .btn{ padding:4px 10px; font-size:12.5px; }
 .notchbar .note{ margin:0; font-size:12px; }
-#sheet.notching{ cursor:crosshair; }
+#sheet.notching.adding{ cursor:crosshair; }
 .notchbar .pcang{ display:flex; align-items:center; gap:4px; color:var(--muted); }
 .notchbar .spacer{ flex:1; }
 .mat.big ~ .notchbar{ position:fixed; z-index:62; left:32px; bottom:32px; width:min(420px, calc(100vw - 64px)); margin:0; background:var(--surface, #fff); box-shadow:0 12px 40px rgba(0,0,0,.35); }
 .mat.big ~ .notchbar input[type=number]{ background:var(--fill); }
 #sheet .nt{ pointer-events:none; }
 #sheet.notching .nt{ pointer-events:all; cursor:move; }
+#sheet.notching:not(.adding) path[data-id]{ cursor:pointer; }
 .matbar{ position:absolute; top:6px; right:6px; display:flex; gap:2px; z-index:2; background:rgba(0,0,0,.35); border-radius:8px; padding:2px; }
 .matbar button{ min-width:26px; height:24px; padding:0 6px; border:0; border-radius:6px; background:transparent; color:#fff; font:600 12px/1 inherit; cursor:pointer; }
 .matbar button:hover, .matbar button[aria-pressed="true"]{ background:rgba(255,255,255,.18); }
@@ -865,14 +866,15 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <div class="matmeta"><span id="matSize"></span><span id="matCount"></span></div>
       </div>
       <div class="notchbar" id="pieceBar" hidden>
-        <div class="nrow"><b id="pieceHead">Piece</b><span class="spacer"></span><button class="btn" id="pcL" title="Turn the piece 90° to the left on the sheet">⟲ 90°</button><button class="btn" id="pcR" title="Turn the piece 90° to the right on the sheet">⟳ 90°</button>
-          <label class="pcang" title="Turn the piece by this angle on the sheet (arrow keys in the box: 1°, Shift: 15°)"><input type="number" id="pcAng" step="1"> °</label><button class="btn" id="pcAuto" title="Let FitFlat turn the piece again: smallest box around it, long side across">Auto</button></div>
+        <div class="nrow"><b id="pieceHead">Piece</b><span class="spacer"></span><button class="btn" id="pcH" title="Lay the piece flat: its long side across, and it stays like that when the sheet is packed">↔</button><button class="btn" id="pcV" title="Stand the piece up: its long side up and down, and it stays like that when the sheet is packed">↕</button><button class="btn" id="pcL" title="Turn the piece 90° to the left on the sheet">⟲ 90°</button><button class="btn" id="pcR" title="Turn the piece 90° to the right on the sheet">⟳ 90°</button>
+          <label class="pcang" title="Turn the piece by this angle on the sheet (arrow keys in the box: 1°, Shift: 15°)"><input type="number" id="pcAng" step="1"> °</label><button class="btn" id="pcAuto" title="Let FitFlat turn the piece again: smallest box around it, long side across, but it may stand it up when that packs the sheet better">Auto</button></div>
       </div>
       <div class="notchbar" id="notchBar" hidden>
-        <div class="nrow"><b id="notchHead">V-notch</b><select class="btn" id="notchTpl" aria-label="Notch template"></select><span class="spacer"></span><button class="btn" id="notchBig" title="Show the cut sheet big, to place notches comfortably (Esc goes back)">Enlarge</button></div>
+        <div class="nrow"><div class="seg" id="notchMode" role="group" aria-label="Notch tool"><button id="ntSelM" aria-pressed="true" title="Click a notch to select it, then drag it or use the arrow keys. Clicking a piece selects its decal (A switches)">Select</button><button id="ntAddM" aria-pressed="false" title="Click a piece's edge to cut a new notch there. Shift-click to keep adding (A switches)">Add notch</button></div><span class="spacer"></span><button class="btn" id="notchBig" title="Show the cut sheet big, to place notches comfortably (Esc goes back)">Enlarge</button></div>
+        <div class="nrow"><b id="notchHead">V-notch</b><select class="btn" id="notchTpl" aria-label="Notch template"></select></div>
         <div class="nrow nnum"><label title="Width of the V at the edge of the piece">Width<input type="number" id="notchW" min="0.5" max="80" step="0.5"> mm</label><label title="How far the V reaches into the piece">Length<input type="number" id="notchL" min="1" max="150" step="0.5"> mm</label><label title="Radius of the rounded tip, so the film does not tear there">Tip r<input type="number" id="notchR" min="0" max="20" step="0.25"> mm</label></div>
         <div class="nrow"><button class="btn" id="notchSave" title="Keep these numbers as a template you can pick again (stays in this browser)">Save as template</button><button class="btn" id="notchDelTpl" title="Delete the picked template">Delete template</button><button class="btn" id="notchDel" title="Take the selected notch out (Delete)" hidden>Remove notch</button><button class="btn tog" id="notchRelief" aria-pressed="true" title="On: the unwrap treats the notch as a slit, so the film may open or close there as the frame needs, and the stretch colours and numbers count it. Off: the notch is only cut out of the finished flat piece">Count in stretch</button></div>
-        <p class="note" id="notchNote">Click a piece's edge on the sheet to cut a notch there. Click a notch to select it, then drag it along the edge or use the arrow keys (Shift: 5 mm), and change its numbers here. With Count in stretch on, the unwrap treats a notch as a slit, so the stretch counts it.</p>
+        <p class="note" id="notchNote">Add notch, then click a piece's edge to cut one there (Shift-click to keep adding). In Select, click a notch to select it, drag it along the edge or use the arrow keys (Shift: 5 mm), and change its numbers here. With Count in stretch on, the unwrap treats a notch as a slit, so the stretch counts it.</p>
       </div>
       <div class="sec">
         <div class="dhead"><h2>Decals</h2>
@@ -5615,10 +5617,10 @@ function sheetZoom(k, cx, cy) {
   const svg = $('#sheet'); let pan = null, moved = false;
   svg.addEventListener('wheel', e => { e.preventDefault(); sheetZoom(Math.exp(e.deltaY * 0.0015), e.clientX, e.clientY); }, { passive: false });
   svg.addEventListener('pointerdown', e => { if (e.button !== 0 || !S.sheetFull) return;
-    if (S.notch.on) { notchDown(e); return; }
+    S.notch.ate = false; if (S.notch.on && notchDown(e)) { S.notch.ate = true; return; } // the click that follows must not select the piece under it
     if (S.sheetCut) { sheetCutStart(e); return; }
     pan = { x: e.clientX, y: e.clientY, v: { ...(S.sheetView || S.sheetFull) } }; moved = false; });
-  window.addEventListener('pointermove', e => { if (S.notch.on && e.target.closest?.('#sheet') || S.notch.drag) { notchGhost(sheetPt(e.clientX, e.clientY)); if (S.notch.drag) return; } else if (S.notch.on) notchGhost(null);
+  window.addEventListener('pointermove', e => { if (S.notch.on && S.notch.add && e.target.closest?.('#sheet') || S.notch.drag) { notchGhost(sheetPt(e.clientX, e.clientY)); if (S.notch.drag) return; } else if (S.notch.on) notchGhost(null);
     if (S.sheetCutDrag) { sheetCutMove(e); return; } if (!pan) return; const dx = e.clientX - pan.x, dy = e.clientY - pan.y; if (!moved && Math.hypot(dx, dy) < 4) return;
     if (!moved) { moved = true; svg.classList.add('panning'); try { svg.setPointerCapture(e.pointerId); } catch (er) {} }
     const r = svg.getBoundingClientRect(), sc = Math.min(r.width / pan.v.w, r.height / pan.v.h) || 1; S.sheetView = { ...pan.v, x: pan.v.x - dx / sc, y: pan.v.y - dy / sc }; sheetVB(); });
@@ -5645,14 +5647,18 @@ function sheetToPiece(sx, sy) {
   return null;
 }
 function notchDown(e) {
-  const q = sheetPt(e.clientX, e.clientY); if (!q) return; e.preventDefault();
-  const el = e.target.closest?.('.nt');
+  const q = sheetPt(e.clientX, e.clientY); if (!q) return false;
+  let el = e.target.closest?.('.nt');
+  if (!el && S.notch.add) for (let k = 0; k < 12 && !el; k++) { const a = k / 12 * 2 * Math.PI; el = document.elementFromPoint(e.clientX + 7 * Math.cos(a), e.clientY + 7 * Math.sin(a))?.closest?.('.nt'); } // a click just beside a notch picks it, it does not cut a second one
+  if (!el && !S.notch.add) return false; // Select: anywhere else pans the sheet, and a click on a piece selects its decal
+  e.preventDefault();
   if (el) { // an existing notch: select it, and drag it along the edge
+    if (S.notch.add) setNotchAdd(false);
     S.notch.sel = { d: +el.dataset.d, i: +el.dataset.i }; const sel = selNotch(); S.notch.drag = { n: { w: sel.n.w, L: sel.n.L, r: sel.n.r }, x: q.x, y: q.y, moved: false };
-    renderSheet(); renderNotchBar(); return; }
-  const c = notchAtSheet(q); if (!c) { S.notch.sel = null; renderSheet(); renderNotchBar(); flash('Click on a piece, near the edge where the notch should go.'); return; }
+    renderSheet(); renderNotchBar(); return true; }
+  const c = notchAtSheet(q); if (!c) { S.notch.sel = null; renderSheet(); renderNotchBar(); flash('Click on a piece, near the edge where the notch should go.'); return true; }
   pushHistory('Added notch'); (c.d.notches ||= []).push({ m: c.m, t: c.t, w: S.notch.w, L: S.notch.L, r: S.notch.r, ...(S.notch.relief ? { relief: true } : {}) });
-  S.notch.sel = { d: c.d.id, i: c.d.notches.length - 1 }; notchGhost(null); if (S.notch.relief) notchResolve(c.d, c.d.res?.stretchMax || 0); else { renderSheet(); renderNotchBar(); } notchSplitWarn(c.d);
+  S.notch.sel = { d: c.d.id, i: c.d.notches.length - 1 }; if (!e.shiftKey) setNotchAdd(false); notchGhost(null); if (S.notch.relief) notchResolve(c.d, c.d.res?.stretchMax || 0); else { renderSheet(); renderNotchBar(); } notchSplitWarn(c.d); return true;
 }
 function notchUp(e) {
   const D = S.notch.drag; S.notch.drag = null; notchGhost(null); const q = sheetPt(e.clientX, e.clientY), sel = selNotch(); if (!q || !sel) return;
@@ -5682,7 +5688,7 @@ function sheetCutEnd(e) {
 // ---------- notches: V cut-outs with a rounded tip, placed on the flat pieces; anchored on the frame so they survive a new unwrap ----------
 const NOTCH_BUILTIN = [{ name: 'Small V', w: 6, L: 12, r: 1 }, { name: 'Medium V', w: 10, L: 20, r: 1.5 }, { name: 'Long V', w: 8, L: 30, r: 1 }, { name: 'Wide V', w: 16, L: 20, r: 2 }, { name: 'Slit', w: 1.5, L: 20, r: 0.75 }];
 const NOTCH_KEY = 'fitflat-notch-templates';
-S.notch = { on: false, w: 10, L: 20, r: 1.5, relief: true, sel: null, drag: null };
+S.notch = { on: false, add: false, w: 10, L: 20, r: 1.5, relief: true, sel: null, drag: null };
 function notchTemplates() { try { const a = JSON.parse(localStorage.getItem(NOTCH_KEY) || '[]'); return Array.isArray(a) ? a.filter(t => t && typeof t.name === 'string' && [t.w, t.L, t.r].every(Number.isFinite)).slice(0, 50) : []; } catch (e) { return []; } }
 // where a notch sits on one flat piece: its mouth point and the direction into the piece (the mirror piece uses the mirrored notch)
 function notchUV(d, n, twin, mir) {
@@ -5777,7 +5783,7 @@ function renderNotches3D() {
 }
 // the selected decal's piece on the sheet: turn it by hand (its mirror piece turns the other way, so both stay mirror images)
 function renderPieceBar() {
-  const d = S.active, has = d && !S.notch.on && S.pieceInfo && S.pieceInfo['d' + d.id];
+  const d = S.active, has = d && !(S.notch.on && S.notch.add) && S.pieceInfo && S.pieceInfo['d' + d.id];
   $('#pieceBar').hidden = !has; if (!has) return;
   $('#pieceHead').textContent = tr(d.mirror ? '{0} on the sheet (both sides)' : '{0} on the sheet').replace('{0}', d.name);
   if (document.activeElement !== $('#pcAng')) $('#pcAng').value = Number.isFinite(d.sheetRot) ? d.sheetRot : '';
@@ -5791,14 +5797,22 @@ function setPieceRot(v) {
 $('#pcL').addEventListener('click', () => setPieceRot((S.active?.sheetRot || 0) - 90));
 $('#pcR').addEventListener('click', () => setPieceRot((S.active?.sheetRot || 0) + 90));
 $('#pcAuto').addEventListener('click', () => setPieceRot(null));
+$('#pcH').addEventListener('click', () => setPieceRot(0));
+$('#pcV').addEventListener('click', () => setPieceRot(90));
 $('#pcAng').addEventListener('change', e => { const v = parseFloat(e.target.value); setPieceRot(Number.isFinite(v) ? v : null); });
 $('#pcAng').addEventListener('keydown', e => { if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return; e.preventDefault(); const v = (parseFloat(e.target.value) || 0) + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 15 : 1); e.target.value = v; setPieceRot(v); });
 function setNotchMode(on) {
-  S.notch.on = on; if (!on) { S.notch.sel = null; S.notch.drag = null; }
+  S.notch.on = on; if (!on) { S.notch.sel = null; S.notch.drag = null; } setNotchAdd(on && !S.decals.some(d => d.notches?.length)); // nothing to select yet: start by adding
   $('#shNotch').setAttribute('aria-pressed', String(on)); $('#sheet').classList.toggle('notching', on); $('#notchBar').hidden = !on; renderPieceBar();
-  if (on) { S.sheetCut = false; $('#shCut').setAttribute('aria-pressed', 'false'); $('#sheet').classList.remove('cutting'); renderNotchBar(); flash('Notch tool: click a piece\'s edge on the sheet to cut a V-notch there.'); }
+  if (on) { S.sheetCut = false; $('#shCut').setAttribute('aria-pressed', 'false'); $('#sheet').classList.remove('cutting'); renderNotchBar(); flash(S.notch.add ? 'Notch tool: click a piece\'s edge on the sheet to cut a V-notch there.' : 'Notch tool: click a notch to select it, or press Add notch.'); }
   renderSheet();
 }
+function setNotchAdd(on) {
+  S.notch.add = on; $('#ntSelM').setAttribute('aria-pressed', String(!on)); $('#ntAddM').setAttribute('aria-pressed', String(on));
+  $('#sheet').classList.toggle('adding', on && S.notch.on); if (!on) notchGhost(null); renderPieceBar();
+}
+$('#ntSelM').addEventListener('click', () => setNotchAdd(false));
+$('#ntAddM').addEventListener('click', () => setNotchAdd(true));
 function selNotch() { const s2 = S.notch.sel; if (!s2) return null; const d = S.decals.find(x => x.id === s2.d); const n = d?.notches?.[s2.i]; return n ? { d, n } : null; }
 function renderNotchBar() {
   const all = [...NOTCH_BUILTIN.map(t => ({ ...t, builtin: true })), ...notchTemplates()], sel = selNotch(), v = sel ? sel.n : S.notch;
@@ -5831,7 +5845,9 @@ function nudgeSelNotch(step) {
   const c = notchAtUV(sel.d, false, [E.P[0] - E.out[1] * step, E.P[1] + E.out[0] * step]); if (!c) return false;
   pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; if (sel.n.relief) { clearTimeout(nudgeSelNotch.t); renderSheet(); nudgeSelNotch.t = setTimeout(() => notchResolve(sel.d), 350); } else { renderSheet(); renderNotchBar(); } return true;
 }
-addEventListener('keydown', e => { if (!S.notch.on || !S.notch.sel || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+addEventListener('keydown', e => { if (!S.notch.on || e.target.closest?.('input, textarea, select, [contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === 'a' || e.key === 'A') { setNotchAdd(!S.notch.add); e.preventDefault(); e.stopPropagation(); return; }
+  if (!S.notch.sel) return;
   const k = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key]; if (!k) return;
   if (nudgeSelNotch(k * (e.shiftKey ? 5 : 1))) { e.preventDefault(); e.stopPropagation(); } }, true);
 // a notch that counts in stretch: unwrap its decal again with the notch as a free slit, and tell what that did
@@ -5925,7 +5941,7 @@ function renderSheet() {
       const h = Math.sign(al || 1) * th * Math.PI / 360, c = Math.cos(h), sn = Math.sin(h), hx = V.tx + (V.ux * c - V.uy * sn) * V.L, hy = V.ty + (V.ux * sn + V.uy * c) * V.L;
       cEl.setAttribute('cx', hx); cEl.setAttribute('cy', hy); const ln = g.querySelector('.vpre'); ln.setAttribute('x2', hx); ln.setAttribute('y2', hy); g.querySelector('text').textContent = th < 0.5 ? tr('slit') : 'V ' + (2 * V.L * Math.sin(th * Math.PI / 360)).toFixed(1) + ' mm'; });
     cEl.addEventListener('pointerup', () => { const V = S.vDrag; S.vDrag = null; if (!V || V.g !== g || V.th === null) return; setDartV(S.decals.find(x => x.id === V.d), V.k, V.th); }); });
-  svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => { if (S.notch.on) return; setActive(S.decals.find(d => d.id === +el.dataset.id)); }));
+  svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => { if (S.notch.on) { if (S.notch.add || S.notch.ate) return; S.notch.sel = null; renderNotchBar(); } setActive(S.decals.find(d => d.id === +el.dataset.id)); }));
   renderPieceBar();
   const filmM2 = sh.w * (n * SH) / 1e6, use = filmM2 ? area / 1e6 / filmM2 * 100 : 0;
   $('#matSize').textContent = sh.roll ? `${tr('Roll')} ${sh.w} mm × ${Math.round(SH)} mm` : `${sh.w} × ${sh.h} mm${n > 1 ? `, ${n} ${tr('sheets')}` : ''}`;
@@ -8692,7 +8708,7 @@ const DE = {
   "Piece": "Teil", "{0} on the sheet": "{0} auf dem Bogen", "{0} on the sheet (both sides)": "{0} auf dem Bogen (beide Seiten)", "auto": "auto",
   "Turn the piece 90° to the left on the sheet": "Das Teil auf dem Bogen 90° nach links drehen", "Turn the piece 90° to the right on the sheet": "Das Teil auf dem Bogen 90° nach rechts drehen",
   "Turn the piece by this angle on the sheet (arrow keys in the box: 1°, Shift: 15°)": "Das Teil auf dem Bogen um diesen Winkel drehen (Pfeiltasten im Feld: 1°, Umschalt: 15°)",
-  "Let FitFlat turn the piece again: smallest box around it, long side across": "FitFlat dreht das Teil wieder selbst: kleinste Box drumherum, lange Seite quer",
+  "Let FitFlat turn the piece again: smallest box around it, long side across, but it may stand it up when that packs the sheet better": "FitFlat dreht das Teil wieder selbst: kleinste Box drumherum, lange Seite quer, darf es aber aufstellen, wenn der Bogen so besser gepackt ist",
   "Turned on the sheet": "Auf dem Bogen gedreht",
   "Unwrapping {0} of {1}…": "Abwickeln {0} von {1} …",
   "This notch cuts the piece in two, so only the bigger part is kept. Make it shorter or narrower.": "Diese Kerbe schneidet das Teil in zwei Stücke, nur das größere bleibt. Mach sie kürzer oder schmaler.",
@@ -8704,7 +8720,7 @@ const DE = {
   "Save as template": "Als Vorlage speichern", "Delete template": "Vorlage löschen", "Remove notch": "Kerbe entfernen",
   "Keep these numbers as a template you can pick again (stays in this browser)": "Diese Werte als Vorlage behalten, die du wieder wählen kannst (bleibt in diesem Browser)",
   "Delete the picked template": "Die gewählte Vorlage löschen", "Take the selected notch out (Delete)": "Die ausgewählte Kerbe entfernen (Entf)",
-  "Click a piece's edge on the sheet to cut a notch there. Click a notch to select it, then drag it along the edge or use the arrow keys (Shift: 5 mm), and change its numbers here. With Count in stretch on, the unwrap treats a notch as a slit, so the stretch counts it.": "Klick auf den Rand eines Teils auf dem Bogen schneidet dort eine Kerbe. Klick eine Kerbe an, um sie auszuwählen, zieh sie dann am Rand entlang oder nimm die Pfeiltasten (Umschalt: 5 mm), und ändere hier ihre Werte. Mit In Dehnung einrechnen behandelt die Abwicklung eine Kerbe als Schlitz, die Dehnung zählt sie also mit.",
+  "Add notch, then click a piece's edge to cut one there (Shift-click to keep adding). In Select, click a notch to select it, drag it along the edge or use the arrow keys (Shift: 5 mm), and change its numbers here. With Count in stretch on, the unwrap treats a notch as a slit, so the stretch counts it.": "Kerbe hinzufügen, dann den Rand eines Teils anklicken, um dort eine zu schneiden (Umschalt-Klick: weitere hinzufügen). In Auswählen eine Kerbe anklicken, am Rand entlangziehen oder mit den Pfeiltasten schieben (Umschalt: 5 mm), und hier ihre Werte ändern. Mit In Dehnung einrechnen behandelt die Abwicklung eine Kerbe als Schlitz, die Dehnung zählt sie also mit.",
   "Count in stretch": "In Dehnung einrechnen",
   "On: the unwrap treats the notch as a slit, so the film may open or close there as the frame needs, and the stretch colours and numbers count it. Off: the notch is only cut out of the finished flat piece": "An: Die Abwicklung behandelt die Kerbe als Schlitz, die Folie darf sich dort öffnen oder schließen, wie der Rahmen es braucht, und Dehnungsfarben und -werte zählen sie mit. Aus: Die Kerbe wird nur aus dem fertigen flachen Teil geschnitten",
   "Notch out of stretch": "Kerbe aus Dehnung genommen",
@@ -8713,6 +8729,12 @@ const DE = {
   "Enlarge": "Vergrößern", "Smaller": "Kleiner", "Custom": "Eigene", "Selected notch": "Ausgewählte Kerbe", "New notches": "Neue Kerben",
   "Small V": "Kleines V", "Medium V": "Mittleres V", "Long V": "Langes V", "Wide V": "Breites V", "Slit": "Schlitz",
   "Name for this notch template": "Name für diese Kerbenvorlage",
+  "Select": "Auswählen", "Add notch": "Kerbe hinzufügen",
+  "Click a notch to select it, then drag it or use the arrow keys. Clicking a piece selects its decal (A switches)": "Kerbe anklicken, um sie auszuwählen, dann ziehen oder Pfeiltasten nehmen. Klick auf ein Teil wählt sein Decal aus (A wechselt)",
+  "Click a piece's edge to cut a new notch there. Shift-click to keep adding (A switches)": "Rand eines Teils anklicken, um dort eine neue Kerbe zu schneiden. Umschalt-Klick: weitere hinzufügen (A wechselt)",
+  "Notch tool: click a notch to select it, or press Add notch.": "Kerben-Werkzeug: Kerbe anklicken, um sie auszuwählen, oder Kerbe hinzufügen drücken.",
+  "Lay the piece flat: its long side across, and it stays like that when the sheet is packed": "Teil hinlegen: lange Seite quer, und so bleibt es beim Packen des Bogens",
+  "Stand the piece up: its long side up and down, and it stays like that when the sheet is packed": "Teil aufstellen: lange Seite hochkant, und so bleibt es beim Packen des Bogens",
   "Notch tool: click a piece's edge on the sheet to cut a V-notch there.": "Kerben-Werkzeug: Klick auf den Rand eines Teils auf dem Bogen schneidet dort eine V-Kerbe.",
   "Click on a piece, near the edge where the notch should go.": "Klick auf ein Teil, nah am Rand, wo die Kerbe hin soll.",
   "Drag the notch along the edge of its own piece.": "Zieh die Kerbe am Rand ihres eigenen Teils entlang.",
