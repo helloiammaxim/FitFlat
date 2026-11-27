@@ -15142,7 +15142,7 @@ $('#mirrorAxis').addEventListener('change', e => {
 function hintText() {
   if (!S.model) return 'Open a model or start a new file.';
   if (S.active && S.picked.length) return `${S.picked.length + 1} decals selected. Union joins them, Subtract cuts the blue ones out of ${S.active.name}, Intersect keeps only where all of them overlap. Shift-click another decal to add it, or a blue one to drop it.`;
-  if (S.active && !S.drawing && S.mode !== 'knife' && reliefTargets().includes(S.active) && reliefSuggest(S.active).some(c => c.kind === 'notch')) return tr('{0} has too much film in places. The Sheet tab shows suggested V-notches as red dashed lines: click one to cut it, or draw your own there with ✂. With the Knife on, the same lines show on the model.').replace('{0}', S.active.name);
+  if (S.active && !S.drawing && S.mode !== 'knife' && reliefTargets().includes(S.active) && reliefSuggest(S.active).some(c => c.kind === 'notch')) return tr('{0} has too much film in places. The Sheet tab shows suggested V-notches as red dashed lines: click one to cut it, or turn on ✂ and drag your own cut from just outside the edge into the piece. With the Knife on, the same lines show on the model.').replace('{0}', S.active.name);
   if (S.boolOp) return `${BOOL_NAMES[S.boolOp.op]}: click the second decal (on the model or in the list)${S.boolOp.op === 'difference' ? ' to cut away from ' + S.boolOp.a.name : ''}. Esc cancels.`;
   if (S.placing) return S.placeHit ? 'Check the orange preview. Alt + scroll resizes, Ctrl + scroll rotates (Shift for bigger steps). Apply (Enter) adds it; click elsewhere to move it.' : 'Move over the model to see the artwork, click to place a preview. Alt + scroll resizes, Ctrl + scroll rotates. Esc cancels.';
   if (S.mode === 'draw' && S.vline) return S.vline.pts.length < 3 ? 'Outline in the view: click on or off the model to add points, or drag to draw freehand. Where the line runs off the model, the decal follows the edge of the surface. Space + drag turns the view. Backspace removes the last point, Esc cancels.' : 'Keep clicking on or off the model. Click the first point, press Enter or Close shape to finish; the outline is projected onto the visible surface. Backspace removes the last point, Esc cancels.';
@@ -15726,8 +15726,7 @@ function sheetToPiece(sx, sy) {
   return null;
 }
 function sheetCutStart(e) {
-  const q = sheetPt(e.clientX, e.clientY); if (!q) return; const hit = sheetToPiece(q.x, q.y);
-  if (!hit) { flash(tr('Start the cut on a piece, at its edge.')); return; }
+  const q = sheetPt(e.clientX, e.clientY); if (!q) return; const hit = sheetToPiece(q.x, q.y); // may start just outside a piece: the piece is then the one the drag ends in
   S.sheetCutDrag = { a: [q.x, q.y], hit }; const svg = $('#sheet'); try { svg.setPointerCapture(e.pointerId); } catch (er) {}
   const ln = document.createElementNS('http://www.w3.org/2000/svg', 'line'); ln.id = 'sheetCutLine'; ln.setAttribute('stroke', '#FF3B30'); ln.setAttribute('stroke-width', '2'); ln.setAttribute('pointer-events', 'none');
   for (const k of ['x1', 'x2']) ln.setAttribute(k, q.x); for (const k of ['y1', 'y2']) ln.setAttribute(k, q.y); svg.appendChild(ln);
@@ -15736,12 +15735,14 @@ function sheetCutMove(e) { const q = sheetPt(e.clientX, e.clientY), ln = $('#she
 function sheetCutEnd(e) {
   const C = S.sheetCutDrag; S.sheetCutDrag = null; $('#sheetCutLine')?.remove();
   const q = sheetPt(e.clientX, e.clientY); if (!q || Math.hypot(q.x - C.a[0], q.y - C.a[1]) < 2) return;
-  const { p } = C.hit, end = sheetToPiece(q.x, q.y);
-  // the end in the same piece's coordinates (it may lie outside the piece's box)
+  const end = sheetToPiece(q.x, q.y), p = end ? end.p : C.hit?.p; // the piece the drag goes into decides (a start just outside may lie in a neighbour's margin)
+  if (!p) { flash(tr('Drag from the edge of a piece into it.')); return; }
+  // a sheet point in this piece's own coordinates (it may lie outside the piece)
   const A = p.tf([0, 0]), B = p.tf([1, 0]), Cc = p.tf([0, 1]), ex = [B[0] - A[0], B[1] - A[1]], ey = [Cc[0] - A[0], Cc[1] - A[1]], det = ex[0] * ey[1] - ex[1] * ey[0];
-  const SH = S.packing.H, oy = p.sheet * (SH + Math.max(SH * 0.06, 20)); let x = q.x; if (S.sheet.mirror) x = 2 * p.x + p.w - x; const rx = x - A[0], ry = q.y - oy - A[1];
-  const uvB = end && end.p === p ? end.uv : [(rx * ey[1] - ry * ey[0]) / det, -((ex[0] * ry - ex[1] * rx) / det)];
-  makeSheetCut(p, C.hit.uv, uvB);
+  const SH = S.packing.H, oy = p.sheet * (SH + Math.max(SH * 0.06, 20));
+  const uvOf = (px, py) => { let x = px; if (S.sheet.mirror) x = 2 * p.x + p.w - x; const rx = x - A[0], ry = py - oy - A[1]; return [(rx * ey[1] - ry * ey[0]) / det, -((ex[0] * ry - ex[1] * rx) / det)]; };
+  const uvA = C.hit && C.hit.p === p ? C.hit.uv : uvOf(C.a[0], C.a[1]), uvB = end && end.p === p ? end.uv : uvOf(q.x, q.y);
+  makeSheetCut(p, uvA, uvB);
 }
 function makeSheetCut(p, uvA, uvB) {
   const info = S.pieceInfo[p.id], d = info?.decal; if (!d) return;
@@ -18276,7 +18277,7 @@ const DE = {
   "Like an installer pulls the film into place: where the frame curves, the cut piece may come out a little smaller than the surface (up to 60% of Max stretch) but never bigger, so the film goes on under tension instead of wrinkling": "Wie ein Folierer die Folie auf Spannung zieht: wo der Rahmen gewölbt ist, darf das Schnittteil etwas kleiner als die Fläche werden (bis 60 % der max. Dehnung), aber nie größer, damit die Folie unter Spannung sitzt statt Falten zu werfen",
   " Pull film tight (pattern may be a little smaller, never bigger)": " Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
   "Pull film tight (pattern may be a little smaller, never bigger)": "Folie auf Spannung (Teil darf etwas kleiner sein, nie größer)",
-  "{0} has too much film in places. The Sheet tab shows suggested V-notches as red dashed lines: click one to cut it, or draw your own there with ✂. With the Knife on, the same lines show on the model.": "{0} hat stellenweise zu viel Folie. Der Bogen-Tab zeigt vorgeschlagene V-Kerben als rot gestrichelte Linien: Klick auf eine schneidet sie, oder zeichne dort mit ✂ deine eigene. Mit aktivem Messer erscheinen dieselben Linien am Modell.",
+  "{0} has too much film in places. The Sheet tab shows suggested V-notches as red dashed lines: click one to cut it, or turn on ✂ and drag your own cut from just outside the edge into the piece. With the Knife on, the same lines show on the model.": "{0} hat stellenweise zu viel Folie. Der Bogen-Tab zeigt vorgeschlagene V-Kerben als rot gestrichelte Linien: Klick auf eine schneidet sie, oder schalte ✂ ein und zieh deinen eigenen Schnitt von knapp außerhalb des Rands ins Teil. Mit aktivem Messer erscheinen dieselben Linien am Modell.",
   "V-notch": "V-Kerbe",
   "That V-notch could not be cut here. Start the line just outside the decal edge and end it inside.": "Diese V-Kerbe ließ sich hier nicht schneiden. Fang die Linie knapp außerhalb des Decal-Rands an und hör innen auf.",
   "V-notch cut: it opens {0}° on the sheet. Stretch {1}% → {2}%.": "V-Kerbe geschnitten: sie öffnet sich auf dem Bogen um {0}°. Dehnung {1} % → {2} %.",
@@ -18574,6 +18575,7 @@ const DE = {
   "Stick to model": "Aufs Modell kleben",
   "Unstick": "Lösen",
   "Adjust": "Anpassen",
+  "Drag from the edge of a piece into it.": "Zieh vom Rand eines Teils hinein.",
   "This decal is locked. Unlock it in the list to delete it.": "Dieses Decal ist gesperrt. Entsperre es in der Liste, um es zu löschen.",
   "Deleted {0}. Ctrl+Z brings it back.": "{0} gelöscht. Strg+Z holt es zurück.",
   "Mirror is on, so the cut is mirrored to the other side already. Turn Mirror off to cut every surface under the line": "Spiegeln ist an, der Schnitt wird also schon auf die andere Seite gespiegelt. Schalte Spiegeln aus, um jede Fläche unter der Linie zu schneiden",
