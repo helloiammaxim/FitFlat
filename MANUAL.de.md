@@ -110,6 +110,7 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 - **Drehen:** Hintergrund ziehen, oder Alt bzw. Leertaste halten und ziehen (auch über dem Modell).
 - **Verschieben:** mit rechts ziehen.
 - **Zoomen:** scrollen — es zoomt um den Punkt unter dem Mauszeiger — oder mit der mittleren Taste ziehen. Auch ein Trackpad-Pinch zoomt.
+- **Präzision:** Halte beim Scrollen, Drehen oder Verschieben der Ansicht **Alt** gedrückt, dann bewegt sie sich mit einem Fünftel der Geschwindigkeit.
 - **Ansicht-Panel:** *Ansicht von* Vorne, Hinten, Links, Rechts, Oben, Unten; *Drehen* in 45°-Schritten; und **Gespeicherte Ansichten** (dreh das Modell in einen passenden Winkel und klicke *Ansicht speichern*).
 - **Ortho** schaltet auf orthografische Ansicht (ohne Perspektive) — ideal mit den Achsenansichten für genaue Layouts.
 - **Raster** zeigt ein Raster und kann Punkte daran fangen (2,5D: das Raster bestimmt die Position in der Ebene, die Rahmenoberfläche die Tiefe). Abstand, Ebene und *Fangen* stellst du im Raster-Teil des Ansicht-Panels ein.
@@ -119,7 +120,12 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 Z ist die senkrechte Achse. X verläuft von vorne nach hinten entlang des Rads, Y seitlich.
 
 ### Referenzbild
-Im Ansicht-Panel legt **Referenzbild → Laden…** ein Foto des echten Rahmens über die Ansicht. Zieh es an der Mitte, ändere die Größe an der Ecke (mit Alt drehst du es) und stell die Deckkraft ein. Richte die 3D-Ansicht am Foto aus und klicke **Aufs Modell kleben**: Das Foto wird aus dieser Ansicht auf den Rahmen projiziert und bleibt beim Drehen auf den Rohren, so kannst du Lackkanten, Logos und Zugdurchführungen nachzeichnen. **Lösen** holt das Overlay zurück, **Entfernen** löscht es.
+Im Ansicht-Panel legt **Referenzbild → Laden…** ein Foto des echten Rahmens über die Ansicht, mit **Anpassen** eingeschaltet: Zieh das Foto, um es zu verschieben, scroll darüber, um die Größe zu ändern (mit **Alt** in feinen Schritten), dreh es am runden Griff darüber oder gib im **°**-Feld einen genauen Winkel ein (Pfeiltasten im Feld: 0,5°, Umschalt: 5°), und schieb es mit den Pfeiltasten fein. **Alles** holt das ganze Foto wieder in die Ansicht, wenn es größer als der Bildschirm ist. Schalt **Anpassen** aus, um das Modell hinter dem Foto wieder zu drehen und zu zoomen, und stell die Deckkraft mit dem Regler ein. Dann fixierst du es:
+
+- **Aufs Modell kleben** projiziert das Foto aus dieser Ansicht auf den Rahmen, sodass es beim Drehen auf den Rohren bleibt. Gut zum Nachzeichnen von Lackkanten, Logos und Zugdurchführungen.
+- **Als Ebene fixieren** stellt das Foto als flache Tafel durch die Mitte des Modells in die Szene, zur Ansicht gedreht, in der es ausgerichtet war. Gut für ein Seitenfoto, mit dem du aus anderen Winkeln vergleichen willst.
+
+**Lösen** geht zurück in die Ansicht, in der das Foto ausgerichtet war, und schaltet Anpassen wieder ein; **Entfernen** löscht es.
 
 ---
 

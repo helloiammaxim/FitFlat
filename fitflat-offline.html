@@ -227,6 +227,11 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .refov .rgrip{ left:-11px; top:-11px; cursor:move; }
 .refov .rgrip::after{ content:''; position:absolute; inset:6px; border:2px solid #fff; border-radius:50%; }
 .refov .rsize{ right:-11px; bottom:-11px; cursor:nwse-resize; }
+.refov.adj{ pointer-events:auto; cursor:move; touch-action:none; outline-style:solid; }
+.refov .rrot{ position:absolute; left:50%; top:-40px; width:22px; height:22px; margin-left:-11px; border-radius:50%; background:var(--accent); pointer-events:auto; cursor:grab; box-shadow:0 1px 4px rgba(0,0,0,.3); display:none; }
+.refov .rrot::before{ content:''; position:absolute; left:10px; top:22px; width:2px; height:18px; background:var(--accent); }
+.refov .rrot::after{ content:''; position:absolute; inset:6px; border:2px solid #fff; border-radius:50%; border-top-color:transparent; }
+.refov.adj .rrot{ display:block; }
 .refov .rsize::after{ content:''; position:absolute; right:6px; bottom:6px; width:8px; height:8px; border:solid #fff; border-width:0 2px 2px 0; }
 #gizmo svg{ position:absolute; inset:0; overflow:visible; }
 #gizmo .gz{ pointer-events:auto; }
@@ -704,10 +709,14 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           <div class="vsec vref"><span class="vlbl">Reference image</span>
             <div class="vbtns">
               <label class="btn" tabindex="0" title="Load a photo of the real frame to trace paint lines, logos and cable ports">Load…<input type="file" id="refFile" accept="image/*" hidden></label>
+              <button class="btn tog" id="refAdj" aria-pressed="false" title="Move the photo: drag it, scroll over it to size it (Alt: finer), turn it by the round handle. Arrow keys nudge it" disabled>Adjust</button>
+              <button class="btn" id="refFit" title="Bring the whole photo back into view" disabled>Fit</button>
               <button class="btn tog" id="refStick" aria-pressed="false" title="Stick the image onto the model as seen from this view. Line the view up with the photo first" disabled>Stick to model</button>
+              <button class="btn" id="refPlane" title="Stand the photo in the scene as a flat board, facing this view through the middle of the model, exactly where it is now. Turn the view around it to compare" disabled>Stick as plane</button>
               <button class="btn" id="refDel" title="Remove the reference image" disabled>Remove</button>
             </div>
             <label class="clip opac" title="Reference image opacity" aria-label="Reference image opacity"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M4 16l5-5 4 4 3-3 4 4"/></svg> <input type="range" id="refOpac" min="5" max="100" value="60" disabled> <span id="refOpacVal">60%</span></label>
+            <label class="clip refang" title="Turn the photo, in degrees (arrow keys in the box: 0.5°, Shift: 5°)" aria-label="Photo angle"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v4h-4"/></svg> <input type="number" id="refAng" step="0.5" value="0" disabled> °</label>
           </div>
           <div class="vsec vsaved"><span class="vlbl">Saved views</span>
             <ul class="viewlist" id="viewList"></ul>
@@ -794,7 +803,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <div id="seamMarks" hidden></div>
       <div id="reliefMarks" hidden></div>
       <div id="cutMarks" hidden></div>
-      <div class="refov" id="refOv" hidden><img id="refImg" alt="Reference image"><span class="rgrip" id="refMove" title="Drag to move the image"></span><span class="rsize" id="refSize" title="Drag to size the image; hold Alt to turn it"></span></div>
+      <div class="refov" id="refOv" hidden><img id="refImg" alt="Reference image"><span class="rgrip" id="refMove" title="Drag to move the image"></span><span class="rsize" id="refSize" title="Drag to size the image; hold Alt to turn it"></span><span class="rrot" id="refRot" title="Drag to turn the image"></span></div>
       <div class="placebar" id="placeBar" hidden>
         <strong>Place artwork</strong>
         <label>Width <input type="number" id="pbW" step="0.1" min="1"> mm</label>
@@ -13552,16 +13561,22 @@ $('#gradeExport').addEventListener('click', async () => {
 });
 // ---------- reference image: a photo over the view, then stuck onto the model from that view ----------
 S.ref = null; // { src, cx, cy, w, h, rot, opacity, stuck: { VP, W, H, camPos } }
-let refMesh = null, refTex = null, refDepth = null;
+let refMesh = null, refTex = null, refDepth = null, refAdj = false;
 function placeRefOverlay() {
   const R = S.ref, ov = $('#refOv'); ov.hidden = !R || !!R.stuck;
-  ['#refStick', '#refDel', '#refOpac'].forEach(s => $(s).disabled = !R); $('#refStick').setAttribute('aria-pressed', String(!!R?.stuck));
-  $('#refStick').textContent = tr(R?.stuck ? 'Unstick' : 'Stick to model');
+  ['#refStick', '#refDel', '#refOpac'].forEach(s => $(s).disabled = !R); $('#refAdj').disabled = $('#refFit').disabled = $('#refAng').disabled = !R || !!R.stuck;
+  if (!R || R.stuck) refAdj = false; ov.classList.toggle('adj', refAdj); $('#refAdj').setAttribute('aria-pressed', String(refAdj));
+  if (R && !R.stuck) { // keep the photo's place when the view's size changed (another screen, a resized window)
+    const W = canvas.clientWidth, H = canvas.clientHeight;
+    if (R.vw > 0 && R.vh > 0 && W > 0 && H > 0 && (R.vw !== W || R.vh !== H)) { const k = H / R.vh; R.cx = W / 2 + (R.cx - R.vw / 2) * k; R.cy = H / 2 + (R.cy - R.vh / 2) * k; R.w *= k; R.h *= k; }
+    if (W > 0 && H > 0) { R.vw = W; R.vh = H; } } $('#refStick').setAttribute('aria-pressed', String(!!R?.stuck));
+  $('#refStick').textContent = tr(R?.stuck ? 'Unstick' : 'Stick to model'); $('#refPlane').hidden = !!R?.stuck; $('#refPlane').disabled = !R;
   if (!R) return;
+  if (document.activeElement !== $('#refAng')) $('#refAng').value = +(((R.rot * 180 / Math.PI + 540) % 360) - 180).toFixed(1);
   $('#refOpac').value = Math.round(R.opacity * 100); $('#refOpacVal').textContent = Math.round(R.opacity * 100) + '%';
   ov.style.left = (R.cx - R.w / 2) + 'px'; ov.style.top = (R.cy - R.h / 2) + 'px'; ov.style.width = R.w + 'px'; ov.style.height = R.h + 'px';
   ov.style.transform = `rotate(${R.rot}rad)`; $('#refImg').style.opacity = R.opacity;
-  if (refMesh) refMesh.material.uniforms.opacity.value = R.opacity;
+  if (refMesh) { if (refMesh.material.uniforms) refMesh.material.uniforms.opacity.value = R.opacity; else refMesh.material.opacity = R.opacity; }
 }
 function loadRef(src, keep) {
   const img = new Image(); img.onload = () => {
@@ -13569,13 +13584,20 @@ function loadRef(src, keep) {
     S.ref = keep ? { ...keep, src } : { src, cx: W / 2, cy: H / 2, w: img.width * k, h: img.height * k, rot: 0, opacity: 0.6, stuck: null };
     $('#refImg').src = src; if (refTex) refTex.dispose(); refTex = new THREE.Texture(img); refTex.needsUpdate = true; if ('colorSpace' in refTex) refTex.colorSpace = THREE.SRGBColorSpace; else refTex.encoding = THREE.sRGBEncoding;
     if (S.ref.stuck) buildRefMesh(); else removeRefMesh();
-    placeRefOverlay(); if (!keep) flash('Line the model up with the photo (turn and zoom the view, move and size the photo by its corners), then click Stick to model.');
+    if (!keep) refAdj = true; placeRefOverlay(); if (!keep) flash('Drag the photo to move it, scroll over it to size it, turn it by the round handle. Then switch Adjust off, line the model up with the photo, and click Stick to model.');
   }; img.src = src;
 }
-function removeRefMesh() { if (refMesh) { scene.remove(refMesh); refMesh.material.dispose(); refMesh = null; } }
+function removeRefMesh() { if (refMesh) { scene.remove(refMesh); refMesh.material.dispose(); if (refMesh.userData.ownGeo) refMesh.geometry.dispose(); refMesh = null; } }
 function buildRefMesh() {
-  removeRefMesh(); const R = S.ref; if (!R?.stuck || !modelMesh || !refTex) return;
+  removeRefMesh(); const R = S.ref; if (!R?.stuck || !refTex) return;
   const st = R.stuck;
+  if (st.kind === 'plane') { // a flat board in the scene: corners top-left, top-right, bottom-right, bottom-left
+    if (!Array.isArray(st.corners) || st.corners.length !== 4) return;
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(st.corners.flat(), 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2)); g.setIndex([0, 3, 1, 1, 3, 2]);
+    refMesh = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: refTex, transparent: true, opacity: R.opacity, side: THREE.DoubleSide, depthWrite: false }));
+    refMesh.userData.ownGeo = true; refMesh.renderOrder = 0.5; scene.add(refMesh); return; }
+  if (!modelMesh) return;
   refMesh = new THREE.Mesh(modelMesh.geometry, new THREE.ShaderMaterial({
     uniforms: { map: { value: refTex }, VP: { value: new THREE.Matrix4().fromArray(st.VP) }, scr: { value: new THREE.Vector2(st.W, st.H) }, ctr: { value: new THREE.Vector2(R.cx, R.cy) }, sz: { value: new THREE.Vector2(R.w, R.h) }, rot: { value: R.rot }, opacity: { value: R.opacity }, camPos: { value: new THREE.Vector3(...st.camPos) }, depthMap: { value: refDepth?.depthTexture || null }, useDepth: { value: refDepth ? 1 : 0 }, ortho: { value: st.ortho ? 1 : 0 }, camDir: { value: new THREE.Vector3(...(st.camDir || [0, 0, -1])) } },
     vertexShader: 'varying vec3 vW; varying vec3 vN; void main(){ vec4 w = modelMatrix * vec4(position,1.0); vW = w.xyz; vN = normalize(mat3(modelMatrix) * normal); gl_Position = projectionMatrix * viewMatrix * w; }',
@@ -13598,23 +13620,61 @@ function stickRef() {
   try { if (refDepth) refDepth.dispose(); refDepth = new THREE.WebGLRenderTarget(Math.round(W), Math.round(H)); refDepth.depthTexture = new THREE.DepthTexture(Math.round(W), Math.round(H));
     const ds = new THREE.Scene(); ds.add(new THREE.Mesh(modelMesh.geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide })));
     renderer.setRenderTarget(refDepth); renderer.clear(); renderer.render(ds, camera); renderer.setRenderTarget(null); } catch (e) { refDepth = null; }
-  R.stuck = { VP: VP.toArray(), W, H, camPos: camera.position.toArray(), camDir: dir.toArray(), ortho: !!camera.isOrthographicCamera };
+  R.stuck = { VP: VP.toArray(), W, H, camPos: camera.position.toArray(), camDir: dir.toArray(), target: controls.target.toArray(), ortho: !!camera.isOrthographicCamera }; R.vw = W; R.vh = H;
   buildRefMesh(); placeRefOverlay(); flash('The photo is on the model now. Turn the view to check it; Unstick to line it up again.');
 }
 $('#refFile').addEventListener('change', e => { const f = e.target.files[0]; e.target.value = ''; if (!f) return; const r = new FileReader(); r.onload = () => loadRef(r.result); r.readAsDataURL(f); });
-$('#refStick').addEventListener('click', () => { if (!S.ref) return; if (S.ref.stuck) { S.ref.stuck = null; removeRefMesh(); placeRefOverlay(); } else stickRef(); });
+function unstickRef() { // back to the view the photo was lined up in, so it lines up again
+  const R = S.ref, st = R?.stuck; if (!st) return;
+  const cp = new THREE.Vector3(...st.camPos), tg = Array.isArray(st.target) ? new THREE.Vector3(...st.target) : cp.clone().add(new THREE.Vector3(...st.camDir).multiplyScalar(camera.position.distanceTo(controls.target)));
+  R.vw = st.W; R.vh = st.H; R.stuck = null; removeRefMesh(); flyTo(cp.toArray(), tg.toArray()); refAdj = true; placeRefOverlay();
+  flash('Back in the view the photo was lined up in. Adjust it, then Stick to model again.'); }
+$('#refStick').addEventListener('click', () => { if (!S.ref) return; if (S.ref.stuck) unstickRef(); else { refAdj = false; stickRef(); } });
+function stickRefPlane() { // the photo's corners, as seen now, carried onto a plane facing the view through the middle of the model
+  const R = S.ref; if (!R || !modelMesh) return; camera.updateMatrixWorld();
+  const W = canvas.clientWidth, H = canvas.clientHeight, fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
+  const mid = new THREE.Box3().setFromObject(modelMesh).getCenter(new THREE.Vector3()), pl = new THREE.Plane().setFromNormalAndCoplanarPoint(fwd, mid);
+  const c = Math.cos(R.rot), sn = Math.sin(R.rot), corners = [];
+  for (const [lx, ly] of [[-0.5, -0.5], [0.5, -0.5], [0.5, 0.5], [-0.5, 0.5]]) {
+    const px = R.cx + (lx * R.w) * c - (ly * R.h) * sn, py = R.cy + (lx * R.w) * sn + (ly * R.h) * c, hit = new THREE.Vector3();
+    raycaster.setFromCamera({ x: px / W * 2 - 1, y: -(py / H) * 2 + 1 }, camera); if (!raycaster.ray.intersectPlane(pl, hit)) { flash('Turn the view towards the model first.'); return; }
+    corners.push(hit.toArray().map(v => +v.toFixed(4))); }
+  R.stuck = { kind: 'plane', corners, VP: [], W, H, camPos: camera.position.toArray(), camDir: fwd.toArray(), target: controls.target.toArray(), ortho: !!camera.isOrthographicCamera }; R.vw = W; R.vh = H;
+  refAdj = false; buildRefMesh(); placeRefOverlay(); flash('The photo stands in the scene now. Turn the view around it; Unstick to adjust it again.'); }
+$('#refPlane').addEventListener('click', stickRefPlane);
+$('#refAdj').addEventListener('click', () => { if (!S.ref || S.ref.stuck) return; refAdj = !refAdj; placeRefOverlay(); });
+function fitRef() { // the whole photo, turned as it is, inside 80 % of the view
+  const R = S.ref; if (!R || R.stuck) return; const W = canvas.clientWidth, H = canvas.clientHeight, c = Math.abs(Math.cos(R.rot)), sn = Math.abs(Math.sin(R.rot));
+  const bw = R.w * c + R.h * sn, bh = R.w * sn + R.h * c, k = Math.min(W * 0.8 / bw, H * 0.8 / bh);
+  R.w *= k; R.h *= k; R.cx = W / 2; R.cy = H / 2; refAdj = true; placeRefOverlay(); }
+$('#refFit').addEventListener('click', fitRef);
+$('#refAng').addEventListener('input', e => { const R = S.ref, v = parseFloat(e.target.value); if (!R || R.stuck || !isFinite(v)) return; R.rot = v * Math.PI / 180; placeRefOverlay(); });
+$('#refAng').addEventListener('keydown', e => { if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return; e.preventDefault(); const R = S.ref; if (!R || R.stuck) return;
+  const v = (parseFloat(e.target.value) || 0) + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 5 : 0.5); e.target.value = +v.toFixed(1); R.rot = v * Math.PI / 180; placeRefOverlay(); });
+// Adjust: drag the photo to move it, scroll over it to size it around the pointer, Shift+scroll to turn it
+$('#refOv').addEventListener('pointerdown', e => { if (!refAdj || e.target.closest('.rgrip, .rsize, .rrot')) return; dragRef(e, 'move'); });
+$('#refOv').addEventListener('wheel', e => { const R = S.ref; if (!R || !refAdj) return; e.preventDefault(); e.stopPropagation();
+  const st = canvas.getBoundingClientRect(), mx = e.clientX - st.left, my = e.clientY - st.top;
+  if (e.shiftKey) R.rot += (e.deltaY || e.deltaX) * (e.altKey ? 0.0004 : 0.002);
+  else { const k = Math.exp(-e.deltaY * (e.altKey ? 0.0003 : 0.0015)), w2 = Math.max(20, R.w * k), kk = w2 / R.w; R.cx = mx + (R.cx - mx) * kk; R.cy = my + (R.cy - my) * kk; R.w = w2; R.h *= kk; }
+  placeRefOverlay(); }, { passive: false });
+addEventListener('keydown', e => { const R = S.ref; if (!R || !refAdj || R.stuck || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  const d = e.shiftKey ? 10 : 1, mv = { ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d] }[e.key]; if (!mv) return;
+  e.preventDefault(); R.cx += mv[0]; R.cy += mv[1]; placeRefOverlay(); });
 $('#refDel').addEventListener('click', () => { S.ref = null; removeRefMesh(); placeRefOverlay(); });
 $('#refOpac').addEventListener('input', e => { if (!S.ref) return; S.ref.opacity = e.target.value / 100; placeRefOverlay(); });
 // move by the round grip, size (and turn with Alt) by the corner
-for (const [id, kind] of [['#refMove', 'move'], ['#refSize', 'size']]) $(id).addEventListener('pointerdown', e => {
+function dragRef(e, kind) {
   const R = S.ref; if (!R) return; e.preventDefault(); e.stopPropagation(); const el = e.currentTarget; el.setPointerCapture(e.pointerId);
   const st = canvas.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY, o = { ...R }, d0 = Math.hypot(x0 - st.left - R.cx, y0 - st.top - R.cy), a0 = Math.atan2(y0 - st.top - R.cy, x0 - st.left - R.cx);
   const mv = ev => { if (kind === 'move') { R.cx = o.cx + ev.clientX - x0; R.cy = o.cy + ev.clientY - y0; }
+    else if (kind === 'rot') { const dx = ev.clientX - st.left - R.cx, dy = ev.clientY - st.top - R.cy; let r = o.rot + Math.atan2(dy, dx) - a0; if (ev.shiftKey) r = Math.round(r / (Math.PI / 12)) * Math.PI / 12; R.rot = r; }
     else { const dx = ev.clientX - st.left - R.cx, dy = ev.clientY - st.top - R.cy, k = Math.max(0.05, Math.hypot(dx, dy) / d0); R.w = o.w * k; R.h = o.h * k; if (ev.altKey) R.rot = o.rot + Math.atan2(dy, dx) - a0; }
     placeRefOverlay(); };
-  const up = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); };
-  el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up);
-});
+  const up = () => { el.removeEventListener('pointermove', mv); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+  el.addEventListener('pointermove', mv); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+}
+for (const [id, kind] of [['#refMove', 'move'], ['#refSize', 'size'], ['#refRot', 'rot']]) $(id).addEventListener('pointerdown', e => dragRef(e, kind));
 const baseName = () => (S.source?.name || 'decals').replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '_');
 $('#save').addEventListener('click', () => saveProject(false));
 addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 's') { e.preventDefault(); saveProject(false); } });
@@ -14387,7 +14447,11 @@ controls.enableZoom = false;
 var ctrlHeld = false;
 addEventListener('keydown', e => { if (e.key === 'Control') ctrlHeld = true; }, true);
 addEventListener('keyup', e => { if (e.key === 'Control') ctrlHeld = false; }, true);
-addEventListener('blur', () => { ctrlHeld = false; });
+addEventListener('blur', () => { ctrlHeld = false; fineView(false); });
+// hold Alt for precision: turning and sliding the view go at a fifth of the speed
+function fineView(on) { controls.rotateSpeed = on ? 0.2 : 1; controls.panSpeed = on ? 0.2 : 1; }
+addEventListener('keydown', e => { if (e.key === 'Alt') fineView(true); }, true);
+addEventListener('keyup', e => { if (e.key === 'Alt') fineView(false); }, true);
 const realMod = e => e.altKey || e.metaKey || (e.ctrlKey && ctrlHeld);
 canvas.addEventListener('wheel', e => {
   if (!S.model) return;
@@ -14401,8 +14465,9 @@ canvas.addEventListener('wheel', e => {
     const pl = new THREE.Plane().setFromNormalAndCoplanarPoint(camFwd(), controls.target); P = new THREE.Vector3();
     if (!raycaster.ray.intersectPlane(pl, P)) P.copy(controls.target);
   }
-  const steps = Math.max(-5, Math.min(5, -e.deltaY / (e.deltaMode === 1 ? 3 : 100)));
-  let f = Math.pow(0.88, steps);
+  // Alt = precision: a fifth of the speed
+  const steps = Math.max(-3, Math.min(3, -e.deltaY / (e.deltaMode === 1 ? 3 : 100))) * (e.altKey ? 0.2 : 1);
+  let f = Math.pow(0.9, steps);
   const dist = camera.position.distanceTo(controls.target);
   if (f < 1 && dist * f < controls.minDistance) f = Math.max(controls.minDistance / Math.max(dist, 1e-6), f);
   if (f > 1 && dist * f > S.model.diag * 20) return;
@@ -18482,6 +18547,18 @@ const DE = {
   "Load a photo of the real frame to trace paint lines, logos and cable ports": "Ein Foto des echten Rahmens laden, um Lackkanten, Logos und Kabeleingänge nachzuzeichnen",
   "Stick to model": "Aufs Modell kleben",
   "Unstick": "Lösen",
+  "Adjust": "Anpassen",
+  "Stick as plane": "Als Ebene fixieren",
+  "Stand the photo in the scene as a flat board, facing this view through the middle of the model, exactly where it is now. Turn the view around it to compare": "Das Foto als flache Tafel in die Szene stellen, zu dieser Ansicht gedreht, durch die Mitte des Modells, genau dort, wo es jetzt ist. Dreh die Ansicht darum herum zum Vergleichen",
+  "The photo stands in the scene now. Turn the view around it; Unstick to adjust it again.": "Das Foto steht jetzt in der Szene. Dreh die Ansicht darum herum; mit Lösen passt du es wieder an.",
+  "Turn the view towards the model first.": "Dreh die Ansicht zuerst zum Modell.",
+  "Turn the photo, in degrees (arrow keys in the box: 0.5°, Shift: 5°)": "Foto drehen, in Grad (Pfeiltasten im Feld: 0,5°, Umschalt: 5°)",
+  "Photo angle": "Fotowinkel",
+  "Move the photo: drag it, scroll over it to size it (Alt: finer), turn it by the round handle. Arrow keys nudge it": "Foto verschieben: ziehen, darüber scrollen zum Skalieren (Alt: feiner), am runden Griff drehen. Pfeiltasten schieben es fein",
+  "Bring the whole photo back into view": "Das ganze Foto wieder in die Ansicht holen",
+  "Drag to turn the image": "Ziehen, um das Bild zu drehen",
+  "Drag the photo to move it, scroll over it to size it, turn it by the round handle. Then switch Adjust off, line the model up with the photo, and click Stick to model.": "Zieh das Foto, um es zu verschieben, scroll darüber zum Skalieren, dreh es am runden Griff. Dann Anpassen ausschalten, das Modell am Foto ausrichten und Aufs Modell kleben klicken.",
+  "Back in the view the photo was lined up in. Adjust it, then Stick to model again.": "Zurück in der Ansicht, in der das Foto ausgerichtet war. Pass es an und klebe es dann wieder aufs Modell.",
   "Stick the image onto the model as seen from this view. Line the view up with the photo first": "Das Bild so aufs Modell kleben, wie es aus dieser Ansicht erscheint. Richte die Ansicht vorher am Foto aus",
   "Remove": "Entfernen",
   "Remove the reference image": "Referenzbild entfernen",

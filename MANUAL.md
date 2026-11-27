@@ -110,6 +110,7 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 - **Turn:** drag the background, or hold Alt or Space and drag (also over the model).
 - **Pan:** right-drag.
 - **Zoom:** scroll — it zooms around the point under the cursor — or middle-drag. A trackpad pinch zooms too.
+- **Precision:** hold **Alt** while scrolling, turning or sliding the view, and it moves at a fifth of the speed.
 - **View panel:** *Look from* Front, Back, Left, Right, Top, Bottom; *Turn* by 45°; and **Saved views** (turn the model to an angle you like and click *Save view*).
 - **Ortho** switches to an orthographic view (no perspective) — good with the axis views for exact layouts.
 - **Grid** shows a grid and can snap points to it (2.5D: the grid sets the position in the plane, the frame surface gives the depth). Set the step, the plane and *Snap* in the Grid part of the View panel.
@@ -119,7 +120,12 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 Z is the vertical axis. X runs front to back along the bike, Y side to side.
 
 ### Reference image
-In the View panel, **Reference image → Load…** puts a photo of the real frame over the view. Drag it by its middle, size it by the corner (Alt turns it) and set its opacity. Line the 3D view up with the photo, then click **Stick to model**: the photo is projected onto the frame from that view and stays on the tubes when you turn the model, so you can trace paint lines, logos and cable ports. **Unstick** brings the overlay back, **Remove** clears it.
+In the View panel, **Reference image → Load…** puts a photo of the real frame over the view, with **Adjust** on: drag the photo to move it, scroll over it to size it (hold **Alt** for fine steps), turn it by the round handle above it or type an exact angle in the **°** box (arrow keys in the box: 0.5°, Shift: 5°), and nudge it with the arrow keys. **Fit** brings the whole photo back into view when it is bigger than the screen. Switch **Adjust** off to turn and zoom the model behind the photo again, and set its opacity with the slider. Then fix it in place:
+
+- **Stick to model** projects the photo onto the frame from that view, so it stays on the tubes when you turn the model. Good for tracing paint lines, logos and cable ports.
+- **Stick as plane** stands the photo in the scene as a flat board through the middle of the model, facing the view it was lined up in. Good for a side photo you want to compare against from other angles.
+
+**Unstick** goes back to the view the photo was lined up in and turns Adjust on again; **Remove** clears it.
 
 ---
 
