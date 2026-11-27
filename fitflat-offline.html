@@ -21,6 +21,13 @@
   --line:rgba(84,84,88,.45); --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.34); --accent:#0A84FF; --accent-soft:rgba(10,132,255,.2);
   --mat:#173B31; --mat-grid:#21493E; --mat-grid-strong:#2E5D50; --model:#7F8A85; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
 } }
+:root[data-theme="dark"]{
+  --paper:#000000; --surface:#1C1C1E; --glass:rgba(36,36,38,.78); --stage:#141416; --ink:#F2F2F7; --muted:#98989D;
+  --line:rgba(84,84,88,.45); --fill:rgba(118,118,128,.24); --fill2:rgba(118,118,128,.34); --accent:#0A84FF; --accent-soft:rgba(10,132,255,.2);
+  --mat:#173B31; --mat-grid:#21493E; --mat-grid-strong:#2E5D50; --model:#7F8A85; --shadow:0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+}
+:root[data-theme="dark"] select option{ color:#F2F2F7; background:#2C2C2E; }
+
 :root{ box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px); }
 html{ scroll-padding-top:env(safe-area-inset-top,0px); height:100%; }
 *,*::before,*::after{ box-sizing:inherit; }
@@ -292,6 +299,7 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .notchbar .btn{ padding:4px 10px; font-size:12.5px; }
 .notchbar .note{ margin:0; font-size:12px; }
 #sheet.notching{ cursor:crosshair; }
+.notchbar .pcang{ display:flex; align-items:center; gap:4px; color:var(--muted); }
 .notchbar .spacer{ flex:1; }
 .mat.big ~ .notchbar{ position:fixed; z-index:62; left:32px; bottom:32px; width:min(420px, calc(100vw - 64px)); margin:0; background:var(--surface, #fff); box-shadow:0 12px 40px rgba(0,0,0,.35); }
 .mat.big ~ .notchbar input[type=number]{ background:var(--fill); }
@@ -604,6 +612,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <span class="spacer"></span>
     <button class="btn" id="introBtn" title="How it works: a short walkthrough and the manual" aria-label="How it works">?</button>
     <div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div>
+    <button class="btn" id="themeBtn" title="Colours: follow the system, light or dark">Auto</button>
     <div class="grp" aria-label="Panel layout">
       <select class="btn layoutsel" id="layoutSel" aria-label="Panel layout" title="Panel layout: where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown">
         <option value="draw">Layout: Drawing</option><option value="edit">Layout: Editing</option><option value="clean">Layout: Clean</option>
@@ -680,7 +689,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
           </div>
           <div class="grp" aria-label="Unwrap">
             <button class="btn tog" id="liveUnwrap" aria-pressed="false" title="Unwrap after every change (L). Turn off to shape the outline first, then press Unwrap">Live unwrap</button>
-            <button class="btn primary" id="unwrapNow" hidden title="Unwrap the decals you changed (U)">Unwrap</button>
+            <button class="btn primary" id="unwrapNow" hidden title="Unwrap the selected decal, or all changed decals when none is selected (U)">Unwrap</button>
           </div>
 
         </div>
@@ -857,11 +866,15 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <svg id="sheet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut sheet preview"></svg>
         <div class="matmeta"><span id="matSize"></span><span id="matCount"></span></div>
       </div>
+      <div class="notchbar" id="pieceBar" hidden>
+        <div class="nrow"><b id="pieceHead">Piece</b><span class="spacer"></span><button class="btn" id="pcL" title="Turn the piece 90° to the left on the sheet">⟲ 90°</button><button class="btn" id="pcR" title="Turn the piece 90° to the right on the sheet">⟳ 90°</button>
+          <label class="pcang" title="Turn the piece by this angle on the sheet (arrow keys in the box: 1°, Shift: 15°)"><input type="number" id="pcAng" step="1"> °</label><button class="btn" id="pcAuto" title="Let FitFlat turn the piece again: smallest box around it, long side across">Auto</button></div>
+      </div>
       <div class="notchbar" id="notchBar" hidden>
         <div class="nrow"><b id="notchHead">V-notch</b><select class="btn" id="notchTpl" aria-label="Notch template"></select><span class="spacer"></span><button class="btn" id="notchBig" title="Show the cut sheet big, to place notches comfortably (Esc goes back)">Enlarge</button></div>
         <div class="nrow nnum"><label title="Width of the V at the edge of the piece">Width<input type="number" id="notchW" min="0.5" max="80" step="0.5"> mm</label><label title="How far the V reaches into the piece">Length<input type="number" id="notchL" min="1" max="150" step="0.5"> mm</label><label title="Radius of the rounded tip, so the film does not tear there">Tip r<input type="number" id="notchR" min="0" max="20" step="0.25"> mm</label></div>
-        <div class="nrow"><button class="btn" id="notchSave" title="Keep these numbers as a template you can pick again (stays in this browser)">Save as template</button><button class="btn" id="notchDelTpl" title="Delete the picked template">Delete template</button><button class="btn" id="notchDel" title="Take the selected notch out (Delete)" hidden>Remove notch</button></div>
-        <p class="note" id="notchNote">Click a piece's edge on the sheet to cut a notch there. Click a notch to select it, drag it along the edge, change its numbers here.</p>
+        <div class="nrow"><button class="btn" id="notchSave" title="Keep these numbers as a template you can pick again (stays in this browser)">Save as template</button><button class="btn" id="notchDelTpl" title="Delete the picked template">Delete template</button><button class="btn" id="notchDel" title="Take the selected notch out (Delete)" hidden>Remove notch</button><button class="btn tog" id="notchRelief" aria-pressed="true" title="On: the unwrap treats the notch as a slit, so the film may open or close there as the frame needs, and the stretch colours and numbers count it. Off: the notch is only cut out of the finished flat piece">Count in stretch</button></div>
+        <p class="note" id="notchNote">Click a piece's edge on the sheet to cut a notch there. Click a notch to select it, then drag it along the edge or use the arrow keys (Shift: 5 mm), and change its numbers here. With Count in stretch on, the unwrap treats a notch as a slit, so the stretch counts it.</p>
       </div>
       <div class="sec">
         <div class="dhead"><h2>Decals</h2>
@@ -12292,7 +12305,8 @@ const Core = (() => {
   }
 
   // ---------- packing ----------
-  function orientPiece(poly, holes) {
+  // turn a piece for the sheet: by default the smallest box around it, long side across; rot (degrees) turns it further by hand
+  function orientPiece(poly, holes, rot) {
     let best = null;
     for (let deg = 0; deg < 90; deg += 1) {
       const a = deg*Math.PI/180, c = Math.cos(a), s = Math.sin(a);
@@ -12302,6 +12316,7 @@ const Core = (() => {
       if (!best || ar < best.ar - 1e-9) best = { ar, a, w: x1-x0, h: y1-y0 };
     }
     let a = best.a; if (best.h > best.w) a += Math.PI/2;
+    if (Number.isFinite(rot)) a += rot*Math.PI/180;
     const c = Math.cos(a), s = Math.sin(a);
     let pts = poly.map(([x,y]) => [c*x-s*y, s*x+c*y]);
     let x0=1e30,y0=1e30,x1=-1e30,y1=-1e30;
@@ -12310,25 +12325,38 @@ const Core = (() => {
     const hs = (holes || []).map(h => h.map(([x,y]) => [c*x-s*y-x0, s*x+c*y-y0]));
     return { pts, holes: hs, w: x1-x0, h: y1-y0, tf: ([x,y]) => [c*x-s*y-x0, s*x+c*y-y0] };
   }
+  const turn90 = it => { const hh = it.h, t0 = it.tf; return { ...it, pts: it.pts.map(([x,y]) => [hh - y, x]), holes: it.holes.map(h => h.map(([x,y]) => [hh - y, x])), tf: q => { const [x,y] = t0(q); return [hh - y, x]; }, w: it.h, h: it.w, turned: true }; };
 
+  // pieces on sheets in rows (shelves). Several orders and upright/flat turns are tried; the one that needs the least film wins.
+  // A piece turned by hand (rot) keeps its turn.
   function pack(pieces, W, H, gap, margin) {
     const m = margin == null ? gap : Math.max(gap, margin);
     // pieces: [{id, poly}] poly in mm, y-down already
-    const items = pieces.map(p => ({ id: p.id, curves: p.curves, ...orientPiece(p.poly, p.holes) }));
-    for (const it of items) if (it.w > W - 2*m && it.h <= W - 2*m && it.w <= H - 2*m) {
-      it.pts = it.pts.map(([x,y]) => [it.h - y, x]); it.holes = it.holes.map(h => h.map(([x,y]) => [it.h - y, x])); const t0 = it.tf, hh = it.h; it.tf = q => { const [x,y] = t0(q); return [hh - y, x]; }; [it.w, it.h] = [it.h, it.w];
-    }
-    items.sort((a,b) => b.h - a.h);
-    const placed = []; let sheet = 0, x = m, y = m, shelf = 0, oversize = false, used = 0;
-    for (const it of items) {
-      if (it.w > W - 2*m || it.h > H - 2*m) oversize = true;
-      if (x + it.w > W - m && x > m) { x = m; y += shelf + gap; shelf = 0; }
-      if (y + it.h > H - m && y > m) { sheet++; x = m; y = m; shelf = 0; }
-      const ox = x, oy = y, T = q => { const [px, py] = it.tf(q); return [px + ox, py + oy]; };
-      placed.push({ id: it.id, sheet, pts: it.pts.map(([px,py]) => [px + x, py + y]), holes: it.holes.map(h => h.map(([px,py]) => [px + x, py + y])), curves: it.curves ? it.curves.map(r => r && r.map(sg => sg.map(T))) : null, x, y, w: it.w, h: it.h, tf: T });
-      x += it.w + gap; shelf = Math.max(shelf, it.h); used = Math.max(used, y + it.h);
-    }
-    return { placed, sheets: placed.length ? sheet + 1 : 1, oversize, used: used + m, margin: m };
+    const base = pieces.map(p => ({ id: p.id, curves: p.curves, fixed: Number.isFinite(p.rot), ...orientPiece(p.poly, p.holes, p.rot) }));
+    const fits = it => it.w <= W - 2*m && it.h <= H - 2*m;
+    const shelf = (items) => {
+      const placed = []; let sheet = 0, x = m, y = m, row = 0, oversize = false, used = 0;
+      for (const it of items) {
+        if (!fits(it)) oversize = true;
+        if (x + it.w > W - m && x > m) { x = m; y += row + gap; row = 0; }
+        if (y + it.h > H - m && y > m) { sheet++; x = m; y = m; row = 0; }
+        const ox = x, oy = y, T = q => { const [px, py] = it.tf(q); return [px + ox, py + oy]; };
+        placed.push({ id: it.id, sheet, pts: it.pts.map(([px,py]) => [px + x, py + y]), holes: it.holes.map(h => h.map(([px,py]) => [px + x, py + y])), curves: it.curves ? it.curves.map(r => r && r.map(sg => sg.map(T))) : null, x, y, w: it.w, h: it.h, tf: T });
+        x += it.w + gap; row = Math.max(row, it.h); used = Math.max(used, y + it.h);
+      }
+      return { placed, sheets: placed.length ? sheet + 1 : 1, oversize, used: used + m, margin: m };
+    };
+    // turns: as they are (a piece too wide for the sheet stands up), all lying flat, all standing up
+    const turns = [
+      it => (!it.fixed && it.w > W - 2*m && it.h <= W - 2*m && it.w <= H - 2*m) ? turn90(it) : it,
+      it => (!it.fixed && it.h > it.w && it.h <= W - 2*m) ? turn90(it) : it,
+      it => (!it.fixed && it.w > it.h && it.w <= H - 2*m && it.h <= W - 2*m) ? turn90(it) : it,
+    ];
+    const orders = [(a,b) => b.h - a.h || b.w - a.w, (a,b) => b.w - a.w || b.h - a.h, (a,b) => b.w*b.h - a.w*a.h, (a,b) => Math.max(b.w,b.h) - Math.max(a.w,a.h)];
+    let best = null, bs = Infinity;
+    for (const tu of turns) { const items = base.map(tu); for (const ord of orders) {
+      const r = shelf(items.slice().sort(ord)), score = (r.oversize ? 1e12 : 0) + r.sheets * 1e7 + r.used; if (score < bs - 1e-6) { bs = score; best = r; } } }
+    return best || shelf([]);
   }
 
   function buildSVG(packing, W, H, opts, names) {
@@ -12556,6 +12584,15 @@ let modelMesh = null, pickMesh = null, handles = null, strokeLine = null;
 const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const modelMat = new THREE.MeshStandardMaterial({ color: css('--model') || '#AEB8B3', roughness: 0.48, metalness: 0.22 });
 matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { modelMat.color.set(css('--model')); renderSheet(); });
+// colours: Auto follows the system; Light or Dark stays as picked
+function setTheme(t, init) {
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else { delete document.documentElement.dataset.theme; t = 'auto'; }
+  try { localStorage.setItem('fitflat-theme', t); } catch (e) {}
+  $('#themeBtn').textContent = { auto: 'Auto', light: 'Light', dark: 'Dark' }[t]; $('#themeBtn').dataset.t = t; if (typeof tr === 'function' && !init) $('#themeBtn').textContent = tr($('#themeBtn').textContent);
+  modelMat.color.set(css('--model')); if (!init) renderSheet();
+}
+$('#themeBtn').addEventListener('click', () => setTheme({ auto: 'light', light: 'dark', dark: 'auto' }[$('#themeBtn').dataset.t || 'auto']));
+try { setTheme(localStorage.getItem('fitflat-theme') || 'auto', true); } catch (e) { setTheme('auto', true); }
 
 const dot = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
   g.beginPath(); g.arc(32,32,26,0,Math.PI*2); g.fillStyle = '#fff'; g.fill(); g.lineWidth = 9; g.strokeStyle = '#111'; g.stroke();
@@ -13205,7 +13242,7 @@ function projectJSON() {
     frame: src.tubes ? { tubes: src.tubes, geo: src.geo, tubeSizes: src.tubeSizes, presetName: src.presetName, sizeIndex: src.sizeIndex } : null,
     presets: userPresets,
     decals: S.decals.filter(d => d.ctrl.length).map(d => ({
-      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir, notches: d.notches?.length ? d.notches.map(n => ({ m: n.m.map(v => +v.toFixed(4)), t: n.t.map(v => +v.toFixed(4)), w: n.w, L: n.L, r: n.r })) : undefined, darts: d.darts?.length ? d.darts.map(p => p.map(q => q.map(v => +v.toFixed(4)))) : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? +d.dartV[i].toFixed(2) : null) : undefined,
+      id: d.id, holeOf: d.holeOf, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf, liveOf: d.liveOf, seamDir: d.seamDir, sheetRot: Number.isFinite(d.sheetRot) ? d.sheetRot : undefined, notches: d.notches?.length ? d.notches.map(n => ({ m: n.m.map(v => +v.toFixed(4)), t: n.t.map(v => +v.toFixed(4)), w: n.w, L: n.L, r: n.r, relief: n.relief ? true : undefined })) : undefined, darts: d.darts?.length ? d.darts.map(p => p.map(q => q.map(v => +v.toFixed(4)))) : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? +d.dartV[i].toFixed(2) : null) : undefined,
       ctrl: d.ctrl.map(c => ({ p: r3(c.p), type: c.type || 'auto', hin: r3(c.hin), hout: r3(c.hout), plane: !!c.plane, seam: c.seam })),
     })),
   });
@@ -13718,7 +13755,8 @@ function restoreDecals(list, msg, fname) {
       const ctrl = dd.ctrl.map(c => { const h = c.p && Core.closestPoint(mesh, grid, c.p, 120); return h && { p: h.point, face: h.face, type: c.type, hin: c.hin || undefined, hout: c.hout || undefined, plane: !!c.plane, seam: typeof c.seam === 'boolean' ? c.seam : undefined }; }).filter(Boolean);
       if (!ctrl.length) continue;
       const d = { id, name: safeName(dd.name) || `Decal ${id}`, color: safeColor(dd.color) || PALETTE[(id - 1) % PALETTE.length], ctrl, closed: !!dd.closed, flip: !!dd.flip, mirror: !!dd.mirror, side: dd.side || 0, locked: !!dd.locked, seamOpen: !!dd.seamOpen, seamFlip: !!dd.seamFlip, res: null, twin: null, obj: [], _hole: dd.holeOf, _part: dd.partOf, _live: dd.liveOf, seamDir: Array.isArray(dd.seamDir) && dd.seamDir.length === 3 && dd.seamDir.every(Number.isFinite) ? dd.seamDir : undefined,
-        notches: Array.isArray(dd.notches) ? dd.notches.filter(n => n && [n.m, n.t].every(p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite)) && [n.w, n.L, n.r].every(Number.isFinite)).slice(0, 64).map(n => ({ m: n.m, t: n.t, w: Math.max(0.1, Math.min(80, n.w)), L: Math.max(0.5, Math.min(150, n.L)), r: Math.max(0, Math.min(20, n.r)) })) : undefined,
+        sheetRot: Number.isFinite(dd.sheetRot) ? Math.max(-180, Math.min(180, dd.sheetRot)) : undefined,
+        notches: Array.isArray(dd.notches) ? dd.notches.filter(n => n && [n.m, n.t].every(p => Array.isArray(p) && p.length === 3 && p.every(Number.isFinite)) && [n.w, n.L, n.r].every(Number.isFinite)).slice(0, 64).map(n => ({ m: n.m, t: n.t, w: Math.max(0.1, Math.min(80, n.w)), L: Math.max(0.5, Math.min(150, n.L)), r: Math.max(0, Math.min(20, n.r)), ...(n.relief === true ? { relief: true } : {}) })) : undefined,
         darts: Array.isArray(dd.darts) ? dd.darts.filter(p => Array.isArray(p) && p.length >= 2 && p.length <= 64 && p.every(q => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite))).slice(0, 24) : undefined,
         dartV: Array.isArray(dd.darts) && Array.isArray(dd.dartV) && dd.dartV.length === dd.darts.length && dd.darts.every(p => Array.isArray(p) && p.length >= 2 && p.length <= 64 && p.every(q => Array.isArray(q) && q.length === 3 && q.every(Number.isFinite))) ? dd.dartV.slice(0, 24).map(x => typeof x === 'number' && isFinite(x) ? Math.max(0, Math.min(60, x)) : null) : undefined };
       S.decals.push(d); made.push(d);
@@ -13882,7 +13920,7 @@ function hitLine(x, y) {
 
 // ---------- history ----------
 const HIST = { undo: [], redo: [] };
-const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf || undefined, liveOf: d.liveOf ?? undefined, seamDir: d.seamDir, notches: d.notches?.length ? d.notches.map(n => ({ ...n })) : undefined, darts: d.darts?.length ? d.darts : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? d.dartV[i] : null) : undefined,
+const decalState = d => ({ id: d.id, name: d.name, color: d.color, closed: d.closed, flip: d.flip, mirror: d.mirror, side: d.side || 0, holeOf: d.holeOf, locked: !!d.locked, seamOpen: !!d.seamOpen, seamFlip: !!d.seamFlip, partOf: d.partOf || undefined, liveOf: d.liveOf ?? undefined, seamDir: d.seamDir, sheetRot: Number.isFinite(d.sheetRot) ? d.sheetRot : undefined, notches: d.notches?.length ? d.notches.map(n => ({ ...n })) : undefined, darts: d.darts?.length ? d.darts : undefined, dartV: d.darts?.length ? d.darts.map((_, i) => typeof d.dartV?.[i] === 'number' ? d.dartV[i] : null) : undefined,
   ctrl: d.ctrl.map(c => ({ p: c.p, face: c.face, type: c.type || 'auto', hin: c.hin, hout: c.hout, plane: !!c.plane, broken: !!c.broken, seam: c.seam })) });
 const snapshot = () => JSON.stringify({ decals: S.decals.map(decalState), drawing: S.drawing?.id ?? null });
 // each entry is the state before a step, with the step's name and time
@@ -13896,10 +13934,10 @@ function applySnapshot(str) {
   setBusy('Updating…'); S.restoring = true;
   for (const a of st.decals) {
     let d = S.decals.find(x => x.id === a.id);
-    const shape = x => { const o = decalState(x); delete o.notches; return JSON.stringify(o); }; // notches only change the sheet, no new unwrap
+    const shape = x => { const o = decalState(x); o.notches = o.notches?.filter(n => n.relief); if (!o.notches?.length) delete o.notches; delete o.sheetRot; return JSON.stringify(o); }; // sheet turns and plain notches only change the sheet; notches that count in stretch need a new unwrap
     const before = d ? shape(d) : null;
     if (!d) { d = { ...a, res: null, twin: null, obj: [] }; S.decals.push(d); }
-    else { for (const k of ['partOf', 'liveOf', 'holeOf', 'seamDir', 'darts', 'dartV', 'notches']) delete d[k]; Object.assign(d, a); }
+    else { for (const k of ['partOf', 'liveOf', 'holeOf', 'seamDir', 'darts', 'dartV', 'notches', 'sheetRot']) delete d[k]; Object.assign(d, a); }
     if (before !== shape(d)) { if (d.closed && d.ctrl.length >= 3) solveNow(d); else { d.res = null; d.twin = null; updateDecalVisual(d, true); } }
     order.push(d);
   }
@@ -14778,17 +14816,36 @@ function autoDartV(d) {
   d.dartV = vs;
 }
 // each cut with its V angle on the sheet (degrees, in d.dartV next to d.darts; empty = not chosen yet)
+// a notch that counts in stretch is a free slit for the unwrap, along its centre line from the edge to the tip: the film
+// may open or close there as the frame needs, and the V is cut out of the flat piece afterwards
+const notchSlitCache = new Map();
+function notchSlit(n) {
+  if (!S.model) return null; const key = [n.m, n.t, n.L].join('|'); if (notchSlitCache.has(key)) return notchSlitCache.get(key);
+  let p = n.m.slice(), dir = [n.t[0] - p[0], n.t[1] - p[1], n.t[2] - p[2]]; const l0 = Math.hypot(...dir) || 1; dir = dir.map(v => v / l0);
+  const step = Math.max(0.4, Math.min(1.5, n.L / 10)), out = [p.map(v => +v.toFixed(4))]; let s2 = 0;
+  for (let k = 0; k < 400 && s2 < n.L - 1e-6; k++) { const st = Math.min(step, n.L - s2), h = Core.closestPoint(S.model.mesh, S.model.grid, [p[0] + dir[0] * st, p[1] + dir[1] * st, p[2] + dir[2] * st], 40); if (!h) break;
+    const q = h.point, dv = [q[0] - p[0], q[1] - p[1], q[2] - p[2]], dl = Math.hypot(...dv); if (dl < 1e-6) break; dir = dv.map(v => v / dl); s2 += dl; p = q; out.push(q.map(v => +v.toFixed(4))); }
+  const r = out.length >= 3 ? out : null; if (notchSlitCache.size > 500) notchSlitCache.clear(); notchSlitCache.set(key, r); return r;
+}
+function notchDarts(d, merged) {
+  const out = []; (d.notches || []).forEach((n, ni) => { if (!n.relief) return; const P = notchSlit(n); if (!P) return; out.push(Object.assign(P.slice(), { v: undefined, ni, mir: false }));
+    if (d.mirror && merged) { const M = P.map(q => reflect(q).map(v => +v.toFixed(4))); if (!P.every((q, i) => dist3(q, M[i]) < 4)) out.push(Object.assign(M, { v: undefined, ni, mir: true })); } });
+  return out;
+}
 const dartList = d => d.darts.map((p, i) => Object.assign(p.slice(), { v: typeof d.dartV?.[i] === 'number' ? d.dartV[i] : undefined }));
 function solveNow(d) {
   // editing a piece of a live combination by hand fixes the combination first
   if (d.liveOf != null && !S.recomputing && !S.restoring && S.decals.includes(d)) applyCombo(d.liveOf, true);
   const mc = mergedCtrl(d), dir = d.seamDir || null;
   if (d.darts?.length && !S.model?.noAuto) autoDartV(d);
-  const dts = d.darts?.length ? dartList(d) : null;
+  const nd = notchDarts(d, !!mc), dts = d.darts?.length || nd.length ? [...(d.darts?.length ? dartList(d) : []), ...nd] : null;
   d.res = solveOne(mc || d.ctrl, d.flip, dir, dts); d.merged = !!mc;
+  const ndx = dts ? dts.map((p, i) => p.ni != null ? { i, ni: p.ni, mir: p.mir } : null).filter(Boolean) : []; // which cut of the unwrap is which notch's slit
+  if (d.res) d.res.ndx = ndx;
   d.ringHoles = mc?.holes?.length ? mc.holes.map(h => ({ ctrl: h, res: solveOne(h, false), virtual: true })) : null;
   if (mc) d.twin = null;
   else if (d.mirror) { const tc = twinCtrl(d), pl = mirrorPlane(), td = dir && pl ? dir.map((v, k) => k === pl.k ? -v : v) : dir; d.twin = { ctrl: tc, res: solveOne(tc, d.flip, td, dts && pl ? dts.map(p => Object.assign(p.map(reflect), { v: p.v })) : null) }; } else d.twin = null;
+  if (!mc && d.twin?.res) d.twin.res.ndx = ndx;
   updateDecalVisual(d, false);
   if (d.partOf && !S.recomputing && !S.restoring) queueCombo(d.partOf.cid); // one of its parts changed
   // it closed around a tube: ask once where the seam should go (a live combination's pieces are asked when they are applied)
@@ -14825,6 +14882,10 @@ function unwrapEach(list, each, done) {
 // everything still waiting for an unwrap, one decal at a time; then goes on with what needs the flat shapes
 function flushStaleThen(then) { const L = staleDecals(); if (!L.length) { then(); return; } unwrapEach(L, d => { d.stale = false; solveNow(d); }, () => { updateUI(); then(); }); }
 function unwrapNow() {
+  const a = S.active; // a selected decal that waits: only that one (and its holes); the others wait until Unwrap with nothing selected, or export
+  if (a && a.stale) { const L = [a, ...S.decals.filter(x => x.holeOf === a.id && x.stale)];
+    unwrapEach(L, d => { d.stale = false; solveNow(d); }, () => { updateUI(); const left = staleDecals().length;
+      flash(left ? tr('Unwrapped {0}. {1} more changed: press Unwrap with nothing selected to do them too (export does them anyway).').replace('{0}', a.name).replace('{1}', left) : tr('Unwrapped.')); }); return; }
   const n = staleDecals().length; if (!n) return;
   flushStaleThen(() => flash(n === 1 ? tr('Unwrapped.') : tr('Unwrapped {0} decals.').replace('{0}', n)));
 }
@@ -15617,16 +15678,16 @@ function solvedPieces() {
     if (d.holeOf || d.partOf) continue; // holes are cut as part of their parent piece; parts of a live combination are not cut on their own
     const kids = cutsOf(d);
     const tol = Math.max(0.01, +S.sheet.tol || 0.1);
-    const pkey = [d.res?._v, d.twin?.res?._v, d.mirror ? 1 : 0, d.name, tol, JSON.stringify(d.notches || []), kids.map(k => `${k.res?._v}.${k.twin?.res?._v}.${(k.res?.samples || k.samples)?.length}`).join(',')].join('|');
+    const pkey = [d.res?._v, d.twin?.res?._v, d.mirror ? 1 : 0, d.name, tol, JSON.stringify(d.notches || []), d.sheetRot ?? '', kids.map(k => `${k.res?._v}.${k.twin?.res?._v}.${(k.res?.samples || k.samples)?.length}`).join(',')].join('|');
     const pc = PIECES.get(d); if (pc && pc.key === pkey) { out.push(...pc.list); continue; }
     const start = out.length;
     const straightOf = x => { const C = x.mergedMap || x.ctrl, m = C.length; return sg => ptype(C[sg % m]) === 'corner' && ptype(C[(sg + 1) % m]) === 'corner'; };
     const cornerOf = x => { const C = x.mergedMap || x.ctrl, m = C.length; return sg => ptype(C[sg % m]) === 'corner' || C[sg % m].broken; };
     const fit = (pts, smp, owner) => pts && smp ? Core.fitCurves(pts, smp, tol, straightOf(owner), 3, cornerOf(owner)) : null;
     if (d.res && !d.res.error) { const poly = d.res.outline.map(([x, y]) => [x, -y]), hr = kids.map(k => ({ r: holeRings(d.res, k, false), s: k.res?.samples || k.samples, k })).filter(h => h.r);
-      out.push(withNotches(d, false, { id: 'd' + d.id, decal: d, name: d.name, poly, holes: hr.map(h => h.r), curves: [fit(poly, d.res.samples, d), ...hr.map(h => fit(h.r, h.s, h.k))] })); }
+      out.push(withNotches(d, false, { id: 'd' + d.id, decal: d, name: d.name, rot: Number.isFinite(d.sheetRot) ? d.sheetRot : undefined, poly, holes: hr.map(h => h.r), curves: [fit(poly, d.res.samples, d), ...hr.map(h => fit(h.r, h.s, h.k))] })); }
     if (d.mirror && d.twin?.res && !d.twin.res.error) { const poly = d.twin.res.outline.map(([x, y]) => [x, -y]), hr = kids.map(k => ({ r: holeRings(d.twin.res, k, true), s: k.twin?.res?.samples, k })).filter(h => h.r);
-      out.push(withNotches(d, true, { id: 'm' + d.id, decal: d, name: d.name + ' mirror', poly, holes: hr.map(h => h.r), curves: [fit(poly, d.twin.res.samples, d), ...hr.map(h => fit(h.r, h.s, h.k))] })); }
+      out.push(withNotches(d, true, { id: 'm' + d.id, decal: d, name: d.name + ' mirror', rot: Number.isFinite(d.sheetRot) ? -d.sheetRot : undefined, poly, holes: hr.map(h => h.r), curves: [fit(poly, d.twin.res.samples, d), ...hr.map(h => fit(h.r, h.s, h.k))] })); }
     PIECES.set(d, { key: pkey, list: out.slice(start) });
   }
   return out;
@@ -15648,7 +15709,7 @@ const binColor = i => '#' + (i < 6 ? heat(filmMax() * (i + 0.5) / 5) : foldHeat(
 let packMemo = null;
 function packSheet(pieces) {
   const sh = S.sheet, margin = sh.reg ? 16 : sh.gap;
-  const key = JSON.stringify([sh.w, sh.h, sh.roll, sh.gap, margin]) + pieces.map(p => p.id + ':' + (p.id[0] === 'm' ? p.decal.twin?.res?._v : p.decal.res?._v) + ':' + (p.holes || []).length).join(',');
+  const key = JSON.stringify([sh.w, sh.h, sh.roll, sh.gap, margin]) + pieces.map(p => p.id + ':' + (p.id[0] === 'm' ? p.decal.twin?.res?._v : p.decal.res?._v) + ':' + (p.holes || []).length + ':' + (p.rot ?? '') + ':' + p.poly.length).join(',');
   if (packMemo && packMemo.key === key && packMemo.pieces.length === pieces.length && packMemo.pieces.every((p, i) => p === pieces[i])) return packMemo.pk;
   const pk = Core.pack(pieces, sh.w, sh.roll ? 1e6 : sh.h, sh.gap, margin);
   pk.H = sh.roll ? Math.max(60, Math.ceil(pk.used + 1)) : sh.h;
@@ -15779,14 +15840,14 @@ function notchDown(e) {
     S.notch.sel = { d: +el.dataset.d, i: +el.dataset.i }; const sel = selNotch(); S.notch.drag = { n: { w: sel.n.w, L: sel.n.L, r: sel.n.r }, x: q.x, y: q.y, moved: false };
     renderSheet(); renderNotchBar(); return; }
   const c = notchAtSheet(q); if (!c) { S.notch.sel = null; renderSheet(); renderNotchBar(); flash('Click on a piece, near the edge where the notch should go.'); return; }
-  pushHistory('Added notch'); (c.d.notches ||= []).push({ m: c.m, t: c.t, w: S.notch.w, L: S.notch.L, r: S.notch.r });
-  S.notch.sel = { d: c.d.id, i: c.d.notches.length - 1 }; notchGhost(null); renderSheet(); renderNotchBar(); notchSplitWarn(c.d);
+  pushHistory('Added notch'); (c.d.notches ||= []).push({ m: c.m, t: c.t, w: S.notch.w, L: S.notch.L, r: S.notch.r, ...(S.notch.relief ? { relief: true } : {}) });
+  S.notch.sel = { d: c.d.id, i: c.d.notches.length - 1 }; notchGhost(null); if (S.notch.relief) notchResolve(c.d, c.d.res?.stretchMax || 0); else { renderSheet(); renderNotchBar(); } notchSplitWarn(c.d);
 }
 function notchUp(e) {
   const D = S.notch.drag; S.notch.drag = null; notchGhost(null); const q = sheetPt(e.clientX, e.clientY), sel = selNotch(); if (!q || !sel) return;
   if (Math.hypot(q.x - D.x, q.y - D.y) < 1.5) return; // a click: only selected
   const c = notchAtSheet(q); if (!c || c.d !== sel.d) { flash('Drag the notch along the edge of its own piece.'); renderSheet(); return; }
-  pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; renderSheet(); renderNotchBar(); notchSplitWarn(sel.d);
+  pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; if (sel.n.relief) notchResolve(sel.d); else { renderSheet(); renderNotchBar(); } notchSplitWarn(sel.d);
 }
 function sheetCutStart(e) {
   const q = sheetPt(e.clientX, e.clientY); if (!q) return; const hit = sheetToPiece(q.x, q.y); // may start just outside a piece: the piece is then the one the drag ends in
@@ -15810,11 +15871,15 @@ function sheetCutEnd(e) {
 // ---------- notches: V cut-outs with a rounded tip, placed on the flat pieces; anchored on the frame so they survive a new unwrap ----------
 const NOTCH_BUILTIN = [{ name: 'Small V', w: 6, L: 12, r: 1 }, { name: 'Medium V', w: 10, L: 20, r: 1.5 }, { name: 'Long V', w: 8, L: 30, r: 1 }, { name: 'Wide V', w: 16, L: 20, r: 2 }, { name: 'Slit', w: 1.5, L: 20, r: 0.75 }];
 const NOTCH_KEY = 'fitflat-notch-templates';
-S.notch = { on: false, w: 10, L: 20, r: 1.5, sel: null, drag: null };
+S.notch = { on: false, w: 10, L: 20, r: 1.5, relief: true, sel: null, drag: null };
 function notchTemplates() { try { const a = JSON.parse(localStorage.getItem(NOTCH_KEY) || '[]'); return Array.isArray(a) ? a.filter(t => t && typeof t.name === 'string' && [t.w, t.L, t.r].every(Number.isFinite)).slice(0, 50) : []; } catch (e) { return []; } }
 // where a notch sits on one flat piece: its mouth point and the direction into the piece (the mirror piece uses the mirrored notch)
 function notchUV(d, n, twin, mir) {
   const res = twin ? d.twin?.res : d.res; if (!res?.uvOf || !S.model) return null;
+  if (n.relief && res.ndx) { // a notch that counts: centred in its slit as the unwrap opened it, pointing at the slit's tip
+    const ni = d.notches.indexOf(n), e = res.ndx.find(x => x.ni === ni && x.mir === !!(mir && !twin)), V = e && res.darts?.[e.i]?.uvV;
+    if (V) { const [tip, m1, m2] = V, M = [(m1[0] + m2[0]) / 2, (m1[1] + m2[1]) / 2], l = Math.hypot(tip[0] - M[0], tip[1] - M[1]);
+      if (l > 1e-6) return { M, T: [M[0] + (tip[0] - M[0]) / l, M[1] + (tip[1] - M[1]) / l] }; } }
   const at = p => { const P = (twin !== !!mir) ? reflect(p) : p, h = Core.closestPoint(S.model.mesh, S.model.grid, P, 40); return h ? uvAt(res, h.point, h.face) : null; };
   const M = at(n.m), T = at(n.t); return M && T && Math.hypot(T[0] - M[0], T[1] - M[1]) > 1e-6 ? { M, T } : null;
 }
@@ -15867,14 +15932,17 @@ function nearestEdge(O, uv) {
 function notchAtSheet(q) {
   const hit = sheetToPiece(q.x, q.y); if (!hit) return null;
   const info = S.pieceInfo[hit.p.id], d = info?.decal; if (!d) return null;
-  const twin = hit.p.id[0] === 'm', res = twin ? d.twin?.res : d.res; if (!res?.outline) return null;
-  const E = nearestEdge(res.outline, hit.uv); if (!E) return null;
+  const c = notchAtUV(d, hit.p.id[0] === 'm', hit.uv); return c && { ...c, p: hit.p };
+}
+function notchAtUV(d, twin, uv) {
+  const res = twin ? d.twin?.res : d.res; if (!res?.outline) return null;
+  const E = nearestEdge(res.outline, uv); if (!E) return null;
   const tri = flatTris(res), inw = [-E.out[0], -E.out[1]];
   const M = flatTo3(tri, [E.P[0] + inw[0] * 0.4, E.P[1] + inw[1] * 0.4]); let T = null;
   for (const k of [3, 1.5, 0.8]) { T = flatTo3(tri, [E.P[0] + inw[0] * k, E.P[1] + inw[1] * k]); if (T) break; }
   if (!M || !T) return null;
   const back = p => (twin ? reflect(p) : p).map(v => +v.toFixed(4));
-  return { d, p: hit.p, twin, m: back(M.point), t: back(T.point), uvM: E.P, inw };
+  return { d, twin, m: back(M.point), t: back(T.point), uvM: E.P, inw, out: E.out };
 }
 // the notches on the frame too: each V's outline mapped back from the flat piece onto the surface (both sides of a mirrored decal)
 let notchObj = null, notchKey3 = '';
@@ -15896,9 +15964,27 @@ function renderNotches3D() {
   }
   grp.children.forEach(o => o.renderOrder = 11); scene.add(grp); notchObj = grp;
 }
+// the selected decal's piece on the sheet: turn it by hand (its mirror piece turns the other way, so both stay mirror images)
+function renderPieceBar() {
+  const d = S.active, has = d && !S.notch.on && S.pieceInfo && S.pieceInfo['d' + d.id];
+  $('#pieceBar').hidden = !has; if (!has) return;
+  $('#pieceHead').textContent = tr(d.mirror ? '{0} on the sheet (both sides)' : '{0} on the sheet').replace('{0}', d.name);
+  if (document.activeElement !== $('#pcAng')) $('#pcAng').value = Number.isFinite(d.sheetRot) ? d.sheetRot : '';
+  $('#pcAng').placeholder = tr('auto'); $('#pcAuto').disabled = !Number.isFinite(d.sheetRot);
+}
+function setPieceRot(v) {
+  const d = S.active; if (!d) return; pushHistory('Turned on the sheet');
+  if (v == null) delete d.sheetRot; else d.sheetRot = ((Math.round(v * 10) / 10 % 360) + 540) % 360 - 180;
+  renderSheet(); renderPieceBar();
+}
+$('#pcL').addEventListener('click', () => setPieceRot((S.active?.sheetRot || 0) - 90));
+$('#pcR').addEventListener('click', () => setPieceRot((S.active?.sheetRot || 0) + 90));
+$('#pcAuto').addEventListener('click', () => setPieceRot(null));
+$('#pcAng').addEventListener('change', e => { const v = parseFloat(e.target.value); setPieceRot(Number.isFinite(v) ? v : null); });
+$('#pcAng').addEventListener('keydown', e => { if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return; e.preventDefault(); const v = (parseFloat(e.target.value) || 0) + (e.key === 'ArrowUp' ? 1 : -1) * (e.shiftKey ? 15 : 1); e.target.value = v; setPieceRot(v); });
 function setNotchMode(on) {
   S.notch.on = on; if (!on) { S.notch.sel = null; S.notch.drag = null; }
-  $('#shNotch').setAttribute('aria-pressed', String(on)); $('#sheet').classList.toggle('notching', on); $('#notchBar').hidden = !on;
+  $('#shNotch').setAttribute('aria-pressed', String(on)); $('#sheet').classList.toggle('notching', on); $('#notchBar').hidden = !on; renderPieceBar();
   if (on) { S.sheetCut = false; $('#shCut').setAttribute('aria-pressed', 'false'); $('#sheet').classList.remove('cutting'); renderNotchBar(); flash('Notch tool: click a piece\'s edge on the sheet to cut a V-notch there.'); }
   renderSheet();
 }
@@ -15908,11 +15994,11 @@ function renderNotchBar() {
   const cur = all.findIndex(t => t.w === v.w && t.L === v.L && t.r === v.r);
   $('#notchTpl').innerHTML = (cur < 0 ? `<option value="-1">${esc(tr('Custom'))}</option>` : '') + all.map((t, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${esc(t.builtin ? tr(t.name) : t.name)} · ${t.w} × ${t.L}, r ${t.r}</option>`).join('');
   $('#notchW').value = v.w; $('#notchL').value = v.L; $('#notchR').value = v.r;
-  $('#notchDelTpl').disabled = !(cur >= NOTCH_BUILTIN.length); $('#notchDel').hidden = !sel;
+  $('#notchDelTpl').disabled = !(cur >= NOTCH_BUILTIN.length); $('#notchDel').hidden = !sel; $('#notchRelief').setAttribute('aria-pressed', String(!!(sel ? sel.n.relief : S.notch.relief)));
   $('#notchHead').textContent = tr(sel ? 'Selected notch' : 'New notches');
 }
 function setNotchVals(o) { // the numbers go to the selected notch, or to the next new one
-  const sel = selNotch(); if (sel) { pushHistory('Notch size'); Object.assign(sel.n, o); renderSheet(); notchSplitWarn(sel.d); } else Object.assign(S.notch, o);
+  const sel = selNotch(); if (sel) { pushHistory('Notch size'); Object.assign(sel.n, o); if (sel.n.relief && 'L' in o) notchResolve(sel.d); else renderSheet(); notchSplitWarn(sel.d); } else Object.assign(S.notch, o);
   renderNotchBar();
 }
 function notchSplitWarn(d) { // a notch reaching through the piece would cut it in two: only the bigger part is kept, so say so
@@ -15925,8 +16011,26 @@ for (const [id, k, lo, hi] of [['#notchW', 'w', 0.5, 80], ['#notchL', 'L', 1, 15
 $('#notchSave').addEventListener('click', () => { const v = selNotch()?.n || S.notch, name = prompt(tr('Name for this notch template'), `V ${v.w} × ${v.L}`); if (!name) return;
   const list = notchTemplates().filter(t => t.name !== name); list.push({ name: name.slice(0, 40), w: v.w, L: v.L, r: v.r }); try { localStorage.setItem(NOTCH_KEY, JSON.stringify(list)); } catch (e) {} renderNotchBar(); });
 $('#notchDelTpl').addEventListener('click', () => { const i = +$('#notchTpl').value - NOTCH_BUILTIN.length, list = notchTemplates(); if (i < 0 || !list[i]) return; list.splice(i, 1); try { localStorage.setItem(NOTCH_KEY, JSON.stringify(list)); } catch (e) {} renderNotchBar(); });
-function removeSelNotch() { const sel = selNotch(); if (!sel) return false; pushHistory('Removed notch'); sel.d.notches.splice(S.notch.sel.i, 1); if (!sel.d.notches.length) delete sel.d.notches; S.notch.sel = null; renderSheet(); renderNotchBar(); return true; }
+function removeSelNotch() { const sel = selNotch(); if (!sel) return false; pushHistory('Removed notch'); sel.d.notches.splice(S.notch.sel.i, 1); if (!sel.d.notches.length) delete sel.d.notches; S.notch.sel = null; if (sel.n.relief) notchResolve(sel.d); else { renderSheet(); renderNotchBar(); } return true; }
 $('#notchDel').addEventListener('click', removeSelNotch);
+// slide the selected notch along its edge (arrow keys: 1 mm, Shift: 5 mm)
+function nudgeSelNotch(step) {
+  const sel = selNotch(); if (!sel) return false; const q = notchUV(sel.d, sel.n, false, false), O = sel.d.res?.outline; if (!q || !O) return false;
+  const E = nearestEdge(O, q.M); if (!E) return false;
+  const c = notchAtUV(sel.d, false, [E.P[0] - E.out[1] * step, E.P[1] + E.out[0] * step]); if (!c) return false;
+  pushHistory('Moved notch'); sel.n.m = c.m; sel.n.t = c.t; if (sel.n.relief) { clearTimeout(nudgeSelNotch.t); renderSheet(); nudgeSelNotch.t = setTimeout(() => notchResolve(sel.d), 350); } else { renderSheet(); renderNotchBar(); } return true;
+}
+addEventListener('keydown', e => { if (!S.notch.on || !S.notch.sel || e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  const k = { ArrowLeft: -1, ArrowDown: -1, ArrowRight: 1, ArrowUp: 1 }[e.key]; if (!k) return;
+  if (nudgeSelNotch(k * (e.shiftKey ? 5 : 1))) { e.preventDefault(); e.stopPropagation(); } }, true);
+// a notch that counts in stretch: unwrap its decal again with the notch as a free slit, and tell what that did
+function notchResolve(d, was) {
+  setBusy(tr('Unwrapping…')); setTimeout(() => { d.stale = false; solveNow(d); setBusy(false); renderSheet(); renderNotchBar(); updateUI();
+    if (was != null) flash(tr('Stretch {0}% → {1}%.').replace('{0}', (was * 100).toFixed(1)).replace('{1}', ((d.res?.stretchMax || 0) * 100).toFixed(1))); }, 20);
+}
+$('#notchRelief').addEventListener('click', () => { const sel = selNotch();
+  if (!sel) { S.notch.relief = !S.notch.relief; renderNotchBar(); return; }
+  pushHistory(sel.n.relief ? 'Notch out of stretch' : 'Notch counted in stretch'); if (sel.n.relief) delete sel.n.relief; else sel.n.relief = true; notchResolve(sel.d, sel.d.res?.stretchMax || 0); });
 // the notch outline drawn over the sheet: for selecting and dragging, and as the preview where a click would put one
 function notchSheetPath(p, ring) {
   const SH = S.packing.H, oy = p.sheet * (SH + Math.max(SH * 0.06, 20)), mf = S.sheet.mirror ? ([x, y]) => [2 * p.x + p.w - x, y] : q => q;
@@ -15986,7 +16090,7 @@ function renderSheet() {
       reliefSuggest(d).forEach((c, ci) => { if (!c.uv || c.kind !== 'notch') return; /* saddles get no cut: the edge stretches into place there */ const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
         sugg += `<g class="ssug" data-d="${d.id}" data-i="${ci}"><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="2" stroke-dasharray="4 3"/><line x1="${a0[0].toFixed(1)}" y1="${a0[1].toFixed(1)}" x2="${b0[0].toFixed(1)}" y2="${b0[1].toFixed(1)}" stroke="transparent" stroke-width="12"><title>${esc(tr('Suggested cut: click to make it'))}</title></line></g>`; }); }
     // every cut's V: drag its corner to make it wider or narrower (to 0: a plain slit)
-    if (p.tf && res?.darts && (S.sheetCut || act) && d.darts?.length) res.darts.forEach((di, k) => { if (!di?.uvV || (p.id[0] === 'd' && d.mirror && d.mergedMap && dartPartner(d, k) >= 0 && dartPartner(d, k) < k)) return;
+    if (p.tf && res?.darts && (S.sheetCut || act) && d.darts?.length) res.darts.forEach((di, k) => { if (k >= d.darts.length || !di?.uvV || (p.id[0] === 'd' && d.mirror && d.mergedMap && dartPartner(d, k) >= 0 && dartPartner(d, k) < k)) return;
       const [t, m1, m2] = di.uvV.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; }), th = typeof d.dartV?.[k] === 'number' ? d.dartV[k] : di.angle || 0;
       const mx = (m1[0] + m2[0]) / 2, my = (m1[1] + m2[1]) / 2, L = Math.hypot(mx - t[0], my - t[1]) || 1, ux = (mx - t[0]) / L, uy = (my - t[1]) / L, h = th * Math.PI / 360, c = Math.cos(h), sn = Math.sin(h);
       const hx = t[0] + (ux * c - uy * sn) * L, hy = t[1] + (ux * sn + uy * c) * L;
@@ -16010,7 +16114,8 @@ function renderSheet() {
       const h = Math.sign(al || 1) * th * Math.PI / 360, c = Math.cos(h), sn = Math.sin(h), hx = V.tx + (V.ux * c - V.uy * sn) * V.L, hy = V.ty + (V.ux * sn + V.uy * c) * V.L;
       cEl.setAttribute('cx', hx); cEl.setAttribute('cy', hy); const ln = g.querySelector('.vpre'); ln.setAttribute('x2', hx); ln.setAttribute('y2', hy); g.querySelector('text').textContent = th < 0.5 ? tr('slit') : 'V ' + (2 * V.L * Math.sin(th * Math.PI / 360)).toFixed(1) + ' mm'; });
     cEl.addEventListener('pointerup', () => { const V = S.vDrag; S.vDrag = null; if (!V || V.g !== g || V.th === null) return; setDartV(S.decals.find(x => x.id === V.d), V.k, V.th); }); });
-  svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => setActive(S.decals.find(d => d.id === +el.dataset.id))));
+  svg.querySelectorAll('path[data-id]').forEach(el => el.addEventListener('click', () => { if (S.notch.on) return; setActive(S.decals.find(d => d.id === +el.dataset.id)); }));
+  renderPieceBar();
   const filmM2 = sh.w * (n * SH) / 1e6, use = filmM2 ? area / 1e6 / filmM2 * 100 : 0;
   $('#matSize').textContent = sh.roll ? `${tr('Roll')} ${sh.w} mm × ${Math.round(SH)} mm` : `${sh.w} × ${sh.h} mm${n > 1 ? `, ${n} ${tr('sheets')}` : ''}`;
   $('#matCount').innerHTML = `<strong>${pieces.length}</strong> ${tr(pieces.length === 1 ? 'piece' : 'pieces')}` + (pieces.length ? ` · <span title="${esc(tr('Share of the film the pieces use, and the film area'))}">${use.toFixed(0)}% ${tr('used')} · ${filmM2.toFixed(2)} m²</span>` : '');
@@ -18770,6 +18875,14 @@ const DE = {
   "Stick to model": "Aufs Modell kleben",
   "Unstick": "Lösen",
   "Adjust": "Anpassen",
+  "Unwrap the selected decal, or all changed decals when none is selected (U)": "Das ausgewählte Decal abwickeln, oder alle geänderten, wenn keins ausgewählt ist (U)",
+  "Unwrapped {0}. {1} more changed: press Unwrap with nothing selected to do them too (export does them anyway).": "{0} abgewickelt. {1} weitere geändert: Abwickeln ohne Auswahl macht sie auch (der Export macht sie sowieso).",
+  "Colours: follow the system, light or dark": "Farben: wie das System, hell oder dunkel", "Light": "Hell", "Dark": "Dunkel",
+  "Piece": "Teil", "{0} on the sheet": "{0} auf dem Bogen", "{0} on the sheet (both sides)": "{0} auf dem Bogen (beide Seiten)", "auto": "auto",
+  "Turn the piece 90° to the left on the sheet": "Das Teil auf dem Bogen 90° nach links drehen", "Turn the piece 90° to the right on the sheet": "Das Teil auf dem Bogen 90° nach rechts drehen",
+  "Turn the piece by this angle on the sheet (arrow keys in the box: 1°, Shift: 15°)": "Das Teil auf dem Bogen um diesen Winkel drehen (Pfeiltasten im Feld: 1°, Umschalt: 15°)",
+  "Let FitFlat turn the piece again: smallest box around it, long side across": "FitFlat dreht das Teil wieder selbst: kleinste Box drumherum, lange Seite quer",
+  "Turned on the sheet": "Auf dem Bogen gedreht",
   "Unwrapping {0} of {1}…": "Abwickeln {0} von {1} …",
   "This notch cuts the piece in two, so only the bigger part is kept. Make it shorter or narrower.": "Diese Kerbe schneidet das Teil in zwei Stücke, nur das größere bleibt. Mach sie kürzer oder schmaler.",
   "Notch tool: click a piece's edge to cut a V-notch with a rounded tip there. Width, length and tip radius below; save your own as templates": "Kerben-Werkzeug: Klick auf den Rand eines Teils schneidet dort eine V-Kerbe mit runder Spitze. Breite, Länge und Spitzenradius darunter; eigene als Vorlage speichern",
@@ -18780,7 +18893,11 @@ const DE = {
   "Save as template": "Als Vorlage speichern", "Delete template": "Vorlage löschen", "Remove notch": "Kerbe entfernen",
   "Keep these numbers as a template you can pick again (stays in this browser)": "Diese Werte als Vorlage behalten, die du wieder wählen kannst (bleibt in diesem Browser)",
   "Delete the picked template": "Die gewählte Vorlage löschen", "Take the selected notch out (Delete)": "Die ausgewählte Kerbe entfernen (Entf)",
-  "Click a piece's edge on the sheet to cut a notch there. Click a notch to select it, drag it along the edge, change its numbers here.": "Klick auf den Rand eines Teils auf dem Bogen schneidet dort eine Kerbe. Klick eine Kerbe an, um sie auszuwählen, zieh sie am Rand entlang, ändere hier ihre Werte.",
+  "Click a piece's edge on the sheet to cut a notch there. Click a notch to select it, then drag it along the edge or use the arrow keys (Shift: 5 mm), and change its numbers here. With Count in stretch on, the unwrap treats a notch as a slit, so the stretch counts it.": "Klick auf den Rand eines Teils auf dem Bogen schneidet dort eine Kerbe. Klick eine Kerbe an, um sie auszuwählen, zieh sie dann am Rand entlang oder nimm die Pfeiltasten (Umschalt: 5 mm), und ändere hier ihre Werte. Mit In Dehnung einrechnen behandelt die Abwicklung eine Kerbe als Schlitz, die Dehnung zählt sie also mit.",
+  "Count in stretch": "In Dehnung einrechnen",
+  "On: the unwrap treats the notch as a slit, so the film may open or close there as the frame needs, and the stretch colours and numbers count it. Off: the notch is only cut out of the finished flat piece": "An: Die Abwicklung behandelt die Kerbe als Schlitz, die Folie darf sich dort öffnen oder schließen, wie der Rahmen es braucht, und Dehnungsfarben und -werte zählen sie mit. Aus: Die Kerbe wird nur aus dem fertigen flachen Teil geschnitten",
+  "Notch out of stretch": "Kerbe aus Dehnung genommen",
+  "Notch counted in stretch": "Kerbe in Dehnung eingerechnet",
   "Show the cut sheet big, to place notches comfortably (Esc goes back)": "Den Schneidebogen groß zeigen, um Kerben bequem zu setzen (Esc zurück)",
   "Enlarge": "Vergrößern", "Smaller": "Kleiner", "Custom": "Eigene", "Selected notch": "Ausgewählte Kerbe", "New notches": "Neue Kerben",
   "Small V": "Kleines V", "Medium V": "Mittleres V", "Long V": "Langes V", "Wide V": "Breites V", "Slit": "Schlitz",
