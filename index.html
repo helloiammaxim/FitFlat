@@ -3487,7 +3487,7 @@ function updateTplWhere() {
 $('#tplFolderBtn').addEventListener('click', pickTplFolder);
 $('#tplFolderOff').addEventListener('click', tplFolderOff);
 $('#tplReconnect').addEventListener('click', async () => { if (await tplPerm(true)) { updateTplWhere(); renderLib(); } });
-(async () => { try { const h = await KV.get('tplFolder'); if (h && canFolder) { TPLDIR.handle = h; TPLDIR.name = h.name; await tplPerm(false); } } catch (e) {} updateTplWhere(); })();
+(async () => { try { let h = await KV.get('tplFolder'); if (h && h.__ffpath && window.FFDesk) h = FFDesk.dir(h.__ffpath, h.name); if (h && canFolder) { TPLDIR.handle = h; TPLDIR.name = h.name; await tplPerm(false); } } catch (e) {} updateTplWhere(); })();
 async function pickFolder() {
   if (!canFolder) { flash(tr('This browser cannot work with folders. Use Chrome or Edge, or Download and Open project files.')); return; }
   let h; try { h = await window.showDirectoryPicker({ id: 'fitflat', mode: 'readwrite' }); }
@@ -3521,7 +3521,8 @@ function updateWhere() {
   $('#libBtn').title = tr(folder ? 'Your saved projects and decal templates, kept in a folder on this computer' : 'Your saved projects and decal templates, kept in this browser');
 }
 // on start: the folder chosen last time (the browser asks again for permission when needed)
-(async () => { try { const h = await KV.get('folder'), m = await KV.get('storeMode'); if (h && canFolder) { FOLDER.handle = h; FOLDER.name = h.name; await folderPerm(false); } if (m === 'folder' && h) S.storeMode = 'folder'; } catch (e) {} updateWhere(); updateStoreBtn(); })();
+(async () => { try { let h = await KV.get('folder'); const m = await KV.get('storeMode'); if (h && h.__ffpath && window.FFDesk) h = FFDesk.dir(h.__ffpath, h.name); // the desktop app keeps folders by path
+  if (h && canFolder) { FOLDER.handle = h; FOLDER.name = h.name; await folderPerm(false); } if (m === 'folder' && h) S.storeMode = 'folder'; } catch (e) {} updateWhere(); updateStoreBtn(); })();
 // where projects are kept: asked once on first use (after the welcome), and from Settings any time
 const STORE_ASKED = 'fitflat-store-asked';
 function openStoreDlg() {
@@ -9833,6 +9834,7 @@ setLang(LANG);
   const startTour = () => { if (dlg.open) dlg.close(); tour.hidden = false; go(0); $('#introOk').focus(); };
   const endTour = () => { if (tour.hidden) return; tour.hidden = true; setTimeout(askStoreOnce, 400); if (tabWas != null) { window.__showTab(tabWas); tabWas = null; } steps.forEach(li => { try { li.querySelector('svg')?.pauseAnimations(); } catch (e) {} }); };
   const welcome = () => { if (!dlg.open) dlg.showModal(); logo.start(); try { localStorage.setItem(KEY, '1'); } catch (e) {} };
+  window.FFWelcome = welcome; window.FFAskStore = askStoreOnce; window.FFSave = () => saveProject(false); // for the desktop app: after activation, and to save when a seat is lost
   dlg.addEventListener('close', () => logo.stop());
   const leave = then => { if (still) { dlg.close(); then && then(); return; } dlg.classList.add('out'); setTimeout(() => { dlg.classList.remove('out'); dlg.close(); then && then(); }, 260); };
   $('#introSkip').addEventListener('click', () => leave(() => setTimeout(askStoreOnce, 300)));
