@@ -120,12 +120,11 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .hint.collapsed:not(.peek) #hint{ display:none; }
 .hint.collapsed .hinttog{ margin:0; color:var(--muted); }
 .hint.collapsed.peek .hinttog{ color:var(--accent); }
-/* hints off: explanations in the panels wait behind an (i) by their heading */
-body.nohints .xp:not(.show){ display:none; }
-.ibtn{ display:none; vertical-align:middle; width:18px; height:18px; margin:-2px 0 0 6px; padding:0; border:0; border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; place-items:center; flex:none; }
-.ibtn svg{ width:15px; height:15px; } .ibtn:hover{ color:var(--ink); background:var(--fill); } .ibtn[aria-expanded="true"]{ color:var(--accent); }
-body.nohints .ibtn{ display:inline-grid; }
-.ibtn.solo{ margin:0 0 0 auto; }
+/* hints off: a panel's explanation shows when you hover its heading (or the export buttons) */
+body.nohints .xp{ display:none; }
+body.nohints [data-tip]:is(h2){ cursor:help; }
+.tipbox{ position:fixed; z-index:200; max-width:320px; padding:9px 11px; border-radius:10px; font-size:12.5px; line-height:1.45; color:var(--ink); background:var(--glass); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border:1px solid var(--line); box-shadow:var(--shadow); pointer-events:none; opacity:0; transition:opacity .12s; }
+.tipbox.on{ opacity:1; }
 .busy{ position:absolute; inset:0; display:none; place-items:center; background:color-mix(in srgb, var(--stage) 45%, transparent); font-weight:600; z-index:5; }
 .busy.on{ display:grid; }
 .busy span{ background:var(--glass); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--line); box-shadow:var(--shadow); padding:12px 18px; border-radius:12px; }
@@ -295,7 +294,7 @@ body.nohints .ibtn{ display:inline-grid; }
 .panel .viewbar .vturn{ grid-template-columns:repeat(4, 1fr); }
 .panel .viewbar .opac input[type=range]{ flex:1; width:auto; }
 .panel .viewbar .vgrid select{ max-width:none; flex:1; padding-right:26px; }
-.panel{ border-left:1px solid var(--line); background:var(--paper); display:flex; flex-direction:column; min-height:0; overflow:auto; }
+.panel{ border-left:1px solid var(--line); background:var(--paper); display:flex; flex-direction:column; min-height:0; overflow:auto; scrollbar-gutter:stable; } /* room for the scrollbar always: content that grows past the bottom no longer squeezes the panel sideways */
 .mat{ background:var(--mat); padding:12px; margin:12px; border-radius:14px; box-shadow:inset 0 0 0 1px rgba(255,255,255,.06); }
 .mat svg{ display:block; width:100%; height:auto; max-height:280px; touch-action:none; cursor:grab; }
 .mat svg.panning{ cursor:grabbing; }
@@ -318,7 +317,7 @@ details.notchbar:not([open]){ display:block; }
 .notchbar .pcang{ display:flex; align-items:center; gap:4px; color:var(--muted); }
 .notchbar .spacer{ flex:1; }
 /* Sheet edit: the piece and notch panels float in one dock, which can be dragged and snaps to the corners and sides */
-.flatdock{ position:fixed; z-index:62; width:min(400px, calc(100vw - 48px)); max-height:calc(100vh - 120px); overflow:auto; background:var(--paper); border:1px solid var(--line); border-radius:16px; box-shadow:0 16px 48px rgba(0,0,0,.4); padding-bottom:2px; }
+.flatdock{ scrollbar-gutter:stable; position:fixed; z-index:62; width:min(400px, calc(100vw - 48px)); max-height:calc(100vh - 120px); overflow:auto; background:var(--paper); border:1px solid var(--line); border-radius:16px; box-shadow:0 16px 48px rgba(0,0,0,.4); padding-bottom:2px; }
 .flatdock[hidden]{ display:none; }
 .flatdock .fdhead{ position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; cursor:grab; user-select:none; touch-action:none; font-size:12px; color:var(--muted); background:inherit; border-radius:16px 16px 0 0; }
 .flatdock.dragging .fdhead{ cursor:grabbing; }
@@ -765,7 +764,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <option disabled>──────</option><option value="keep" title="Keep the current arrangement as the layout shown">Keep current…</option>
       </select></div>
       <div class="trow" id="storeRow"><span>Projects</span><button type="button" class="btn" id="storeBtn" title="Where your projects, starting points and decal templates are kept">This browser</button></div>
-      <div class="trow"><span>Hints</span><label class="tsw" title="On: the explanations in the panels and the tips at the bottom of the view are shown. Off: they wait behind small (i) buttons"><input type="checkbox" id="tipsSw" role="switch" aria-label="Show hints in the panels and tips in the view"><i></i></label></div>
+      <div class="trow"><span>Hints</span><label class="tsw" title="On: the explanations in the panels and the tips at the bottom of the view are shown. Off: hover a panel's heading to read its explanation, and click the (i) at the bottom left for the tip"><input type="checkbox" id="tipsSw" role="switch" aria-label="Show hints in the panels and tips in the view"><i></i></label></div>
       <div class="trow"><span>Model units</span><select class="btn" id="units" aria-label="Model units" title="Model units">
         <option value="auto" id="unitsAuto">Auto</option><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option><option value="in">inch</option>
       </select></div>
@@ -5665,26 +5664,29 @@ $('#shapeMid').addEventListener('click', () => { S.shapeMid = !S.shapeMid; updat
 // the tips panel folds down to a small button; the choice is remembered
 // Hints (Settings): on shows the explanations in the panels and the tips in the view; off (the default) keeps them
 // behind small (i) buttons, by each panel's heading and at the bottom of the view
-const I_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/></svg>';
 function setHintOpen(open, keep) { $('#hintBox').classList.toggle('collapsed', !open); $('#hintBox').classList.remove('peek'); const t = $('#hintTog'); t.hidden = !!open; t.setAttribute('aria-expanded', 'false'); t.title = tr('Show the tip');
-  document.body.classList.toggle('nohints', !open); document.querySelectorAll('.xp.show').forEach(n => n.classList.remove('show')); document.querySelectorAll('.ibtn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  document.body.classList.toggle('nohints', !open);
   $('#tipsSw').checked = !!open; if (!keep) try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
 $('#hintTog').addEventListener('click', () => { const on = $('#hintBox').classList.toggle('peek'); $('#hintTog').setAttribute('aria-expanded', String(on)); });
 $('#tipsSw').addEventListener('change', e => setHintOpen(e.target.checked));
-// the explanations: every plain note in the side panel (not warnings or live status lines)
+// the explanations: every plain note in the side panel (not warnings or live status lines). With hints off they hide,
+// and hovering the panel's heading (or the export buttons) shows them as a tip
 function markHints() {
   document.querySelectorAll('.panel p.note, .flatdock p.note').forEach(n => {
     if (n.classList.contains('xp') || n.classList.contains('warn') || n.getAttribute('role') === 'status' || n.closest('.ff-noxp')) return;
     n.classList.add('xp');
     const box = n.closest('.notchbar, details.sec, .sec, .export') || n.parentNode;
-    if (box.querySelector(':scope .ibtn[data-for]') && box.__ib) { box.__ib.push(n); return; }
-    box.__ib = [n];
-    const b = document.createElement('button'); b.type = 'button'; b.className = 'ibtn'; b.dataset.for = '1'; b.innerHTML = I_SVG; b.setAttribute('aria-expanded', 'false'); b.title = tr('Show the explanation'); b.setAttribute('aria-label', tr('Show the explanation'));
-    b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); const on = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', String(on)); box.__ib.forEach(x => x.classList.toggle('show', on)); });
-    const head = box.querySelector(':scope > summary h2, :scope > h2, :scope > .dhead h2');
-    if (head) head.after(b); else { b.classList.add('solo'); const row = box.querySelector(':scope > .exprow'); if (row) row.appendChild(b); else n.before(b); }
+    const head = box.querySelector(':scope > summary h2, :scope > h2, :scope > .dhead h2'), targets = head ? [head] : [...box.querySelectorAll(':scope > .exprow .btn')];
+    for (const t of targets) { t.__tips = t.__tips || []; t.__tips.push(n); t.dataset.tip = '1'; }
   });
 }
+{ const tip = document.createElement('div'); tip.className = 'tipbox'; tip.setAttribute('role', 'tooltip'); document.body.appendChild(tip); let timer = 0, cur = null;
+  const hide = () => { clearTimeout(timer); timer = 0; cur = null; tip.classList.remove('on'); };
+  document.addEventListener('pointerover', e => { const t = e.target.closest?.('[data-tip]'); if (t === cur) return; hide(); if (!t || !document.body.classList.contains('nohints') || !t.__tips) return; cur = t;
+    timer = setTimeout(() => { const text = t.__tips.map(n => n.textContent.trim()).filter(Boolean).join('\n\n'); if (!text || cur !== t) return; tip.textContent = text; tip.style.whiteSpace = 'pre-line';
+      const r = t.getBoundingClientRect(), w = Math.min(320, innerWidth - 16); tip.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px'; tip.style.top = '0px'; tip.classList.add('on');
+      const h = tip.offsetHeight; tip.style.top = (r.bottom + 8 + h < innerHeight ? r.bottom + 8 : Math.max(8, r.top - h - 8)) + 'px'; }, 350); });
+  document.addEventListener('pointerdown', hide, true); addEventListener('scroll', hide, true); }
 markHints();
 try { setHintOpen(localStorage.getItem('decal-studio-hint') === '1', true); } catch (e) { setHintOpen(false, true); }
 $('#knifeThrough').addEventListener('click', () => setKnifeThrough(!S.knifeThrough));
@@ -6367,7 +6369,7 @@ function sheetZoom(k, cx, cy) {
   // Sheet edit: the piece and notch panels move into a floating dock; drag it by its top, it snaps to a corner or side
   const dock = document.createElement('div'); dock.className = 'flatdock'; dock.id = 'flatDock'; dock.hidden = true; dock.setAttribute('role', 'region'); dock.setAttribute('aria-label', 'Sheet tools');
   const PINS = ['tl', 't', 'tr', 'l', '', 'r', 'bl', 'b', 'br'];
-  dock.innerHTML = `<div class="fdhead"><span class="grip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span><span id="fdTitle">${tr('Sheet tools')}</span><span class="spacer"></span><div class="pins" role="group" aria-label="${tr('Pin to')}">${PINS.map(k => `<button type="button" data-pin="${k}" class="${k ? '' : 'mid'}" title="${tr('Pin here')}" ${k ? '' : 'tabindex="-1" aria-hidden="true"'}></button>`).join('')}</div></div><div class="fdbody"></div>`;
+  dock.innerHTML = `<div class="fdhead"><span class="grip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span><span id="fdTitle">${tr('Sheet tools')}</span></div><div class="fdbody"></div>`;
   document.body.appendChild(dock);
   const homes = ['#pieceBar', '#notchBar'].map(sel => { const el = $(sel); return { el, parent: el.parentNode, next: el.nextSibling }; });
   let dockPos = (() => { try { return JSON.parse(localStorage.getItem('fitflat-dock') || 'null') || { pin: 'bl' }; } catch (e) { return { pin: 'bl' }; } })();
@@ -6378,13 +6380,11 @@ function sheetZoom(k, cx, cy) {
   const placeDock = () => { if (dock.hidden) return; const w = dock.offsetWidth, h = dock.offsetHeight;
     let [x, y] = dockPos.pin ? pinXY(dockPos.pin, w, h) : [dockPos.x, dockPos.y];
     x = Math.min(Math.max(8, x), innerWidth - w - 8); y = Math.min(Math.max(TOP, y), innerHeight - Math.min(h, 60) - 8);
-    dock.style.left = x + 'px'; dock.style.top = y + 'px';
-    dock.querySelectorAll('[data-pin]').forEach(b => b.setAttribute('aria-pressed', String(!!dockPos.pin && b.dataset.pin === dockPos.pin))); };
+    dock.style.left = x + 'px'; dock.style.top = y + 'px'; };
   const saveDock = () => { try { localStorage.setItem('fitflat-dock', JSON.stringify(dockPos)); } catch (e) {} };
   const syncDock = () => { const on = $('#matBox').classList.contains('big'), any = homes.some(h => !h.el.hidden); dock.hidden = !(on && any); placeDock(); };
   const mo = new MutationObserver(syncDock); homes.forEach(h => mo.observe(h.el, { attributes: true, attributeFilter: ['hidden', 'open'] }));
   new ResizeObserver(() => placeDock()).observe(dock); addEventListener('resize', placeDock);
-  dock.querySelectorAll('[data-pin]').forEach(b => b.addEventListener('click', () => { if (!b.dataset.pin) return; dockPos = { pin: b.dataset.pin }; saveDock(); placeDock(); }));
   { let drag = null, ghost = null;
     const near = (x, y, w, h) => { let best = null; for (const k of PINS) { if (!k) continue; const [px, py] = pinXY(k, w, h), d = Math.hypot(px - x, py - y); if (d < 90 && (!best || d < best.d)) best = { k, d, px, py }; } return best; };
     dock.querySelector('.fdhead').addEventListener('pointerdown', e => { if (e.button !== 0 || e.target.closest('button')) return; const r = dock.getBoundingClientRect();
@@ -9032,6 +9032,7 @@ function relayout() {
       el.style.left = Math.round(x) + 'px'; el.style.top = Math.round(y) + 'px';
       obstacles.push({ l: x, t: y, r: x + w, b: y + h });
     }
+    for (const id of PANEL_IDS) { const el = document.getElementById(id); if (el) el.__sz = el.offsetWidth + 'x' + el.offsetHeight; }
     // the tips box sits bottom-left: lift it above any panel in its way
     const hb = $('#hintBox'); if (hb) { const hw = Math.min(540, W - 24), hh = hb.offsetHeight || 40; let bottom = 12;
       for (let k = 0; k < 4; k++) { const top = H - bottom - hh, hit = obstacles.filter(r => r.l < 12 + hw && r.r > 12 && r.t < H - bottom && r.b > top); if (!hit.length) break; bottom = H - Math.min(...hit.map(r => r.t)) + g; }
@@ -9082,7 +9083,7 @@ for (const id of PANEL_IDS) {
   head.querySelector('.ppin').addEventListener('click', e => { e.stopPropagation(); togglePin(id); });
   head.querySelector('.porient')?.addEventListener('click', e => { e.stopPropagation(); toggleOrient(id); });
   head.querySelector('.pfold').addEventListener('click', e => { e.stopPropagation(); toggleFold(id); });
-  new ResizeObserver(() => relayout()).observe(el); // a panel that grows or shrinks (or appears) re-arranges the floating ones
+  new ResizeObserver(L => { if (L.some(en => en.target.__sz !== en.target.offsetWidth + 'x' + en.target.offsetHeight)) relayout(); }).observe(el); // a panel that grows or shrinks (or appears) re-arranges the floating ones; its own resize from being placed does not
 }
 new ResizeObserver(() => relayout()).observe(stage);
 PANEL_IDS.forEach(placePanel); relayout();
@@ -9589,6 +9590,7 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "On: the explanations in the panels and the tips at the bottom of the view are shown. Off: hover a panel's heading to read its explanation, and click the (i) at the bottom left for the tip": "Ein: Erklärungen in den Feldern und Tipps unten in der Ansicht werden gezeigt. Aus: fahre über die Überschrift eines Felds, um seine Erklärung zu lesen, und klicke auf das (i) unten links für den Tipp",
   "Frame builder": "Rahmen-Baukasten", "Frame builder: build a frame from geometry numbers or change its size": "Rahmen-Baukasten: einen Rahmen aus Geometriedaten bauen oder seine Größe ändern",
   "What is the new project about?": "Worum geht es im neuen Projekt?", "Build a frame": "Rahmen bauen", "From geometry numbers or a size chart: road, gravel and mountain bike frames in every size.": "Aus Geometriedaten oder einer Größentabelle: Rennrad-, Gravel- und Mountainbike-Rahmen in jeder Größe.", "Import a 3D model": "3D-Modell importieren", "Your scan or CAD model: .obj, .stl, .glb or .gltf.": "Dein Scan oder CAD-Modell: .obj, .stl, .glb oder .gltf.", "Start a new project: build a frame or import a 3D model (asks to save the open one first)": "Neues Projekt: Rahmen bauen oder 3D-Modell importieren (fragt vorher, ob das offene gespeichert werden soll)",
   "Send a request": "Anfrage senden", "A question, a problem, a licence or anything else: we answer by email.": "Eine Frage, ein Problem, eine Lizenz oder etwas anderes: wir antworten per E-Mail.", "Topic": "Thema", "Question": "Frage", "Licence or purchase": "Lizenz oder Kauf", "Something doesn't work": "Etwas funktioniert nicht", "Idea or wish": "Idee oder Wunsch", "My data (privacy)": "Meine Daten (Datenschutz)", "Name": "Name", "Email (for the answer)": "E-Mail (für die Antwort)", "Message": "Nachricht", "Licence number (optional)": "Lizenznummer (optional)", "Add the FitFlat version and system": "FitFlat-Version und System mitsenden", "We use these details only to answer you, and delete the request 12 months after it is closed. More in Help → Privacy.": "Wir nutzen diese Angaben nur, um dir zu antworten, und löschen die Anfrage 12 Monate nach ihrem Abschluss. Mehr unter Hilfe → Datenschutz.", "Send": "Senden", "Sending…": "Wird gesendet …", "a question, a problem or a licence: we answer by email": "eine Frage, ein Problem oder eine Lizenz: wir antworten per E-Mail", "Please enter your email address, so we can answer.": "Bitte gib deine E-Mail-Adresse an, damit wir antworten können.", "Please write a few words about your request.": "Bitte schreib ein paar Worte zu deiner Anfrage.", "Thank you, your request is on its way.": "Danke, deine Anfrage ist unterwegs.", "We answer at {0}, usually within two working days.": "Wir antworten an {0}, meist innerhalb von zwei Werktagen.", "Request number": "Anfragenummer", "Licence": "Lizenz", "The request service could not be reached, so your email app opened with the message instead. If it did not, write to {0}.": "Der Anfragedienst war nicht erreichbar, deshalb hat sich stattdessen dein E-Mail-Programm mit der Nachricht geöffnet. Falls nicht, schreib an {0}.",
