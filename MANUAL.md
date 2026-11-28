@@ -47,10 +47,10 @@ No scan yet? **Frame from geometry** builds a frame from a brand's geometry char
 
 ## 1. The screen
 
-- **Top bar** — the **project name**: click it for the project menu (*New project*, *Open a saved project…*, *Save*, *Save as a new project*, *Rename…*, *Open a project file (.json)…*, *Download the project file*, *Manage projects and templates…*); the model and its size show below it. On the right: **Import** (a 3D model or scan, SVG artwork as decals, or a reference photo), **Frame** (build a frame from geometry), **Open** (your saved projects, Ctrl+O), **Save** (its arrow: *Save as a new project*, *Rename…*, *Download the project file*), **Settings** (language, appearance — same as your system, light or dark — panel layout, model units) and **?** (the *Walkthrough* again, or the *Manual*).
+- **Top bar** — the **project name**: click it for the project menu (*New project*, *Open a saved project…*, *Save*, *Save as a new project*, *Rename…*, *Open a project file (.json)…*, *Download the project file*, *Manage projects and templates…*); the model and its size show below it. On the right: **Import** (a 3D model or scan, SVG artwork as decals, or a reference photo), **Frame** (build a frame from geometry), **Open** (your saved projects, Ctrl+O), **Save** (its arrow: *Save as a new project*, *Rename…*, *Download the project file*), **Settings** (language, appearance — same as your system, light or dark — panel layout, tips on or off, model units) and **?** (the *Walkthrough* again, or the *Manual*).
 - **Tools panel** (left) — *Draw*, *Edit*, *Knife*.
 - **Tool options** (top) — undo/redo and the options of the current tool, plus *Mirror*.
-- **Tips** (bottom left) — tells you what the next click does. Fold it away with the ⓘ button.
+- **Tips** (bottom left) — tells you what the next click does. Turn them off or on in **Settings**.
 - **Sidebar** (right), with three tabs, so the 3D view stays clear:
   - **Decals** — the decal list; in Edit mode also **Selected decal** (typed move, tube-end gaps, turn, size, offset, snapping, Save to library) and **Points** (point types and point tools, *Move along*, *Turn around*); and **History**.
   - **View** — *Look from*, *Turn*, *Ortho*, *Fit*, *Stretch*, frame opacity, *Grid*, *Reference image* and *Saved views*.

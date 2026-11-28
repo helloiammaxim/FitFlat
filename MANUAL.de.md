@@ -47,10 +47,10 @@ Noch kein Scan? **Rahmen aus Geometrie** baut einen Rahmen aus der Geometrietabe
 
 ## 1. Die Oberfläche
 
-- **Obere Leiste** — der **Projektname**: anklicken für das Projektmenü (*Neues Projekt*, *Gespeichertes Projekt öffnen…*, *Speichern*, *Als neues Projekt speichern*, *Umbenennen…*, *Projektdatei öffnen (.json)…*, *Projektdatei herunterladen*, *Projekte und Vorlagen verwalten…*); darunter Modell und Größe. Rechts: **Importieren** (3D-Modell oder Scan, SVG-Grafik als Decals oder Referenzfoto), **Rahmen** (Rahmen aus Geometrie bauen), **Öffnen** (deine gespeicherten Projekte, Strg+O), **Speichern** (sein Pfeil: *Als neues Projekt speichern*, *Umbenennen…*, *Projektdatei herunterladen*), **Einstellungen** (Sprache, Darstellung — wie das System, hell oder dunkel —, Panel-Anordnung, Modelleinheit) und **?** (noch einmal den *Rundgang*, oder das *Handbuch*).
+- **Obere Leiste** — der **Projektname**: anklicken für das Projektmenü (*Neues Projekt*, *Gespeichertes Projekt öffnen…*, *Speichern*, *Als neues Projekt speichern*, *Umbenennen…*, *Projektdatei öffnen (.json)…*, *Projektdatei herunterladen*, *Projekte und Vorlagen verwalten…*); darunter Modell und Größe. Rechts: **Importieren** (3D-Modell oder Scan, SVG-Grafik als Decals oder Referenzfoto), **Rahmen** (Rahmen aus Geometrie bauen), **Öffnen** (deine gespeicherten Projekte, Strg+O), **Speichern** (sein Pfeil: *Als neues Projekt speichern*, *Umbenennen…*, *Projektdatei herunterladen*), **Einstellungen** (Sprache, Darstellung — wie das System, hell oder dunkel —, Panel-Anordnung, Tipps an oder aus, Modelleinheit) und **?** (noch einmal den *Rundgang*, oder das *Handbuch*).
 - **Werkzeuge** (links) — *Zeichnen*, *Bearbeiten*, *Messer*.
 - **Werkzeugoptionen** (oben) — Rückgängig/Wiederholen und die Optionen des aktuellen Werkzeugs, dazu *Spiegeln*.
-- **Tipps** (unten links) — zeigen, was der nächste Klick bewirkt. Mit der ⓘ-Taste einklappen.
+- **Tipps** (unten links) — zeigen, was der nächste Klick bewirkt. In den **Einstellungen** aus- oder einschalten.
 - **Seitenleiste** (rechts) mit drei Reitern, damit die 3D-Ansicht frei bleibt:
   - **Decals** — die Decal-Liste; beim Bearbeiten auch **Ausgewähltes Decal** (Verschieben per Zahl, Abstand zu den Rohrenden, Drehen, Größe, Versatz, Einrasten, In Bibliothek speichern) und **Punkte** (Punkttypen und Punktwerkzeuge, *Verschieben entlang*, *Drehen um*); dazu **Verlauf**.
   - **Ansicht** — *Ansicht von*, *Drehen*, *Ortho*, *Einpassen*, *Dehnung*, Rahmendeckkraft, *Raster*, *Referenzbild* und *Gespeicherte Ansichten*.

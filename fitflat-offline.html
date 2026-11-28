@@ -111,7 +111,8 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .hint{ position:absolute; left:12px; bottom:12px; transition:bottom .15s; max-width:540px; border-radius:12px; padding:9px 13px 9px 8px; font-size:13px; color:var(--ink); pointer-events:none; display:flex; gap:6px; align-items:flex-start; }
 .hinttog{ pointer-events:auto; flex:none; border:0; background:transparent; color:var(--muted); width:22px; height:22px; margin:-2px 0; padding:0; border-radius:6px; display:grid; place-items:center; cursor:pointer; }
 .hinttog:hover{ background:var(--fill); color:var(--ink); }
-.hint.collapsed{ padding:6px; }
+.hint.collapsed{ display:none; } /* tips off (Settings) */
+.hinttog[hidden]{ display:none; }
 .hint.collapsed #hint{ display:none; }
 .hint.collapsed .hinttog{ margin:0; color:var(--accent); }
 .busy{ position:absolute; inset:0; display:none; place-items:center; background:color-mix(in srgb, var(--stage) 45%, transparent); font-weight:600; z-index:5; }
@@ -652,6 +653,9 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 .tmenu .trow{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 6px; font-size:13px; }
 .tmenu .trow > span{ color:var(--muted); }
 .tmenu .trow + .trow{ border-top:1px solid var(--line); }
+.tsw{ position:relative; display:inline-block; width:38px; height:22px; cursor:pointer; } .tsw input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; }
+.tsw i{ position:absolute; inset:0; border-radius:11px; background:var(--fill2); transition:background .15s; pointer-events:none; } .tsw i::after{ content:''; position:absolute; top:2px; left:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.3); transition:transform .15s; }
+.tsw input:checked + i{ background:#34C759; } .tsw input:checked + i::after{ transform:translateX(16px); } .tsw input:focus-visible + i{ outline:2px solid var(--accent); outline-offset:2px; }
 .tmenu select.btn{ width:auto; min-width:120px; background:var(--fill); }
 @media (max-width: 900px){ .tbtn.wide span{ display:none; } .titleblock .modelinfo{ display:none; } }
 
@@ -712,6 +716,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <option value="draw">Drawing</option><option value="edit">Editing</option><option value="clean">Clean</option>
         <option disabled>──────</option><option value="keep" title="Keep the current arrangement as the layout shown">Keep current…</option>
       </select></div>
+      <div class="trow"><span>Tips</span><label class="tsw"><input type="checkbox" id="tipsSw" checked role="switch" aria-label="Show tips at the bottom of the view"><i></i></label></div>
       <div class="trow"><span>Model units</span><select class="btn" id="units" aria-label="Model units" title="Model units">
         <option value="auto" id="unitsAuto">Auto</option><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option><option value="in">inch</option>
       </select></div>
@@ -923,7 +928,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <button class="btn" id="pbCancel">Cancel</button>
         <button class="btn primary" id="pbApply" disabled>Apply</button>
       </div>
-      <div class="hint" id="hintBox"><button class="hinttog" id="hintTog" aria-expanded="true" title="Hide the tips">
+      <div class="hint" id="hintBox"><button class="hinttog" id="hintTog" aria-expanded="true" title="Hide the tips" hidden>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/></svg></button><span id="hint" role="status"></span></div>
       <div class="legend" id="legend"><span>0%</span><span class="bar"></span><span id="legStretch">4%+ stretch</span><span class="bar fold"></span><span id="legFold">2%+ folds</span></div>
       <div class="busy" id="busy"><span>Working…</span></div>
@@ -15369,8 +15374,9 @@ window.addEventListener('keydown', e => {
 document.querySelectorAll('#turnAxis [data-ax]').forEach(b => b.addEventListener('click', () => { S.turnAxis = b.dataset.ax; document.querySelectorAll('#turnAxis [data-ax]').forEach(x => x.setAttribute('aria-pressed', x.dataset.ax === S.turnAxis)); flash(S.turnAxis === 'view' ? 'Turning around the view: the decal turns as you see it.' : S.turnAxis === 'surface' ? 'Turning around the surface normal at the decal\'s centre.' : `Turning around the ${S.turnAxis.toUpperCase()} axis through the middle of the tube.`); }));
 $('#shapeMid').addEventListener('click', () => { S.shapeMid = !S.shapeMid; updateUI(); flash(S.shapeMid ? 'Shapes snap their centre onto the mirror plane.' : 'Shapes sit where you draw them.'); });
 // the tips panel folds down to a small button; the choice is remembered
-function setHintOpen(open) { $('#hintBox').classList.toggle('collapsed', !open); const t = $('#hintTog'); t.setAttribute('aria-expanded', open); t.title = open ? 'Hide the tips' : 'Show the tips'; try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
+function setHintOpen(open) { $('#hintBox').classList.toggle('collapsed', !open); const t = $('#hintTog'); t.setAttribute('aria-expanded', open); t.title = open ? 'Hide the tips' : 'Show the tips'; $('#tipsSw').checked = !!open; try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
 $('#hintTog').addEventListener('click', () => setHintOpen($('#hintBox').classList.contains('collapsed')));
+$('#tipsSw').addEventListener('change', e => setHintOpen(e.target.checked));
 try { if (localStorage.getItem('decal-studio-hint') === '0') setHintOpen(false); } catch (e) {}
 $('#knifeThrough').addEventListener('click', () => setKnifeThrough(!S.knifeThrough));
 S.drawShape = 'free';
@@ -19238,6 +19244,7 @@ const DE = {
   "Open one of your saved projects (Ctrl O)": "Eines deiner gespeicherten Projekte öffnen (Strg O)",
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
   "More ways to save": "Weitere Arten zu speichern",
+  "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
   "Import": "Importieren", "Bring in a 3D model or scan, SVG artwork, or a reference photo": "3D-Modell oder Scan, SVG-Grafik oder Referenzfoto hereinholen", "3D model or scan": "3D-Modell oder Scan", "SVG artwork as decals": "SVG-Grafik als Decals", "logos and shapes, placed on the frame": "Logos und Formen, auf den Rahmen gesetzt", "Reference photo": "Referenzfoto", "a photo of the real frame, to trace from": "ein Foto des echten Rahmens, zum Nachzeichnen",
   "Project: new, open, save, rename, download": "Projekt: neu, öffnen, speichern, umbenennen, herunterladen", "New project": "Neues Projekt", "Open a saved project…": "Gespeichertes Projekt öffnen…", "Save as a new project": "Als neues Projekt speichern", "Rename…": "Umbenennen…", "Open a project file (.json)…": "Projektdatei öffnen (.json)…", "Download the project file": "Projektdatei herunterladen", "Manage projects and templates…": "Projekte und Vorlagen verwalten…", "Project name": "Projektname", "Editing": "Bearbeiten", "Clean": "Aufgeräumt", "Settings": "Einstellungen", "Language": "Sprache", "Appearance": "Darstellung", "Panel layout": "Anordnung", "Model units": "Modelleinheiten", "Frame": "Rahmen", "New": "Neu", "Open": "Öffnen",
   "New: start over with the start frame": "Neu: mit dem Startrahmen neu beginnen", "Import SVG: place SVG artwork on the frame as editable decals": "SVG importieren: SVG-Grafik als bearbeitbare Decals auf den Rahmen setzen", "Settings: language, appearance, panel layout, model units": "Einstellungen: Sprache, Darstellung, Panel-Anordnung, Modelleinheiten",
