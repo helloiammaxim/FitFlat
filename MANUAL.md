@@ -47,7 +47,7 @@ No scan yet? **Frame from geometry** builds a frame from a brand's geometry char
 
 ## 1. The screen
 
-- **Top bar** — the **project name**: click it for the project menu (*New project*, *Open a saved project…*, *Save*, *Save as a new project*, *Rename…*, *Open a project file (.json)…*, *Download the project file*, *Manage projects and templates…*); the model and its size show below it. On the right: **Import** (a 3D model or scan, SVG artwork as decals, or a reference photo), **Frame** (build a frame from geometry), **Open** (your saved projects, Ctrl+O), **Save**, **Settings** (language, appearance — same as your system, light or dark — panel layout, model units) and **?** (walkthrough and manual).
+- **Top bar** — the **project name**: click it for the project menu (*New project*, *Open a saved project…*, *Save*, *Save as a new project*, *Rename…*, *Open a project file (.json)…*, *Download the project file*, *Manage projects and templates…*); the model and its size show below it. On the right: **Import** (a 3D model or scan, SVG artwork as decals, or a reference photo), **Frame** (build a frame from geometry), **Open** (your saved projects, Ctrl+O), **Save** (its arrow: *Save as a new project*, *Rename…*, *Download the project file*), **Settings** (language, appearance — same as your system, light or dark — panel layout, model units) and **?** (the *Walkthrough* again, or the *Manual*).
 - **Tools panel** (left) — *Draw*, *Edit*, *Knife*.
 - **Tool options** (top) — undo/redo and the options of the current tool, plus *Mirror*.
 - **Tips** (bottom left) — tells you what the next click does. Fold it away with the ⓘ button.
