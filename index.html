@@ -2530,14 +2530,36 @@ ${opts.labels ? `<g id="labels">\n${lab}</g>\n` : ''}</svg>`;
     for (const tb of tubes) if (!tb.slab) for (const P of [tb.A, tb.B]) for (let a = 0; a < 3; a++) { const r = Math.max(tb.r1, tb.r2) * Math.max(tb.sx || 1, tb.sz || 1) + 2 * c + k; lo[a] = Math.min(lo[a], P[a] - r); hi[a] = Math.max(hi[a], P[a] + r); }
     const NB = [0, 1, 2].map(a => Math.ceil((hi[a] - lo[a]) / (c * B)) + 1), N = NB.map(v => v * B), bs = c * B, rb = bs * Math.sqrt(3) / 2;
     const blocks = new Map(); // block key -> { tubes, vals }
+    const kx = T.reduce((m, t) => Math.max(m, t.k || 0), k); // the widest joint of any part
     for (let bk = 0; bk < NB[2]; bk++) for (let bj = 0; bj < NB[1]; bj++) for (let bi = 0; bi < NB[0]; bi++) {
       const cx = lo[0] + (bi + 0.5) * bs, cy = lo[1] + (bj + 0.5) * bs, cz = lo[2] + (bk + 0.5) * bs, near = []; let dmin = Infinity;
-      for (const t of T) { const d = one(t, cx, cy, cz) / Math.min(1, t.ms); if (d < rb + k + 3 * c) near.push(t); if (d < dmin) dmin = d; }
-      if (!near.length || Math.abs(field(near, cx, cy, cz)) > (rb + 3 * c + k) * 1.25 && dmin > -(rb + 3 * c)) continue;
+      for (const t of T) { const d = one(t, cx, cy, cz) / Math.min(1, t.ms); if (d < rb + 2 * kx + 3 * c) near.push(t); if (d < dmin) dmin = d; } // a part counts up to two joint radii away (its blends add up along the chain): leaving one out of a block makes neighbouring blocks disagree, and the mesh gets a hole
+      if (!near.length || Math.abs(field(near, cx, cy, cz)) > (rb + 3 * c + kx) * 1.25 && dmin > -(rb + 3 * c)) continue;
       const vals = new Float32Array((B + 1) ** 3); let pos = 0, neg = 0;
       for (let z = 0; z <= B; z++) for (let y = 0; y <= B; y++) for (let x = 0; x <= B; x++) { const v = field(near, lo[0] + (bi*B + x) * c, lo[1] + (bj*B + y) * c, lo[2] + (bk*B + z) * c); vals[x + (B+1)*(y + (B+1)*z)] = v; if (v < 0) neg++; else pos++; }
       if (pos && neg) blocks.set(bi + NB[0] * (bj + NB[1] * bk), { bi, bj, bk, near, vals });
     }
+    // A grid face whose corners alternate in and out (a saddle) is where the surface only grazes the face, such as a tube's
+    // side lying flat against the grid: one point per cell cannot mesh that, and two sheets end up sharing an edge, which
+    // tears the unwrap there. Such a corner is all but on the surface, so the one nearest to it is moved just outside.
+    { const B1 = B + 1, blk = (i, j, k) => blocks.get(i + NB[0] * (j + NB[1] * k));
+      const holders = (gx, gy, gz) => { const L = []; // the blocks that hold this grid point, or null when one of them was not sampled
+        for (const i of gx % B === 0 && gx ? [gx / B - 1, gx / B] : [Math.floor(gx / B)]) for (const j of gy % B === 0 && gy ? [gy / B - 1, gy / B] : [Math.floor(gy / B)]) for (const k of gz % B === 0 && gz ? [gz / B - 1, gz / B] : [Math.floor(gz / B)]) {
+          if (i >= NB[0] || j >= NB[1] || k >= NB[2]) continue; const b2 = blk(i, j, k); if (!b2) return null; L.push([b2, (gx - i*B) + B1*((gy - j*B) + B1*(gz - k*B))]); }
+        return L; };
+      const setAll = (gx, gy, gz, val) => { const L = holders(gx, gy, gz); if (!L) return false; for (const [b2, i] of L) b2.vals[i] = val; return true; };
+      const FACES = [[0, 1, B1 + 1, B1], [0, B1, B1 + B1*B1, B1*B1], [0, B1*B1, B1*B1 + 1, 1]], OFF = [[[0,0,0],[1,0,0],[1,1,0],[0,1,0]], [[0,0,0],[0,1,0],[0,1,1],[0,0,1]], [[0,0,0],[0,0,1],[1,0,1],[1,0,0]]];
+      for (let pass = 0; pass < 4; pass++) { let fixed = 0;
+        for (const b2 of blocks.values()) { const V = b2.vals;
+          for (let z = 0; z <= B; z++) for (let y = 0; y <= B; y++) for (let x = 0; x <= B; x++) { const i0 = x + B1*(y + B1*z);
+            for (let fi = 0; fi < 3; fi++) {
+              if (fi === 0 ? x === B || y === B : fi === 1 ? y === B || z === B : z === B || x === B) continue;
+              const F = FACES[fi], w0 = V[i0], w1 = V[i0 + F[1]], w2 = V[i0 + F[2]], w3 = V[i0 + F[3]];
+              if ((w0 < 0) !== (w2 < 0) || (w1 < 0) !== (w3 < 0) || (w0 < 0) === (w1 < 0)) continue; // not a saddle
+              const w = [w0, w1, w2, w3], ord = [0, 1, 2, 3].sort((p, q) => Math.abs(w[p]) - Math.abs(w[q]));
+              for (const q of ord) { const o = OFF[fi][q]; // the corner nearest the surface whose blocks were all sampled: changing a point a skipped block also holds would open a hole
+                if (!setAll(b2.bi*B + x + o[0], b2.bj*B + y + o[1], b2.bk*B + z + o[2], w[q] < 0 ? 1e-4 * c : -1e-4 * c)) continue; fixed++; break; } } } }
+        if (!fixed) break; } }
     // one vertex per cell the surface crosses: at the mean of its edge crossings where the surface is smooth, and where it bends
     // sharply (a tube end, a sharp joint) at the point that best fits the crossings' tangent planes (dual contouring), so edges stay crisp
     const pos = [], vid = new Map(), cellVals = new Map(), sharp = [], E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]], B1 = B + 1;
