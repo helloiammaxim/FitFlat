@@ -47,7 +47,7 @@ Noch kein Scan? **Rahmen aus Geometrie** baut einen Rahmen aus der Geometrietabe
 
 ## 1. Die Oberfläche
 
-- **Obere Leiste** — der Projektname (anklicken für deine Projekte) mit dem Modell und seiner Größe darunter; rechts die Dateischaltflächen *Neu*, *Öffnen* und *SVG importieren* (Maus darüber zeigt ihre Namen), *Rahmen* (Rahmen aus Geometrie bauen), *Speichern*, **Einstellungen** und **?** (Rundgang und Handbuch). **Einstellungen** enthält Sprache (EN | DE), Darstellung (wie das System, hell oder dunkel), Panel-Anordnung und Modelleinheit.
+- **Obere Leiste** — der **Projektname**: anklicken für das Projektmenü (*Neues Projekt*, *Gespeichertes Projekt öffnen…*, *Speichern*, *Als neues Projekt speichern*, *Umbenennen…*, *Projektdatei öffnen (.json)…*, *Projektdatei herunterladen*, *Projekte und Vorlagen verwalten…*); darunter Modell und Größe. Rechts: **Importieren** (3D-Modell oder Scan, SVG-Grafik als Decals oder Referenzfoto), **Rahmen** (Rahmen aus Geometrie bauen), **Speichern**, **Einstellungen** (Sprache, Darstellung — wie das System, hell oder dunkel —, Panel-Anordnung, Modelleinheit) und **?** (Rundgang und Handbuch).
 - **Werkzeuge** (links) — *Zeichnen*, *Bearbeiten*, *Messer*.
 - **Werkzeugoptionen** (oben) — Rückgängig/Wiederholen und die Optionen des aktuellen Werkzeugs, dazu *Spiegeln*.
 - **Tipps** (unten links) — zeigen, was der nächste Klick bewirkt. Mit der ⓘ-Taste einklappen.
@@ -330,6 +330,8 @@ Jedes V-Kerben-Schild zeigt die Öffnung des V in Grad und seine Breite am Rand 
 ## 12. Bogen und Export
 
 - **Breite, Höhe, Abstand** des Bogens in mm. Die Vorschau zeigt, wie die Teile angeordnet sind und wie viele es sind.
+- **Weiche Farben:** Die Farben für Dehnung und Überschuss gehen auf Modell, Bogen und im Export weich ineinander über, statt jedes Dreieck zu zeigen.
+- **Abwicklungen bleiben erhalten:** Jede Abwicklung wird auch in diesem Browser aufbewahrt. Öffnest du ein Projekt erneut oder lädst die Seite neu, kommen die Abwicklungen von dort, und nur geänderte Decals werden neu abgewickelt. Der Browser behält die letzten 300.
 - **Dehnungskarte im Export:** **Dehnungskarte** in den Bogen-Einstellungen anhaken, dann bekommt die SVG eine zusätzliche Ebene unter den Schnittlinien: jedes Teil in seinen Farben für Dehnung und Überschuss, die vorgeschlagenen V-Kerben rot gestrichelt und eine Legende unter dem Bogen mit Folie und Grenzen. In Illustrator, Inkscape oder Affinity öffnen, um Schnitte von Hand zu planen. Die Ebene vor dem Schneiden ausblenden oder löschen.
 - **Vorgeschlagene Schnitte erscheinen auf dem flachen Bogen** (für das ausgewählte Decal oder alle Decals bei eingeschalteter Dehnung) und als gestrichelte Linien am Modell, solange das **Messer** aktiv ist, damit du an ihnen entlang schneiden kannst. Klick auf einen auf dem Bogen setzt ihn.
 - **Vorgeschlagene V-Kerben:** Wo ein Teil zu viel Folie hat, zeigen rote gestrichelte Linien auf dem Bogen vorgeschlagene V-Kerben. Klick eine an, um sie zu schneiden: FitFlat schneidet am Rahmen, wickelt neu ab und zeigt das Ergebnis auf dem Bogen und am Modell, wo du sie im Bearbeiten-Modus mit ihren Griffen anpassen kannst. Strg+Z macht sie rückgängig.

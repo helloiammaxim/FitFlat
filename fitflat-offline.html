@@ -634,6 +634,17 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 .tsep{ width:1px; height:20px; background:var(--line); margin:0 2px; }
 .tmenu{ position:absolute; top:calc(100% + 6px); right:12px; width:290px; padding:8px; border-radius:14px; background:var(--surface); border:1px solid var(--line); box-shadow:0 12px 40px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08); display:flex; flex-direction:column; gap:2px; z-index:20; }
 .tmenu[hidden]{ display:none; }
+.tmenu.dd{ right:auto; width:auto; min-width:250px; padding:6px; gap:0; }
+.tmenu.dd button{ all:unset; box-sizing:border-box; display:flex; align-items:baseline; justify-content:space-between; gap:16px; width:100%; padding:7px 10px; border-radius:7px; font-size:13px; color:var(--ink); cursor:pointer; }
+.tmenu.dd button:hover, .tmenu.dd button:focus-visible{ background:var(--accent); color:#fff; } .tmenu.dd button:hover small, .tmenu.dd button:focus-visible small, .tmenu.dd button:hover kbd, .tmenu.dd button:focus-visible kbd{ color:rgba(255,255,255,.8); }
+.tmenu.dd button b{ font-weight:500; } .tmenu.dd small{ color:var(--muted); font-size:11.5px; }
+#importMenu button{ flex-direction:column; align-items:flex-start; gap:1px; }
+.tmenu.dd kbd{ font:inherit; font-size:11.5px; color:var(--muted); }
+.tmenu.dd hr{ border:0; border-top:1px solid var(--line); margin:5px 8px; }
+.tbtn .chev{ width:10px; height:10px; stroke-width:1.6; margin-left:-2px; opacity:.7; }
+.brand .bname{ color:#353C47; } /* the wordmark in cold slate, not black */
+:root[data-theme="dark"] .brand .bname{ color:#C9CFD8; }
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]) .brand .bname{ color:#C9CFD8; } }
 .tmenu .trow{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 6px; font-size:13px; }
 .tmenu .trow > span{ color:var(--muted); }
 .tmenu .trow + .trow{ border-top:1px solid var(--line); }
@@ -647,21 +658,37 @@ select optgroup{ font-weight:600; color:#6E6E73; }
   <header class="top">
     <div class="brand"><svg class="mark" aria-hidden="true" viewBox="236 112 594 860"><defs><linearGradient id="ffgback" gradientUnits="userSpaceOnUse" x1="250" x2="561" y1="0" y2="0"><stop offset="0" stop-color="#edeefc"/><stop offset="1" stop-color="#a0a4fa"/></linearGradient><linearGradient id="ffgarcFar1" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcFar0" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcNear1" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgarcNear0" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgfront" gradientUnits="userSpaceOnUse" x1="564" x2="719" y1="0" y2="0"><stop offset="0" stop-color="#0033f8"/><stop offset="1" stop-color="#4258fb"/></linearGradient></defs><path d="M250.6,194.4 L561.0,130.0 L561.0,289.1 L410.4,320.3 L410.4,479.4 L561.0,448.2 L561.0,607.3 L410.4,638.6 L410.4,797.7 L250.6,830.9 Z" fill="url(#ffgback)"/><path d="M561.0,448.2 C596.5,440.8 637.2,438.6 676.3,442.0 C715.3,445.4 750.3,454.1 775.4,466.7 C800.5,479.4 814.2,495.1 814.2,511.3 L814.2,670.5 C814.2,654.2 800.5,638.5 775.4,625.9 C750.3,613.2 715.3,604.5 676.3,601.1 C637.2,597.8 596.5,600.0 561.0,607.3 Z" fill="url(#ffgarcFar1)"/><path d="M561.0,130.0 C596.5,122.6 637.2,120.4 676.3,123.8 C715.3,127.1 750.3,135.9 775.4,148.5 C800.5,161.1 814.2,176.9 814.2,193.1 L814.2,352.2 C814.2,336.0 800.5,320.2 775.4,307.6 C750.3,295.0 715.3,286.3 676.3,282.9 C637.2,279.5 596.5,281.7 561.0,289.1 Z" fill="url(#ffgarcFar0)"/><path d="M814.2,511.3 C814.2,524.4 805.4,537.2 788.6,548.4 C771.8,559.5 747.8,568.6 719.2,574.5 L719.2,733.6 C747.8,727.7 771.8,718.7 788.6,707.5 C805.4,696.4 814.2,683.5 814.2,670.5 Z" fill="url(#ffgarcNear1)"/><path d="M814.2,193.1 C814.2,206.2 805.4,219.0 788.6,230.1 C771.8,241.3 747.8,250.3 719.2,256.3 L719.2,415.4 C747.8,409.4 771.8,400.4 788.6,389.3 C805.4,378.1 814.2,365.3 814.2,352.2 Z" fill="url(#ffgarcNear0)"/><path d="M408.8,320.7 L719.2,256.3 L719.2,415.4 L564.0,447.6 L564.0,606.7 L719.2,574.5 L719.2,733.6 L564.0,765.8 L564.0,925.0 L408.8,957.2 Z" fill="url(#ffgfront)"/></svg><span class="bname" translate="no">FitFlat</span></div>
     <div class="titleblock">
-      <button class="projname" id="projName" title="Your projects: open, rename, duplicate or start from a template"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
+      <button class="projname" id="projName" aria-haspopup="menu" aria-expanded="false" title="Project: new, open, save, rename, download"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
       <span class="modelinfo" id="modelinfo"></span>
     </div>
     <span class="spacer"></span>
-    <div class="tgroup" role="group" aria-label="File">
-      <button class="tbtn" id="demo" title="New: start over with the start frame" aria-label="New"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M11.5 2.75H6A1.75 1.75 0 0 0 4.25 4.5v11A1.75 1.75 0 0 0 6 17.25h8a1.75 1.75 0 0 0 1.75-1.75V7L11.5 2.75z"/><path d="M11.25 2.9V7.25h4.35M10 9.5v5M7.5 12h5"/></svg></button>
-      <label class="tbtn" tabindex="0" title="Open a frame model (.glb, .obj, .stl), a saved project (.json) or SVG artwork" aria-label="Open"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M2.75 6V14.5A1.75 1.75 0 0 0 4.5 16.25h11a1.75 1.75 0 0 0 1.75-1.75V7.75A1.75 1.75 0 0 0 15.5 6H10L8.25 3.75H4.5A1.75 1.75 0 0 0 2.75 5.5z"/></svg><input type="file" id="file" accept=".glb,.gltf,.obj,.stl,.json,.svg" hidden></label>
-      <label class="tbtn" tabindex="0" title="Import SVG: place SVG artwork on the frame as editable decals" aria-label="Import SVG"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 15.5C6 6 12 13 16.5 4.5"/><rect x="2" y="14" width="3" height="3" rx=".6"/><rect x="15" y="3" width="3" height="3" rx=".6"/><path d="M3.5 15.5L8 6.5M16.5 4.5L12.5 13" stroke-dasharray="1.6 1.6"/></svg><input type="file" id="importSvg" accept=".svg,image/svg+xml" hidden></label>
-    </div>
+    <button class="tbtn wide" id="importBtn" aria-haspopup="menu" aria-expanded="false" title="Bring in a 3D model or scan, SVG artwork, or a reference photo"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9M6.5 8.5L10 12l3.5-3.5"/><path d="M3.5 12.5v2A1.75 1.75 0 0 0 5.25 16.25h9.5a1.75 1.75 0 0 0 1.75-1.75v-2"/></svg><span>Import</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
     <button class="tbtn wide" id="geoBtn" title="Build a frame from geometry numbers or change its size"><svg viewBox="0 0 24 20" aria-hidden="true"><circle cx="5" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><path d="M5 13l4-7h7l3 7M9 6l3.5 7H5M12.5 13L16 6M8 4h3M15 4h2.5"/></svg><span>Frame</span></button>
     <button class="btn primary savebtn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button>
     <span class="tsep" aria-hidden="true"></span>
     <button class="tbtn" id="settingsBtn" title="Settings: language, appearance, panel layout, model units" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h8M14.5 5.5H17M3 14.5h2.5M9 14.5h8"/><circle cx="12.75" cy="5.5" r="1.75"/><circle cx="7.25" cy="14.5" r="1.75"/></svg></button>
     <button class="tbtn" id="introBtn" title="How it works: a short walkthrough and the manual" aria-label="How it works"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.25"/><path d="M7.9 7.7a2.2 2.2 0 1 1 3.1 2c-.6.3-1 .8-1 1.5v.4"/><circle cx="10" cy="14.1" r=".2" fill="currentColor"/></svg></button>
     <button class="btn" id="libBtn" title="Your saved projects and decal templates, kept in this browser" hidden>Projects</button>
+    <button id="demo" hidden>New</button>
+    <input type="file" id="file" accept=".glb,.gltf,.obj,.stl,.json,.svg" hidden><input type="file" id="importSvg" accept=".svg,image/svg+xml" hidden><input type="file" id="projFile" accept=".json" hidden>
+    <div class="tmenu dd" id="projMenu" role="menu" aria-label="Project" hidden>
+      <button role="menuitem" data-m="new">New project<kbd></kbd></button>
+      <button role="menuitem" data-m="lib">Open a saved project…</button>
+      <hr>
+      <button role="menuitem" data-m="save">Save<kbd>Ctrl S</kbd></button>
+      <button role="menuitem" data-m="saveas">Save as a new project</button>
+      <button role="menuitem" data-m="rename">Rename…</button>
+      <hr>
+      <button role="menuitem" data-m="openfile">Open a project file (.json)…</button>
+      <button role="menuitem" data-m="download">Download the project file</button>
+      <hr>
+      <button role="menuitem" data-m="lib">Manage projects and templates…</button>
+    </div>
+    <div class="tmenu dd" id="importMenu" role="menu" aria-label="Import" hidden>
+      <button role="menuitem" data-m="model"><b>3D model or scan</b><small>.obj, .stl, .glb, .gltf</small></button>
+      <button role="menuitem" data-m="svg"><b>SVG artwork as decals</b><small>logos and shapes, placed on the frame</small></button>
+      <button role="menuitem" data-m="ref"><b>Reference photo</b><small>a photo of the real frame, to trace from</small></button>
+    </div>
     <div class="tmenu" id="settingsPop" role="dialog" aria-label="Settings" hidden>
       <div class="trow"><span>Language</span><div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div></div>
       <div class="trow"><span>Appearance</span><div class="seg" id="theme" role="group" aria-label="Colours"><button data-theme="auto" aria-pressed="true" title="Colours: same as your system" aria-label="Same as your system"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg></button><button data-theme="light" aria-pressed="false" title="Light" aria-label="Light"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.05 3.05l1.13 1.13M11.82 11.82l1.13 1.13M3.05 12.95l1.13-1.13M11.82 4.18l1.13-1.13"/></g></svg></button><button data-theme="dark" aria-pressed="false" title="Dark" aria-label="Dark"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button></div></div>
@@ -12211,7 +12238,7 @@ const Core = (() => {
     const faceStretch = new Map(), faceSig = new Map(); for (const f of set) { const l = fl.localFace.get(f); faceStretch.set(f, fl.stretch[l]); faceSig.set(f, [fl.sv[2*l], fl.sv[2*l+1]]); }
     let area = 0; for (let i = 0; i < outline.length; i++) { const a = outline[i], b = outline[(i+1)%outline.length]; area += a[0]*b[1]-b[0]*a[1]; }
     const uvOf = (f, b) => { const lfi = fl.localFace.get(f); if (lfi === undefined) return null; const t = fl.lf[lfi]; return [b[0]*fl.u[t[0]] + b[1]*fl.u[t[1]] + b[2]*fl.u[t[2]], b[0]*fl.v[t[0]] + b[1]*fl.v[t[1]] + b[2]*fl.v[t[2]]]; };
-    return { samples, outline, stretchMax: mx, stretchMean: asum ? wsum/asum : 0, insideFaces: [...set], faceStretch, faceSig, area: Math.abs(area)/2, flips: fl.flips, uvOf, coreFaces: reg.insideFaces, seamEdges: fl.seam?.edges || null, slitSeam: !!hint, darts: dartInfo };
+    return { samples, outline, stretchMax: mx, stretchMean: asum ? wsum/asum : 0, insideFaces: [...set], faceStretch, faceSig, area: Math.abs(area)/2, flips: fl.flips, uvOf, coreFaces: reg.insideFaces, seamEdges: fl.seam?.edges || null, slitSeam: !!hint, darts: dartInfo, flat: { localFace: fl.localFace, lf: fl.lf, u: fl.u, v: fl.v } };
   }
 
   // ---------- clean curves for export ----------
@@ -13119,6 +13146,19 @@ function readGeo() {
   return { geo, tubes };
 }
 $('#geoBtn').addEventListener('click', geoDialog);
+// header menus: the project (from its name) and Import
+function headerMenu(btn, menu, act) {
+  const set = on => { menu.hidden = !on; btn.setAttribute('aria-expanded', String(on)); if (on) { const r = btn.getBoundingClientRect(), hr = btn.closest('header').getBoundingClientRect();
+    menu.style.left = Math.max(8, Math.min(r.left - hr.left, hr.width - menu.offsetWidth - 8)) + 'px'; menu.querySelector('button')?.focus(); } };
+  btn.addEventListener('click', e => { e.stopPropagation(); set(menu.hidden); });
+  menu.addEventListener('click', e => { const b = e.target.closest('button[data-m]'); if (!b) return; set(false); act(b.dataset.m); });
+  menu.addEventListener('keydown', e => { const items = [...menu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length].focus(); } });
+  addEventListener('pointerdown', e => { if (!menu.hidden && !e.target.closest('#' + menu.id) && !btn.contains(e.target)) set(false); }, true);
+  addEventListener('keydown', e => { if (e.key === 'Escape' && !menu.hidden) { set(false); btn.focus(); e.stopPropagation(); } }, true);
+}
+headerMenu($('#importBtn'), $('#importMenu'), m => { if (m === 'model') $('#file').click(); else if (m === 'svg') $('#importSvg').click(); else if (m === 'ref') $('#refFile').click(); });
+$('#projFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) openFile(f); e.target.value = ''; });
 { const pop = $('#settingsPop'), btn = $('#settingsBtn');
   const set = on => { pop.hidden = !on; btn.setAttribute('aria-expanded', String(on)); };
   btn.addEventListener('click', e => { e.stopPropagation(); set(pop.hidden); });
@@ -13527,7 +13567,15 @@ $('#tplList').addEventListener('click', async e => {
 function libTab(t) { t = t === true ? 'tpl' : t === false ? 'proj' : t; for (const [tab, pan, k] of [['#tabProj', '#libProj', 'proj'], ['#tabStart', '#libStart', 'start'], ['#tabTpl', '#libTpl', 'tpl']]) { $(tab).setAttribute('aria-selected', String(t === k)); $(pan).hidden = t !== k; } }
 $('#tabProj').addEventListener('click', () => libTab('proj')); $('#tabTpl').addEventListener('click', () => libTab('tpl')); $('#tabStart').addEventListener('click', () => libTab('start'));
 $('#libSearch').addEventListener('input', renderLibSoon); $('#libSort').addEventListener('change', renderLib);
-$('#projName').addEventListener('click', async () => { libTab('proj'); $('#libMsg').textContent = ''; if (S.storeMode === 'folder' && FOLDER.handle && !FOLDER.ok) await folderPerm(true); $('#libDlg').showModal(); renderLib(); });
+headerMenu($('#projName'), $('#projMenu'), async m => {
+  if (m === 'new') $('#demo').click();
+  else if (m === 'lib') { libTab('proj'); $('#libMsg').textContent = ''; if (S.storeMode === 'folder' && FOLDER.handle && !FOLDER.ok) await folderPerm(true); $('#libDlg').showModal(); renderLib(); }
+  else if (m === 'save') saveProject(false);
+  else if (m === 'saveas') saveProject(true);
+  else if (m === 'rename') { const n = prompt(tr('Project name'), S.project?.name || ''); if (n != null && n.trim()) { S.project.name = safeName(n.trim()); updateProjName(); if (S.project.id) saveProject(false, true); } }
+  else if (m === 'openfile') $('#projFile').click();
+  else if (m === 'download') { if (S.source) saveFile(baseName() + '.decals.json', projectJSON(), null); }
+});
 // starting points: a frame with its usual decals, opened as a new project each time
 $('#startSave').addEventListener('click', async () => {
   if (!S.source) return; const name = prompt(tr('Name for this starting point:'), S.project.name || S.source.name.replace(/\.[^.]+$/, '')); if (name == null) return;
@@ -13799,7 +13847,8 @@ const safeName = n => typeof n === 'string' ? n.replace(/[\u0000-\u001f<>]/g, ''
 const safeColor = c => typeof c === 'string' && /^#[0-9a-f]{3,8}$/i.test(c) ? c : null;
 function restoreDecals(list, msg, fname) {
   setBusy('Restoring decals…');
-  setTimeout(() => {
+  const kept = Promise.race([UNWRAPS.preload(S.model).catch(() => 0), new Promise(r => setTimeout(() => r(0), 4000))]); // unwraps kept from before, if any
+  setTimeout(async () => { await kept;
     const { mesh, grid } = S.model, idMap = new Map(), made = [];
     for (const dd of list) {
       const id = S.nextId++; if (dd.id != null) idMap.set(dd.id, id);
@@ -14829,6 +14878,36 @@ function clearStrokePreview() { if (strokeLine) { scene.remove(strokeLine); stro
 // Solving is the slow part. The same outline always unwraps the same way, so results are kept by outline: undo, redo,
 // duplicates and decals that did not change come straight back without unwrapping again.
 const SOLVES = new Map(); let RESV = 0;
+// Unwraps are kept in this browser too (IndexedDB), keyed by the model's shape, the decal's outline and cuts, the film and
+// this version of the unwrapper: opening a project again, or reloading, takes them from there instead of unwrapping again.
+const UNWRAPS = (() => {
+  const fnv = (str, h = 0x811c9dc5) => { for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; };
+  let tag = null; const solverTag = () => tag || (tag = (() => { const sc = [...document.scripts].find(x => x.textContent.includes('const Core = (() => {')); const t = sc ? sc.textContent : ''; return fnv(t).toString(36) + t.length.toString(36); })());
+  const modelKey = m => { if (!m) return ''; if (m._ukey) return m._ukey; const P = m.mesh.pos, T = m.mesh.tri; let a = 0x811c9dc5, b = 0x9747b28c;
+    const f = new Float32Array(1), u = new Uint32Array(f.buffer); for (let i = 0; i < P.length; i++) { f[0] = P[i]; a = Math.imul(a ^ u[0], 16777619) >>> 0; b = Math.imul(b ^ (u[0] >>> 7), 2246822519) >>> 0; }
+    for (let i = 0; i < T.length; i++) { a = Math.imul(a ^ T[i], 16777619) >>> 0; } return (m._ukey = a.toString(36) + b.toString(36) + P.length.toString(36)); };
+  let ready = null; const open = () => ready || (ready = new Promise(res => { try { const r = indexedDB.open('fitflat-unwraps', 1);
+    r.onupgradeneeded = () => { const st = r.result.createObjectStore('solves', { keyPath: 'k' }); st.createIndex('t', 't'); };
+    r.onsuccess = () => res(r.result); r.onerror = () => res(null); r.onblocked = () => res(null); } catch (e) { res(null); } }));
+  const full = (m, key) => modelKey(m) + '|' + solverTag() + '|' + key;
+  const pack = r => { const o = {}; for (const [k, v] of Object.entries(r)) if (k !== 'uvOf' && k !== 'insideSet' && k !== 'ndx' && k[0] !== '_') o[k] = v; return o; };
+  const unpack = o => { const fl = o.flat; o.uvOf = (f, b) => { const lfi = fl.localFace.get(f); if (lfi === undefined) return null; const t = fl.lf[lfi]; return [b[0]*fl.u[t[0]] + b[1]*fl.u[t[1]] + b[2]*fl.u[t[2]], b[0]*fl.v[t[0]] + b[1]*fl.v[t[1]] + b[2]*fl.v[t[2]]]; };
+    o.insideSet = new Set(o.insideFaces); o._v = ++RESV; o._kept = true; return o; };
+  const queue = new Map(); let timer = 0;
+  const flush = async () => { timer = 0; const db = await open(); if (!db || !queue.size) return; const items = [...queue.values()]; queue.clear();
+    try { const t = db.transaction('solves', 'readwrite'), st = t.objectStore('solves'); for (const it of items) { try { st.put(it); } catch (e) {} }
+      t.oncomplete = () => prune(db); } catch (e) {} };
+  const prune = db => { try { const t = db.transaction('solves', 'readwrite'), st = t.objectStore('solves'), cq = st.count(); // keep the last 300
+    cq.onsuccess = () => { let extra = cq.result - 300; if (extra <= 0) return; st.index('t').openCursor().onsuccess = e => { const c = e.target.result; if (!c || extra-- <= 0) return; c.delete(); c.continue(); }; }; } catch (e) {} };
+  return {
+    save(m, key, r) { if (!m || !r || r.error || !r.flat) return; const k = full(m, key); queue.set(k, { k, t: Date.now(), r: pack(r) }); if (!timer) timer = setTimeout(flush, 800); },
+    // everything kept for this model, into the solve cache, before a project's decals are unwrapped
+    async preload(m) { if (!m) return 0; const db = await open(); if (!db) return 0; const pre = modelKey(m) + '|' + solverTag() + '|';
+      return new Promise(res => { try { const q = db.transaction('solves', 'readonly').objectStore('solves').getAll(IDBKeyRange.bound(pre, pre + '\uffff'));
+        q.onsuccess = () => { let n = 0; for (const it of q.result || []) { const key = it.k.slice(pre.length); if (!SOLVES.has(key)) { try { SOLVES.set(key, { model: m, r: unpack(it.r) }); n++; } catch (e) {} } } res(n); };
+        q.onerror = () => res(0); } catch (e) { res(0); } }); },
+  };
+})();
 const solveKey = (ctrl, flip, dir, darts) => (darts?.length ? 'D' + darts.map(p => p.map(q => q.map(x => x.toFixed(3)).join(',')).join(';') + (typeof p.v === 'number' ? 'v' + p.v.toFixed(2) : '')).join('/') + '#' : '') + (flip ? 'f' : '') + (dir ? dir.map(v => v.toFixed(3)).join(',') + '#' : '') + ctrl.map(c => [c.p, c.face, c.type || 'auto', c.hin, c.hout, c.broken ? 1 : 0, c.plane ? 1 : 0].map(v => Array.isArray(v) ? v.map(x => +x.toFixed(5)).join(',') : v ?? '').join(';')).join('|');
 function solveOne(ctrl, flip, dir, darts) {
   const sh = filmShrink(), key = (sh ? 'T' + sh.toFixed(4) : '') + solveKey(ctrl, flip, dir, darts), hit = SOLVES.get(key);
@@ -14837,7 +14916,8 @@ function solveOne(ctrl, flip, dir, darts) {
   try { r = Core.solveDecal(S.model, ctrl, flip, dir, darts?.length ? Object.assign(darts.slice(), { hole: RELIEF_HOLE / 2 }) : null, sh); if (!r.error) r.insideSet = new Set(r.insideFaces); }
   catch (e) { console.error(e); return { error: 'Unwrapping failed: ' + e.message }; }
   r._v = ++RESV;
-  SOLVES.set(key, { model: S.model, r }); if (SOLVES.size > 80) SOLVES.delete(SOLVES.keys().next().value);
+  SOLVES.set(key, { model: S.model, r }); if (SOLVES.size > 300) SOLVES.delete(SOLVES.keys().next().value);
+  UNWRAPS.save(S.model, key, r);
   return r;
 }
 // how good a cut is: the worst excess and stretch near it, each against the film's limit (plus a little of the average)
@@ -14993,6 +15073,51 @@ function setFilm(f, quiet) {
 // where the flat piece is bigger than the frame the film has too much material and folds: shown in blue
 const foldAt = () => filmMax() * 0.5; // folds are worse than stretch: the blue scale tops out at half the stretch limit
 function foldOf(res) { if (res._fold != null) return res._fold; let m = 0; if (res.faceSig) for (const [, g] of res.faceSig) if (g[0] - 1 > m) m = g[0] - 1; return (res._fold = m); }
+// the smooth stretch map: the stretch and the excess at each mesh corner (averaged over the faces around it, by area),
+// blended across every face, then coloured on the same two scales
+function heatVerts(res) {
+  if (res._hv) return res._hv; const mesh = S.model.mesh, P = mesh.pos, T = mesh.tri, acc = new Map();
+  for (const f of res.insideFaces || []) {
+    const g = res.faceSig?.get(f), ten = g ? Math.max(0, 1 - g[1]) : (res.faceStretch?.get(f) || 0), fold = g ? Math.max(0, g[0] - 1) : 0;
+    const a = T[3*f], b = T[3*f+1], c = T[3*f+2], ux = P[3*b] - P[3*a], uy = P[3*b+1] - P[3*a+1], uz = P[3*b+2] - P[3*a+2], vx = P[3*c] - P[3*a], vy = P[3*c+1] - P[3*a+1], vz = P[3*c+2] - P[3*a+2];
+    const w = Math.hypot(uy*vz - uz*vy, uz*vx - ux*vz, ux*vy - uy*vx) || 1e-9;
+    for (const v of [a, b, c]) { const o = acc.get(v) || [0, 0, 0]; o[0] += ten * w; o[1] += fold * w; o[2] += w; acc.set(v, o); } }
+  const hv = new Map(); for (const [v, o] of acc) hv.set(v, [o[0] / o[2], o[1] / o[2]]); return (res._hv = hv);
+}
+let heatLUT = null;
+function heatRGB(ten, fold) { // 0..1 colour channels
+  const key = filmMax() + ':' + foldAt();
+  if (!heatLUT || heatLUT.key !== key) { const mk = (fn, top) => Array.from({ length: 256 }, (_, i) => { const c = fn(top * i / 255); return [c.r, c.g, c.b]; }); heatLUT = { key, t: mk(heat, filmMax()), f: mk(foldHeat, foldAt()) }; }
+  return fold > ten ? heatLUT.f[Math.min(255, Math.round(fold / foldAt() * 255))] : heatLUT.t[Math.min(255, Math.round(ten / filmMax() * 255))];
+}
+// the smooth stretch map of a flat piece as a picture, placed in sheet mm
+const heatImgCache = new Map();
+function heatImage(res, p, mf, oy, pxmm, maxPx) {
+  if (!res?.uvOf || !res.insideFaces || !p?.tf || !S.model) return null; const hv = heatVerts(res), T = S.model.mesh.tri;
+  const tris = []; let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const f of res.insideFaces) { const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b)); if (U.some(u => !u)) continue;
+    const Q = U.map(u => mf(p.tf([u[0], -u[1]]))), V = [0, 1, 2].map(k => hv.get(T[3*f+k]) || [0, 0]);
+    for (const q of Q) { if (q[0] < x0) x0 = q[0]; if (q[0] > x1) x1 = q[0]; if (q[1] < y0) y0 = q[1]; if (q[1] > y1) y1 = q[1]; } tris.push([Q, V]); }
+  if (!tris.length) return null;
+  const key = [res._v, p.id, p.x, p.y, p.w, p.h, x0, y0, pxmm, maxPx, filmMax()].join('|'), hit = heatImgCache.get(key); if (hit) return { ...hit, y: hit.y0 + oy };
+  const bw = x1 - x0, bh = y1 - y0, k = Math.min(pxmm, Math.sqrt(maxPx / Math.max(1, bw * bh))), W = Math.max(1, Math.ceil(bw * k)), H = Math.max(1, Math.ceil(bh * k));
+  const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const cx = cv.getContext('2d'), img = cx.createImageData(W, H), D = img.data;
+  for (const [Q, V] of tris) {
+    const ax = (Q[0][0] - x0) * k, ay = (Q[0][1] - y0) * k, bx = (Q[1][0] - x0) * k, by = (Q[1][1] - y0) * k, qx = (Q[2][0] - x0) * k, qy = (Q[2][1] - y0) * k;
+    const den = (by - qy) * (ax - qx) + (qx - bx) * (ay - qy); if (Math.abs(den) < 1e-12) continue;
+    const ix0 = Math.max(0, Math.floor(Math.min(ax, bx, qx))), ix1 = Math.min(W - 1, Math.ceil(Math.max(ax, bx, qx))), iy0 = Math.max(0, Math.floor(Math.min(ay, by, qy))), iy1 = Math.min(H - 1, Math.ceil(Math.max(ay, by, qy)));
+    for (let y = iy0; y <= iy1; y++) for (let x = ix0; x <= ix1; x++) { const px = x + 0.5, py = y + 0.5;
+      const l0 = ((by - qy) * (px - qx) + (qx - bx) * (py - qy)) / den, l1 = ((qy - ay) * (px - qx) + (ax - qx) * (py - qy)) / den, l2 = 1 - l0 - l1, e = -0.02;
+      if (l0 < e || l1 < e || l2 < e) continue;
+      const c = heatRGB(l0 * V[0][0] + l1 * V[1][0] + l2 * V[2][0], l0 * V[0][1] + l1 * V[1][1] + l2 * V[2][1]), o = 4 * (y * W + x);
+      D[o] = c[0] * 255; D[o+1] = c[1] * 255; D[o+2] = c[2] * 255; D[o+3] = 255; } }
+  // pixels just outside the triangles take their neighbour's colour, so the clipped edge has no seam
+  for (let pass = 0; pass < 2; pass++) { const src = new Uint8ClampedArray(D); for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) { const o = 4 * (y * W + x); if (src[o+3]) continue;
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) { const xx = x + dx, yy = y + dy; if (xx < 0 || yy < 0 || xx >= W || yy >= H) continue; const o2 = 4 * (yy * W + xx); if (src[o2+3]) { D[o] = src[o2]; D[o+1] = src[o2+1]; D[o+2] = src[o2+2]; D[o+3] = 255; break; } } } }
+  cx.putImageData(img, 0, 0);
+  const out = { href: cv.toDataURL('image/png'), x: x0, y0, w: W / k, h: H / k }; if (heatImgCache.size > 60) heatImgCache.clear(); heatImgCache.set(key, out);
+  return { ...out, y: y0 + oy };
+}
 function filmHeat(res, f) {
   const g = res.faceSig?.get(f); if (!g) return heat(res.faceStretch?.get(f) || 0);
   const ten = Math.max(0, 1 - g[1]), fold = Math.max(0, g[0] - 1);
@@ -15063,22 +15188,25 @@ function addCurve(d, ctrl, res, preview, faint) {
       if (rings.length) { try { outl = polygonClipping.difference(outl, ...rings); } catch (e) {} } }
     const core = res.coreFaces ? new Set(res.coreFaces) : null;
     const nearHole = U => holeBox.some(b => Math.max(U[0][0], U[1][0], U[2][0]) >= b[0] && Math.min(U[0][0], U[1][0], U[2][0]) <= b[2] && Math.max(U[0][1], U[1][1], U[2][1]) >= b[1] && Math.min(U[0][1], U[1][1], U[2][1]) <= b[3]);
-    const pushTri = (A, B, C, c) => { pos.push(...A, ...B, ...C); for (let q = 0; q < 3; q++) col.push(c.r, c.g, c.b); };
+    const pushTri = (A, B, C, c) => { pos.push(...A, ...B, ...C); if (Array.isArray(c)) { for (const k of c) col.push(k[0], k[1], k[2]); } else for (let q = 0; q < 3; q++) col.push(c.r, c.g, c.b); };
+    const hv = S.showStretch ? heatVerts(res) : null; // stretch shown smoothly: a colour per corner, blended across the face
     for (const f of faces) {
       // lifted a hair off the surface along the face normal, so it never flickers through the model on long thin triangles
-      const c = S.showStretch ? filmHeat(res, f) : base, nf = fnorm(f), V = [0, 1, 2].map(q => { const v = T[3*f+q]; return [P[3*v] + nf[0]*lift, P[3*v+1] + nf[1]*lift, P[3*v+2] + nf[2]*lift]; });
+      const nf = fnorm(f), V = [0, 1, 2].map(q => { const v = T[3*f+q]; return [P[3*v] + nf[0]*lift, P[3*v+1] + nf[1]*lift, P[3*v+2] + nf[2]*lift]; });
+      const HV = hv ? [0, 1, 2].map(q => hv.get(T[3*f+q]) || [0, 0]) : null, cAt = b => HV ? heatRGB(b[0]*HV[0][0] + b[1]*HV[1][0] + b[2]*HV[2][0], b[0]*HV[0][1] + b[1]*HV[1][1] + b[2]*HV[2][1]) : base;
+      const c = hv ? [cAt([1,0,0]), cAt([0,1,0]), cAt([0,0,1])] : base;
       if (!outl || (core && core.has(f) && !holeBox.length)) { pushTri(V[0], V[1], V[2], c); continue; }
       const U = [[1,0,0],[0,1,0],[0,0,1]].map(b => res.uvOf(f, b));
       if (U.some(u => !u)) { pushTri(V[0], V[1], V[2], c); continue; }
       if (core && core.has(f) && !nearHole(U)) { pushTri(V[0], V[1], V[2], c); continue; }
       const dt = (U[1][0]-U[0][0])*(U[2][1]-U[0][1]) - (U[2][0]-U[0][0])*(U[1][1]-U[0][1]); if (Math.abs(dt) < 1e-14) continue;
-      const to3 = ([x, y]) => { const b1 = ((x-U[0][0])*(U[2][1]-U[0][1]) - (U[2][0]-U[0][0])*(y-U[0][1])) / dt, b2 = ((U[1][0]-U[0][0])*(y-U[0][1]) - (x-U[0][0])*(U[1][1]-U[0][1])) / dt, b0 = 1 - b1 - b2;
-        return [0, 1, 2].map(k => b0*V[0][k] + b1*V[1][k] + b2*V[2][k]); };
+      const bary = ([x, y]) => { const b1 = ((x-U[0][0])*(U[2][1]-U[0][1]) - (U[2][0]-U[0][0])*(y-U[0][1])) / dt, b2 = ((U[1][0]-U[0][0])*(y-U[0][1]) - (x-U[0][0])*(U[1][1]-U[0][1])) / dt; return [1 - b1 - b2, b1, b2]; };
+      const to3 = p => { const [b0, b1, b2] = bary(p); return [0, 1, 2].map(k => b0*V[0][k] + b1*V[1][k] + b2*V[2][k]); };
       let parts; try { parts = polygonClipping.intersection([[U[0], U[1], U[2], U[0]]], outl); } catch (e) { pushTri(V[0], V[1], V[2], c); continue; }
       for (const poly of parts) {
         const rings = poly.map(r => r.slice(0, -1)), tris = THREE.ShapeUtils.triangulateShape(rings[0].map(p => new THREE.Vector2(p[0], p[1])), rings.slice(1).map(r => r.map(p => new THREE.Vector2(p[0], p[1]))));
         const all = rings.flat();
-        for (const t of tris) pushTri(to3(all[t[0]]), to3(all[t[1]]), to3(all[t[2]]), c);
+        for (const t of tris) pushTri(to3(all[t[0]]), to3(all[t[1]]), to3(all[t[2]]), hv ? t.map(i => cAt(bary(all[i]))) : c);
       }
     }
     const fp = new Float32Array(pos), fcol = new Float32Array(col);
@@ -15808,9 +15936,9 @@ function cutSheetSVG(pieces, title) {
   let heatL = '';
   if (sh.heatMap) { const gapY = 40;
     for (const p of placed) { const d = info[p.id]?.decal, res = p.id[0] === 'm' ? d?.twin?.res : d?.res, oy = p.sheet * (pk.H + gapY), mf = sh.mirror ? mx(p) : q => q;
-      const bins = heatBins(res, p, mf, oy, 2); if (!bins.some(b => b.length)) continue;
+      const img = heatImage(res, p, mf, oy, 5, 4e6); if (!img) continue;
       const cid = 'clip-' + (++heatClipN) + '-' + p.id.replace(/[^\w-]/g, ''), clip = [p.pts, ...(p.holes || [])].map(r => 'M' + r.map(([x, y]) => `${x.toFixed(2)} ${(y + oy).toFixed(2)}`).join('L') + 'Z').join(' ');
-      heatL += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${clip}"/></clipPath>\n<g clip-path="url(#${cid})">\n` + bins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="${binColor(i)}" stroke="${binColor(i)}" stroke-width="0.05"/>\n` : '').join('') + '</g>\n';
+      heatL += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${clip}"/></clipPath>\n<g clip-path="url(#${cid})">\n` + `<image href="${img.href}" x="${img.x.toFixed(2)}" y="${img.y.toFixed(2)}" width="${img.w.toFixed(2)}" height="${img.h.toFixed(2)}" preserveAspectRatio="none"/>\n` + '</g>\n';
       // the suggested cuts, dashed: red = V-notch (too much film), orange = saddle (split there)
       if (p.id[0] === 'd' && d && !d.stale) reliefSuggest(d).forEach(c => { if (!c.uv || c.kind !== 'notch') return; const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
         heatL += `<line x1="${a0[0].toFixed(2)}" y1="${a0[1].toFixed(2)}" x2="${b0[0].toFixed(2)}" y2="${b0[1].toFixed(2)}" stroke="${c.kind === 'notch' ? '#FF3B30' : '#FF9500'}" stroke-width="0.4" stroke-dasharray="2 1.2"/>\n`; }); }
@@ -16226,7 +16354,7 @@ function renderSheet() {
     area += ringA(pts) - hl.reduce((t, h) => t + ringA(h), 0);
     // with Stretch on, the flat pieces show where the film stretches, in the same colours as the model
     const res = p.id[0] === 'm' ? d.twin?.res : d.res;
-    const pBins = S.showStretch ? heatBins(res, p, mf, oy, 1) : heatBins(null);
+    const pImg = S.showStretch ? heatImage(res, p, mf, oy, 3, 1.2e6) : null;
     // suggested relief cuts, on the flat piece: click one to make it
     if (p.id[0] === 'd' && p.tf && reliefTargets().includes(d) || (S.sheetCut && p.id[0] === 'd' && p.tf && d.closed && !d.holeOf && !d.stale)) {
       reliefSuggest(d).forEach((c, ci) => { if (!c.uv || c.kind !== 'notch') return; /* saddles get no cut: the edge stretches into place there */ const [a0, b0] = c.uv.map(u => { const q = mf(p.tf([u[0], -u[1]])); return [q[0], q[1] + oy]; });
@@ -16242,7 +16370,7 @@ function renderSheet() {
       const on = S.notch.sel && S.notch.sel.d === d.id && S.notch.sel.i === i;
       sugg += `<path class="nt" data-d="${d.id}" data-i="${i}" data-p="${p.id}" d="${notchSheetPath(p, notchRing(q.M, q.T, q.L ? { ...n, L: q.L } : n))}" fill="${on ? 'rgba(255,214,10,.3)' : 'rgba(255,255,255,.08)'}" stroke="${on ? '#FFD60A' : 'rgba(255,255,255,.7)'}" stroke-width="1" vector-effect="non-scaling-stroke"/>`; });
     // the colours stay inside the piece: the triangles along the edge reach past the outline
-    if (pBins.some(b => b.length)) { const cid = 'hc' + p.id.replace(/[^\w-]/g, ''); s += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${pd}"/></clipPath><g clip-path="url(#${cid})" pointer-events="none">` + pBins.map((b, i) => b.length ? `<path d="${b.join('')}" fill="#${(i < 6 ? heat(filmMax() * (i + 0.5) / 5) : foldHeat(foldAt() * (i - 6 + 0.5) / 5)).getHexString()}"/>` : '').join('') + '</g>'; }
+    if (pImg) { const cid = 'hc' + p.id.replace(/[^\w-]/g, ''); s += `<clipPath id="${cid}"><path clip-rule="evenodd" d="${pd}"/></clipPath><g clip-path="url(#${cid})" pointer-events="none"><image href="${pImg.href}" x="${pImg.x.toFixed(2)}" y="${pImg.y.toFixed(2)}" width="${pImg.w.toFixed(2)}" height="${pImg.h.toFixed(2)}" preserveAspectRatio="none"/></g>`; }
     s += `<path data-id="${d.id}" fill-rule="evenodd" d="${pd}" fill="${d.color}" fill-opacity="${S.showStretch ? 0 : act ? 0.45 : 0.22}" stroke="${act ? '#FFFFFF' : 'rgba(255,255,255,.65)'}" stroke-width="${act ? 2 : 1.2}" style="cursor:pointer"/>`;
     if (sh.weed) { const g2 = Math.max(1, sh.gap) / 2; s += `<rect x="${p.x - g2}" y="${oy + p.y - g2}" width="${p.w + 2*g2}" height="${p.h + 2*g2}" fill="none" stroke="#7FB6FF" stroke-width="0.6" pointer-events="none"/>`; }
     if (sh.labels) { const fs = Math.max(sh.w/160, Math.min(sh.w/60, p.h/4)); s += `<text x="${p.x + p.w/2}" y="${oy + p.y + p.h/2 + fs*0.35}" font-size="${fs}" text-anchor="middle" fill="#FFFFFF" font-family="Barlow, Arial, sans-serif" pointer-events="none">${esc(info.name)}</text>`; }
@@ -19085,7 +19213,9 @@ const DE = {
   "The photo is on the model now. Turn the view to check it; Unstick to line it up again.": "Das Foto liegt jetzt auf dem Modell. Dreh die Ansicht zum Prüfen; mit Lösen kannst du es neu ausrichten.",
   "Keep current…": "Aktuelle behalten…", "Keep the current arrangement as the layout shown": "Die aktuelle Anordnung als gezeigtes Layout behalten",
   "Layout: Drawing": "Layout: Zeichnen",
-  "Drawing": "Zeichnen", "Editing": "Bearbeiten", "Clean": "Aufgeräumt", "Settings": "Einstellungen", "Language": "Sprache", "Appearance": "Darstellung", "Panel layout": "Anordnung", "Model units": "Modelleinheiten", "Frame": "Rahmen", "New": "Neu", "Open": "Öffnen",
+  "Drawing": "Zeichnen",
+  "Import": "Importieren", "Bring in a 3D model or scan, SVG artwork, or a reference photo": "3D-Modell oder Scan, SVG-Grafik oder Referenzfoto hereinholen", "3D model or scan": "3D-Modell oder Scan", "SVG artwork as decals": "SVG-Grafik als Decals", "logos and shapes, placed on the frame": "Logos und Formen, auf den Rahmen gesetzt", "Reference photo": "Referenzfoto", "a photo of the real frame, to trace from": "ein Foto des echten Rahmens, zum Nachzeichnen",
+  "Project: new, open, save, rename, download": "Projekt: neu, öffnen, speichern, umbenennen, herunterladen", "New project": "Neues Projekt", "Open a saved project…": "Gespeichertes Projekt öffnen…", "Save as a new project": "Als neues Projekt speichern", "Rename…": "Umbenennen…", "Open a project file (.json)…": "Projektdatei öffnen (.json)…", "Download the project file": "Projektdatei herunterladen", "Manage projects and templates…": "Projekte und Vorlagen verwalten…", "Project name": "Projektname", "Editing": "Bearbeiten", "Clean": "Aufgeräumt", "Settings": "Einstellungen", "Language": "Sprache", "Appearance": "Darstellung", "Panel layout": "Anordnung", "Model units": "Modelleinheiten", "Frame": "Rahmen", "New": "Neu", "Open": "Öffnen",
   "New: start over with the start frame": "Neu: mit dem Startrahmen neu beginnen", "Import SVG: place SVG artwork on the frame as editable decals": "SVG importieren: SVG-Grafik als bearbeitbare Decals auf den Rahmen setzen", "Settings: language, appearance, panel layout, model units": "Einstellungen: Sprache, Darstellung, Panel-Anordnung, Modelleinheiten",
   "Where the panels sit and which are folded. Choose Keep current to store your own arrangement in the layout shown": "Wo die Panels sitzen und welche eingeklappt sind. Aktuelle behalten speichert deine eigene Anordnung im gezeigten Layout",
   "Layout: Editing": "Layout: Bearbeiten",
@@ -19622,7 +19752,7 @@ setLang(LANG);
     };
   })();
   window.__logoAt = t => logo.at(t);
-  const target = k => ({ stage: $('#stage'), frame: $('#geoBtn'), model: $('#file').closest('label'), draw: $('#modeDraw'), edit: $('#modeEdit'), decals: document.querySelector('aside.panel'), view: document.querySelector('aside.panel'), sheet: document.querySelector('aside.panel'), help: $('#introBtn') })[k];
+  const target = k => ({ stage: $('#stage'), frame: $('#geoBtn'), model: $('#importBtn'), draw: $('#modeDraw'), edit: $('#modeEdit'), decals: document.querySelector('aside.panel'), view: document.querySelector('aside.panel'), sheet: document.querySelector('aside.panel'), help: $('#introBtn') })[k];
   const place = () => {
     const el = target(steps[at].dataset.t), r = el.getBoundingClientRect(), W = innerWidth, H = innerHeight, big = r.width > W * 0.5 && r.height > H * 0.5;
     const pad = big ? -10 : 6, x = r.left - pad, y = r.top - pad, w = r.width + pad * 2, h = r.height + pad * 2;

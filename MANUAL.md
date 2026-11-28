@@ -47,7 +47,7 @@ No scan yet? **Frame from geometry** builds a frame from a brand's geometry char
 
 ## 1. The screen
 
-- **Top bar** — the project name (click it for your projects) with the model and its size below it; on the right the file buttons *New*, *Open* and *Import SVG* (hover for their names), *Frame* (build a frame from geometry), *Save*, **Settings** and **?** (walkthrough and manual). **Settings** holds the language (EN | DE), the appearance (same as your system, light or dark), the panel layout and the model units.
+- **Top bar** — the **project name**: click it for the project menu (*New project*, *Open a saved project…*, *Save*, *Save as a new project*, *Rename…*, *Open a project file (.json)…*, *Download the project file*, *Manage projects and templates…*); the model and its size show below it. On the right: **Import** (a 3D model or scan, SVG artwork as decals, or a reference photo), **Frame** (build a frame from geometry), **Save**, **Settings** (language, appearance — same as your system, light or dark — panel layout, model units) and **?** (walkthrough and manual).
 - **Tools panel** (left) — *Draw*, *Edit*, *Knife*.
 - **Tool options** (top) — undo/redo and the options of the current tool, plus *Mirror*.
 - **Tips** (bottom left) — tells you what the next click does. Fold it away with the ⓘ button.
@@ -330,6 +330,8 @@ Each V-notch tag shows the V's opening in degrees and how wide it is at the edge
 ## 12. Sheet and export
 
 - **Width, Height, Gap** of the sheet in mm. The preview shows how the pieces are packed and how many there are.
+- **Smooth colours:** the stretch and excess colours blend smoothly across the surface, on the model, on the sheet and in the export, instead of showing each triangle.
+- **Unwraps are kept:** every unwrap is also kept in this browser. Opening a project again, or reloading the page, takes the unwraps from there, so only decals that changed are unwrapped again. The browser keeps the last 300.
 - **Stretch map in the export:** tick **Stretch map** in the Sheet settings and the SVG gets an extra layer under the cut lines: every piece in its stretch and excess colours, the suggested V-notches as red dashed lines and a legend under the sheet with the film and its limits. Open it in Illustrator, Inkscape or Affinity to plan cuts by hand. Hide or delete that layer before sending the file to the cutter.
 - **Suggested cuts are shown on the flat sheet** (for the selected decal, or all decals with Stretch on), and as dashed lines on the model while the **Knife** is on, so you can draw along them. Click one on the sheet to make it.
 - **Suggested V-notches:** where a piece has too much film, red dashed lines on the sheet show suggested V-notches. Click one to cut it: FitFlat makes the cut on the frame, unwraps again and shows the result on the sheet and on the model, where you can adjust it with its handles in Edit mode. Ctrl+Z undoes it.
