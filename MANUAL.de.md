@@ -112,7 +112,7 @@ Das echte Rahmenmodell ergibt die genauesten Produktionsschnitte.
 - **Geometrietabelle einfügen** — kopiere die Geometrietabelle von der Website des Herstellers und füge sie ein; Größen und Maße werden erkannt und als eigene Vorlage gespeichert.
 - Die Zeile *Ergebnis* zeigt Radstand, Front-Center, effektives Oberrohr und Nachlauf zur Kontrolle.
 - **Meine Decals auf den neuen Rahmen übertragen** behält deine Arbeit, wenn du die Größe wechselst.
-- Der Rahmen wird als **eine geschlossene Oberfläche** gebaut: Die Rohre gehen mit gerundeten Übergängen ineinander über, wie bei einem geschweißten oder geformten Rahmen, statt als einzelne Rohre ineinander zu stecken. **Verbindungsradius (mm)** bestimmt, wie rund diese Übergänge sind (Standard 8; 0 ergibt den engsten, den die Oberfläche erlaubt). **Fläche** bestimmt die Dreiecksgröße: *Fein (1,5 mm)*, *Normal (2,5 mm)* oder *Grob (3,5 mm)*; feiner folgt den Übergängen genauer, braucht aber länger zum Bauen. Rohrenden bekommen eine kleine gerundete Kante. *Einzelne Rohre* baut wie bisher, ein Rohr pro Teil, und ist am schnellsten.
+- Der Rahmen wird als **eine geschlossene Oberfläche** gebaut: Die Rohre gehen mit gerundeten Übergängen ineinander über, wie bei einem geschweißten oder geformten Rahmen, statt als einzelne Rohre ineinander zu stecken. Das Steuerrohr steht immer über dem Oberrohr heraus. Die Gabel ist ein Stück: eine Gabelkrone, die die Form des Steuerrohrs unter einem kleinen Steuersatzspalt fortsetzt, aus der die Gabelbeine herauslaufen und zur Achse hin dünner werden. Auf jeder Seite bilden Kettenstrebe und Sitzstrebe ein glattes V, das direkt hinter der Hinterachse umkehrt. **Verbindungsradius (mm)** bestimmt, wie rund diese Übergänge sind (Standard 8; 0 ergibt den engsten, den die Oberfläche erlaubt). **Fläche** bestimmt die Dreiecksgröße: *Fein (1,5 mm)*, *Normal (2,5 mm)* oder *Grob (3,5 mm)*; feiner folgt den Übergängen genauer, braucht aber länger zum Bauen. Rohrenden bekommen eine kleine gerundete Kante. *Einzelne Rohre* baut wie bisher, ein Rohr pro Teil, und ist am schnellsten.
 
 Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte das echte Rahmenmodell.
 
@@ -381,6 +381,8 @@ Deine Arbeit wird **in diesem Browser** (auf diesem Computer) gespeichert. Der P
 Der Browserspeicher gehört zu diesem Browser auf diesem Computer. Um Arbeit auf einen anderen Computer zu bringen oder als Sicherung, nutze **Herunterladen** und öffne die Datei dort.
 
 ### Projekte in einem Ordner speichern
+
+Beim ersten Start fragt FitFlat, wo deine Projekte liegen sollen: **Ordner wählen …** oder **Im Browser behalten**. Ändern kannst du das jederzeit unter **Einstellungen → Projekte** oder in **Projekte** mit **Ordner verwenden …** / **Ordner wechseln …**.
 
 Standardmäßig bleibt alles im Browser. In **Projekte** speichert **Ordner verwenden …** Projekte, Startpunkte und Decal-Vorlagen stattdessen als Dateien in einem Ordner deiner Wahl: auf der Festplatte, auf einem USB-Stick oder auf einem Netzlaufwerk der Firma.
 

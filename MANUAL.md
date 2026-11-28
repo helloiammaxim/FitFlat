@@ -112,7 +112,7 @@ The real frame model gives the most accurate production patterns.
 - **Paste a geometry chart** — copy the geometry table from a brand website and paste it; the sizes and measurements are recognised and saved as your own preset.
 - The *Resulting frame* line shows wheelbase, front-centre, effective top tube and trail as a check.
 - **Move my decals onto the new frame** keeps your work when you change the size.
-- The frame is built as **one closed surface**: the tubes flow into each other with rounded joints, like a welded or moulded frame, instead of being separate tubes pushed into each other. **Joint radius (mm)** sets how round those joints are (default 8; 0 gives the tightest the surface allows). **Surface** sets the triangle size: *Fine (1.5 mm)*, *Normal (2.5 mm)* or *Draft (3.5 mm)*; finer follows the joints more closely but takes longer to build. Tube ends get a small rounded edge. *Separate tubes* builds the old way, one tube per part, which is fastest.
+- The frame is built as **one closed surface**: the tubes flow into each other with rounded joints, like a welded or moulded frame, instead of being separate tubes pushed into each other. The head tube always stands above the top tube. The fork is one piece: a crown that continues the head tube's shape below a small headset gap, with the legs sweeping out of it and thinning towards the axle. On each side the chainstay and seat stay are one smooth V that turns just behind the rear axle. **Joint radius (mm)** sets how round those joints are (default 8; 0 gives the tightest the surface allows). **Surface** sets the triangle size: *Fine (1.5 mm)*, *Normal (2.5 mm)* or *Draft (3.5 mm)*; finer follows the joints more closely but takes longer to build. Tube ends get a small rounded edge. *Separate tubes* builds the old way, one tube per part, which is fastest.
 
 Use a generated frame for layout and sizing; for production cuts use the real frame model.
 
@@ -380,6 +380,8 @@ Your work is kept **in this browser** (on this computer). The project name in th
 Browser storage belongs to this browser on this computer. To move work to another computer, or as a backup, use **Download** and open the file there.
 
 ### Keeping projects in a folder
+
+On first use FitFlat asks where to keep your projects: **Choose a folder…** or **Keep in this browser**. Change it any time in **Settings → Projects**, or in **Projects** with **Use a folder…** / **Change folder…**.
 
 By default everything stays in the browser. In **Projects**, **Use a folder…** keeps projects, starting points and decal templates as files in a folder you choose instead: on your disk, on a USB stick or on a company network drive.
 
