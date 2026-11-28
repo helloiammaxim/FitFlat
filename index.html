@@ -38,7 +38,8 @@ button,input,select{ font:inherit; color:inherit; }
 .top{ display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--glass); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:1px solid var(--line); flex-wrap:wrap; position:relative; z-index:3; }
 /* the wordmark is set in Climate Crisis (SIL Open Font License 1.1, The Climate Crisis Project Authors); only the letters of "FitFlat" are embedded */
 @font-face{ font-family:'FitFlat Mark'; font-weight:400; font-display:block; src:url(data:font/woff2;base64,d09GMgABAAAAAAOsABAAAAAABvwAAANTAAEAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGhYbIBwqBmA/U1RBVBwAVBEICoNkg0UBNgIkAxgLDgAEIAWEAgcgDAcbtwUoHoexe6TZikncfusIHt5Zm5eke2JiqPVw9RYx/YPN8fu524aI2Ve/h1iGSBaLYtkkNTr5z1l4/6fyWcSTAw5oxCPyc5TZSWPZmrYHQfkDdS0r9vV5C1ZsgQuotc3GFGajHn5M5NpE9gj6fLtJoCYgEUJBHqO6llqLiZOHpsBPBjkAEjvrKuEL2bkOdYhDwfUsbRtnKZCckiwFZhieWK0iDqDK8MK5izqG4MNkmPWu/I9CwxgLBCQ7k9/QViqEqgINAclfhx2X4wVEGkpXZcYCNVWVOJ9NRpGoMId8LX80vzq/JL8oP1tsKkZOnWdXgJqogvvxPiADhJAISZuJYSF1qrQ+PKhYLB4TjilGLeRxjJJhaoRsqLcGnss1Tn3/5dvD5Zc88kqp+invvfbUXY55n9hZXB5xb3nARfcF8Uei+Oht4P6boeapatZY4yuVHjk1VlJEWcZmx6x1JIrnxXuI5q90zF5briyX29RIdvqwgcZbFh1z88331zj11VdbJI+9V/2UUmnQ2y/djDA8uOS3S4j2vYoyLqaccfoZU3ovlvRD15T/1w5u1ZjTFTzzlzaRpsnXv18/rnqHwZNRv/sOSS7L7e0qnYkrzR0J6Te2gGp7+bR+p/3ISC0nPI5EVEnVmT36ZzOpr3Xje6nt9uM2C2eu22rYe3GxODInssHB+gYkDfNLXQcTlqd3dKQDi+rddtBw7vmVcyYeTlxeMFlw1PEcO1e8Nl4Ws3D7bN3VMzNvixaNl/OV2QNZLtGgxlcXN2/1VOe6vlef2HaicDV+1T4ABCJeXd0+7GFNnZH/Vk3TH+Cj4qN/wrfb7upS+U7ld4Wnsk6okIDgY+qvIcL/vWm2k89XpE10TXeJShfxxF4NR1lyssaCvVY3+X68BVSnAlVttg1ZNTyCYGjpEUzUVsLUWH+Y6RkdsaB5zJUqdI/tdwZV4zwTGExbbBKBCKXpry8xMhb6wO2aQCXRULCDbTqsXTC30iDjMCmbxiGQyGBDVtf0ADK5ukEffWwhYSsRtBIbGLQosxFFJx5CpSot7+zz52+WmcARsn4vxVaut776GmKEuaZ1GNJYMK04pf836DaRmcGxgQWDLm2DYZWG5nHG76Fq+forfyjy7spOBw==) format('woff2'); }
-.brand{ font-weight:650; font-size:16px; letter-spacing:-.01em; display:flex; align-items:center; gap:9px; }
+.brand{ font-weight:650; font-size:16px; letter-spacing:-.01em; display:flex; align-items:center; gap:9px; margin-right:22px; padding:4px 6px; border-radius:10px; color:inherit; text-decoration:none; }
+.brand:hover{ background:var(--fill); } .brand:focus-visible{ outline:2px solid var(--accent); }
 .brand .bname{ font-family:'FitFlat Mark', -apple-system, 'Segoe UI', sans-serif; font-weight:400; font-size:17px; letter-spacing:0; line-height:1; }
 .brand .mark{ width:auto; height:24px; flex:none; }
 .modelinfo{ color:var(--muted); font-size:12.5px; font-variant-numeric:tabular-nums; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:360px; }
@@ -114,10 +115,17 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .hint{ position:absolute; left:12px; bottom:12px; transition:bottom .15s; max-width:540px; border-radius:12px; padding:9px 13px 9px 8px; font-size:13px; color:var(--ink); pointer-events:none; display:flex; gap:6px; align-items:flex-start; }
 .hinttog{ pointer-events:auto; flex:none; border:0; background:transparent; color:var(--muted); width:22px; height:22px; margin:-2px 0; padding:0; border-radius:6px; display:grid; place-items:center; cursor:pointer; }
 .hinttog:hover{ background:var(--fill); color:var(--ink); }
-.hint.collapsed{ display:none; } /* tips off (Settings) */
 .hinttog[hidden]{ display:none; }
-.hint.collapsed #hint{ display:none; }
-.hint.collapsed .hinttog{ margin:0; color:var(--accent); }
+.hint.collapsed{ padding:5px; } /* hints off (Settings): just the (i), which shows the tip while you need it */
+.hint.collapsed:not(.peek) #hint{ display:none; }
+.hint.collapsed .hinttog{ margin:0; color:var(--muted); }
+.hint.collapsed.peek .hinttog{ color:var(--accent); }
+/* hints off: explanations in the panels wait behind an (i) by their heading */
+body.nohints .xp:not(.show){ display:none; }
+.ibtn{ display:none; vertical-align:middle; width:18px; height:18px; margin:-2px 0 0 6px; padding:0; border:0; border-radius:50%; background:transparent; color:var(--muted); cursor:pointer; place-items:center; flex:none; }
+.ibtn svg{ width:15px; height:15px; } .ibtn:hover{ color:var(--ink); background:var(--fill); } .ibtn[aria-expanded="true"]{ color:var(--accent); }
+body.nohints .ibtn{ display:inline-grid; }
+.ibtn.solo{ margin:0 0 0 auto; }
 .busy{ position:absolute; inset:0; display:none; place-items:center; background:color-mix(in srgb, var(--stage) 45%, transparent); font-weight:600; z-index:5; }
 .busy.on{ display:grid; }
 .busy span{ background:var(--glass); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); border:1px solid var(--line); box-shadow:var(--shadow); padding:12px 18px; border-radius:12px; }
@@ -297,18 +305,31 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 #sheet .ssug:hover line:first-child{ stroke:#E5007E; }
 #sheet path, #sheet rect, #sheet line, #sheet circle, #sheet polyline, #sheet polygon{ vector-effect:non-scaling-stroke; }
 .mat{ position:relative; }
-.notchbar{ margin:8px 12px 12px; padding:10px 12px; border-radius:12px; background:var(--fill); display:grid; gap:8px; font-size:12.5px; }
+.notchbar{ display:grid; gap:10px; font-size:12.5px; }
+.notchbar > h2{ margin:0; }
+details.notchbar:not([open]){ display:block; }
+.notchbar[hidden]{ display:none !important; }
+.field.span3{ grid-column:1 / -1; }
 .notchbar .nrow{ display:flex; flex-wrap:wrap; gap:6px 10px; align-items:center; }
 .notchbar .nnum label{ display:flex; align-items:center; gap:4px; color:var(--muted); }
-.notchbar input[type=number]{ width:56px; border:0; background:var(--surface, #fff); border-radius:6px; padding:4px 6px; color:var(--ink); font-variant-numeric:tabular-nums; }
-.notchbar select{ padding:4px 8px; font-size:12.5px; }
 .notchbar .btn{ padding:4px 10px; font-size:12.5px; }
 .notchbar .note{ margin:0; font-size:12px; }
 #sheet.notching.adding{ cursor:crosshair; }
 .notchbar .pcang{ display:flex; align-items:center; gap:4px; color:var(--muted); }
 .notchbar .spacer{ flex:1; }
-.mat.big ~ .notchbar{ position:fixed; z-index:62; left:32px; bottom:32px; width:min(420px, calc(100vw - 64px)); margin:0; background:var(--surface, #fff); box-shadow:0 12px 40px rgba(0,0,0,.35); }
-.mat.big ~ .notchbar input[type=number]{ background:var(--fill); }
+/* Sheet edit: the piece and notch panels float in one dock, which can be dragged and snaps to the corners and sides */
+.flatdock{ position:fixed; z-index:62; width:min(400px, calc(100vw - 48px)); max-height:calc(100vh - 120px); overflow:auto; background:var(--paper); border:1px solid var(--line); border-radius:16px; box-shadow:0 16px 48px rgba(0,0,0,.4); padding-bottom:2px; }
+.flatdock[hidden]{ display:none; }
+.flatdock .fdhead{ position:sticky; top:0; z-index:1; display:flex; align-items:center; gap:8px; padding:8px 10px 8px 12px; cursor:grab; user-select:none; touch-action:none; font-size:12px; color:var(--muted); background:inherit; border-radius:16px 16px 0 0; }
+.flatdock.dragging .fdhead{ cursor:grabbing; }
+.flatdock .fdhead .grip{ display:grid; grid-template-columns:repeat(2, 3px); gap:3px; } .flatdock .fdhead .grip i{ width:3px; height:3px; border-radius:50%; background:currentColor; }
+.flatdock .fdhead .spacer{ flex:1; }
+.flatdock .pins{ display:grid; grid-template-columns:repeat(3, 9px); gap:2px; padding:3px; border-radius:6px; }
+.flatdock .pins button{ width:9px; height:9px; padding:0; border:1px solid var(--muted); border-radius:2px; background:transparent; cursor:pointer; opacity:.7; }
+.flatdock .pins button:hover{ opacity:1; background:var(--fill); } .flatdock .pins button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); opacity:1; }
+.flatdock .pins button.mid{ visibility:hidden; }
+.flatdock .notchbar{ margin:0 8px 8px; }
+.dockghost{ position:fixed; z-index:61; border:2px dashed var(--accent); border-radius:16px; pointer-events:none; background:color-mix(in srgb, var(--accent) 8%, transparent); }
 #sheet .nt{ pointer-events:none; }
 #sheet.notching .nt{ pointer-events:all; cursor:move; }
 #sheet.notching:not(.adding) path[data-id]{ cursor:pointer; }
@@ -424,7 +445,7 @@ button.swatch:hover{ box-shadow:0 0 0 2px var(--ink); }
 .checks input{ accent-color:var(--accent); }
 .export{ margin:0 12px 16px; display:flex; flex-direction:column; gap:8px; }
 .layoutsel{ width:auto !important; flex:none !important; max-width:170px; }
-.exprow{ display:flex; gap:8px; } .exprow #export{ flex:1; }
+.exprow{ display:flex; gap:8px; } .exprow .btn{ flex:1 1 0; }
 .export .btn{ justify-content:center; padding:11px; border-radius:12px; font-weight:600; }
 .note{ font-size:12px; color:var(--muted); margin:0; }
 .note.warn{ color:var(--bad); }
@@ -483,6 +504,11 @@ dialog.splash form{ height:100%; display:flex; flex-direction:column; align-item
 .sline span, .sline b{ display:block; }
 .sline b{ color:#FFFFFF; font-weight:650; font-size:21px; letter-spacing:-.01em; margin-bottom:4px; }
 #privacyDlg{ width:min(640px, calc(100vw - 32px)); }
+#keysDlg{ width:min(880px, 94vw); max-width:none; }
+#keysBody{ max-height:min(70vh, 720px); overflow:auto; font-size:13px; display:grid !important; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:0 32px; align-items:start; }
+#keysBody section{ break-inside:avoid; margin:0 0 14px; } #keysBody h3{ font-size:13.5px; margin:0 0 6px; }
+#keysBody .kr{ display:flex; gap:12px; justify-content:space-between; padding:3px 0; border-bottom:1px solid var(--line); } #keysBody .kr span:first-child{ color:var(--ink); }
+#keysBody kbd{ font:inherit; font-size:11.5px; font-weight:600; white-space:nowrap; padding:1px 6px; border-radius:5px; background:var(--fill); color:var(--ink); }
 #privBody{ max-height:min(62vh, 620px); overflow:auto; font-size:13.5px; line-height:1.55; }
 #privBody h3{ font-size:14px; margin:16px 0 4px; } #privBody h3:first-child{ margin-top:0; }
 #privBody p, #privBody ul{ margin:0 0 6px; color:var(--ink); } #privBody ul{ padding-left:18px; }
@@ -673,7 +699,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 <body>
 <div class="app">
   <header class="top">
-    <div class="brand"><svg class="mark" aria-hidden="true" viewBox="236 112 594 860"><defs><linearGradient id="ffgback" gradientUnits="userSpaceOnUse" x1="250" x2="561" y1="0" y2="0"><stop offset="0" stop-color="#edeefc"/><stop offset="1" stop-color="#a0a4fa"/></linearGradient><linearGradient id="ffgarcFar1" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcFar0" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcNear1" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgarcNear0" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgfront" gradientUnits="userSpaceOnUse" x1="564" x2="719" y1="0" y2="0"><stop offset="0" stop-color="#0033f8"/><stop offset="1" stop-color="#4258fb"/></linearGradient></defs><path d="M250.6,194.4 L561.0,130.0 L561.0,289.1 L410.4,320.3 L410.4,479.4 L561.0,448.2 L561.0,607.3 L410.4,638.6 L410.4,797.7 L250.6,830.9 Z" fill="url(#ffgback)"/><path d="M561.0,448.2 C596.5,440.8 637.2,438.6 676.3,442.0 C715.3,445.4 750.3,454.1 775.4,466.7 C800.5,479.4 814.2,495.1 814.2,511.3 L814.2,670.5 C814.2,654.2 800.5,638.5 775.4,625.9 C750.3,613.2 715.3,604.5 676.3,601.1 C637.2,597.8 596.5,600.0 561.0,607.3 Z" fill="url(#ffgarcFar1)"/><path d="M561.0,130.0 C596.5,122.6 637.2,120.4 676.3,123.8 C715.3,127.1 750.3,135.9 775.4,148.5 C800.5,161.1 814.2,176.9 814.2,193.1 L814.2,352.2 C814.2,336.0 800.5,320.2 775.4,307.6 C750.3,295.0 715.3,286.3 676.3,282.9 C637.2,279.5 596.5,281.7 561.0,289.1 Z" fill="url(#ffgarcFar0)"/><path d="M814.2,511.3 C814.2,524.4 805.4,537.2 788.6,548.4 C771.8,559.5 747.8,568.6 719.2,574.5 L719.2,733.6 C747.8,727.7 771.8,718.7 788.6,707.5 C805.4,696.4 814.2,683.5 814.2,670.5 Z" fill="url(#ffgarcNear1)"/><path d="M814.2,193.1 C814.2,206.2 805.4,219.0 788.6,230.1 C771.8,241.3 747.8,250.3 719.2,256.3 L719.2,415.4 C747.8,409.4 771.8,400.4 788.6,389.3 C805.4,378.1 814.2,365.3 814.2,352.2 Z" fill="url(#ffgarcNear0)"/><path d="M408.8,320.7 L719.2,256.3 L719.2,415.4 L564.0,447.6 L564.0,606.7 L719.2,574.5 L719.2,733.6 L564.0,765.8 L564.0,925.0 L408.8,957.2 Z" fill="url(#ffgfront)"/></svg><span class="bname" translate="no">FitFlat</span></div>
+    <a class="brand" href="https://fitflat.app" target="_blank" rel="noopener" title="fitflat.app"><svg class="mark" aria-hidden="true" viewBox="236 112 594 860"><defs><linearGradient id="ffgback" gradientUnits="userSpaceOnUse" x1="250" x2="561" y1="0" y2="0"><stop offset="0" stop-color="#edeefc"/><stop offset="1" stop-color="#a0a4fa"/></linearGradient><linearGradient id="ffgarcFar1" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcFar0" gradientUnits="userSpaceOnUse" x1="561" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#a8abf8"/><stop offset="1" stop-color="#7680ec"/></linearGradient><linearGradient id="ffgarcNear1" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgarcNear0" gradientUnits="userSpaceOnUse" x1="719" x2="814" y1="0" y2="0"><stop offset="0" stop-color="#4056fa"/><stop offset="1" stop-color="#707cf0"/></linearGradient><linearGradient id="ffgfront" gradientUnits="userSpaceOnUse" x1="564" x2="719" y1="0" y2="0"><stop offset="0" stop-color="#0033f8"/><stop offset="1" stop-color="#4258fb"/></linearGradient></defs><path d="M250.6,194.4 L561.0,130.0 L561.0,289.1 L410.4,320.3 L410.4,479.4 L561.0,448.2 L561.0,607.3 L410.4,638.6 L410.4,797.7 L250.6,830.9 Z" fill="url(#ffgback)"/><path d="M561.0,448.2 C596.5,440.8 637.2,438.6 676.3,442.0 C715.3,445.4 750.3,454.1 775.4,466.7 C800.5,479.4 814.2,495.1 814.2,511.3 L814.2,670.5 C814.2,654.2 800.5,638.5 775.4,625.9 C750.3,613.2 715.3,604.5 676.3,601.1 C637.2,597.8 596.5,600.0 561.0,607.3 Z" fill="url(#ffgarcFar1)"/><path d="M561.0,130.0 C596.5,122.6 637.2,120.4 676.3,123.8 C715.3,127.1 750.3,135.9 775.4,148.5 C800.5,161.1 814.2,176.9 814.2,193.1 L814.2,352.2 C814.2,336.0 800.5,320.2 775.4,307.6 C750.3,295.0 715.3,286.3 676.3,282.9 C637.2,279.5 596.5,281.7 561.0,289.1 Z" fill="url(#ffgarcFar0)"/><path d="M814.2,511.3 C814.2,524.4 805.4,537.2 788.6,548.4 C771.8,559.5 747.8,568.6 719.2,574.5 L719.2,733.6 C747.8,727.7 771.8,718.7 788.6,707.5 C805.4,696.4 814.2,683.5 814.2,670.5 Z" fill="url(#ffgarcNear1)"/><path d="M814.2,193.1 C814.2,206.2 805.4,219.0 788.6,230.1 C771.8,241.3 747.8,250.3 719.2,256.3 L719.2,415.4 C747.8,409.4 771.8,400.4 788.6,389.3 C805.4,378.1 814.2,365.3 814.2,352.2 Z" fill="url(#ffgarcNear0)"/><path d="M408.8,320.7 L719.2,256.3 L719.2,415.4 L564.0,447.6 L564.0,606.7 L719.2,574.5 L719.2,733.6 L564.0,765.8 L564.0,925.0 L408.8,957.2 Z" fill="url(#ffgfront)"/></svg><span class="bname" translate="no">FitFlat</span></a>
     <div class="titleblock">
       <button class="projname" id="projName" aria-haspopup="menu" aria-expanded="false" title="Project: new, open, save, rename, download"><span id="projNameText">Untitled project</span><span class="dirty" id="projDirty" title="Not saved yet" hidden>●</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
       <span class="modelinfo" id="modelinfo"></span>
@@ -681,6 +707,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <span class="spacer"></span>
     <button class="tbtn wide" id="importBtn" aria-haspopup="menu" aria-expanded="false" title="Bring in a 3D model or scan, SVG artwork, or a reference photo"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9M6.5 8.5L10 12l3.5-3.5"/><path d="M3.5 12.5v2A1.75 1.75 0 0 0 5.25 16.25h9.5a1.75 1.75 0 0 0 1.75-1.75v-2"/></svg><span>Import</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
     <button class="tbtn wide" id="geoBtn" title="Build a frame from geometry numbers or change its size"><svg viewBox="0 0 24 20" aria-hidden="true"><circle cx="5" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><path d="M5 13l4-7h7l3 7M9 6l3.5 7H5M12.5 13L16 6M8 4h3M15 4h2.5"/></svg><span>Frame</span></button>
+    <button class="tbtn wide" id="newBtn" title="Start a new project (asks to save the open one first)"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M5.5 2.75h6l3.75 3.75v9.25a1.5 1.5 0 0 1-1.5 1.5h-8.25a1.5 1.5 0 0 1-1.5-1.5V4.25a1.5 1.5 0 0 1 1.5-1.5z"/><path d="M11.25 2.75V6.5h3.75M10 9v5M7.5 11.5h5"/></svg><span>New</span></button>
     <button class="tbtn wide openbtn" id="openBtn" title="Open one of your saved projects (Ctrl O)"><span>Open</span></button>
     <div class="split"><button class="btn primary savebtn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button><button class="btn primary savemore" id="saveMore" aria-haspopup="menu" aria-expanded="false" title="More ways to save" aria-label="More ways to save"><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button></div>
     <span class="tsep" aria-hidden="true"></span>
@@ -712,6 +739,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <div class="tmenu dd" id="helpMenu" role="menu" aria-label="Help" hidden>
       <button role="menuitem" data-m="tour"><b>Walkthrough</b><small>the short tour of FitFlat, again</small></button>
       <button role="menuitem" data-m="manual"><b>Manual</b><small>everything, step by step (opens in a new tab)</small></button>
+      <button role="menuitem" data-m="keys"><b>Keyboard shortcuts</b><small>every key and mouse trick on one page</small></button>
       <button role="menuitem" data-m="privacy"><b>Privacy</b><small>what FitFlat does with your data (nothing, mostly)</small></button>
     </div>
     <div class="tmenu dd" id="importMenu" role="menu" aria-label="Import" hidden>
@@ -728,7 +756,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <option disabled>──────</option><option value="keep" title="Keep the current arrangement as the layout shown">Keep current…</option>
       </select></div>
       <div class="trow" id="storeRow"><span>Projects</span><button type="button" class="btn" id="storeBtn" title="Where your projects, starting points and decal templates are kept">This browser</button></div>
-      <div class="trow"><span>Tips</span><label class="tsw"><input type="checkbox" id="tipsSw" checked role="switch" aria-label="Show tips at the bottom of the view"><i></i></label></div>
+      <div class="trow"><span>Hints</span><label class="tsw" title="On: the explanations in the panels and the tips at the bottom of the view are shown. Off: they wait behind small (i) buttons"><input type="checkbox" id="tipsSw" role="switch" aria-label="Show hints in the panels and tips in the view"><i></i></label></div>
       <div class="trow"><span>Model units</span><select class="btn" id="units" aria-label="Model units" title="Model units">
         <option value="auto" id="unitsAuto">Auto</option><option value="mm">mm</option><option value="cm">cm</option><option value="m">m</option><option value="in">inch</option>
       </select></div>
@@ -967,17 +995,23 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <svg id="sheet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cut sheet preview"></svg>
         <div class="matmeta"><span id="matSize"></span><span id="matCount"></span></div>
       </div>
-      <div class="notchbar" id="pieceBar" hidden>
-        <div class="nrow"><b id="pieceHead">Piece</b><span class="spacer"></span><button class="btn" id="pcH" title="Lay the piece flat: its long side across, and it stays like that when the sheet is packed">↔</button><button class="btn" id="pcV" title="Stand the piece up: its long side up and down, and it stays like that when the sheet is packed">↕</button><button class="btn" id="pcL" title="Turn the piece 90° to the left on the sheet">⟲ 90°</button><button class="btn" id="pcR" title="Turn the piece 90° to the right on the sheet">⟳ 90°</button>
+      <div class="notchbar sec" id="pieceBar" hidden>
+        <h2 id="pieceHead">Piece</h2>
+        <div class="nrow"><button class="btn" id="pcH" title="Lay the piece flat: its long side across, and it stays like that when the sheet is packed">↔</button><button class="btn" id="pcV" title="Stand the piece up: its long side up and down, and it stays like that when the sheet is packed">↕</button><button class="btn" id="pcL" title="Turn the piece 90° to the left on the sheet">⟲ 90°</button><button class="btn" id="pcR" title="Turn the piece 90° to the right on the sheet">⟳ 90°</button>
           <label class="pcang" title="Turn the piece by this angle on the sheet (arrow keys in the box: 1°, Shift: 15°)"><input type="number" id="pcAng" step="1"> °</label><button class="btn" id="pcAuto" title="Let FitFlat turn the piece again: smallest box around it, long side across, but it may stand it up when that packs the sheet better">Auto</button></div>
       </div>
-      <div class="notchbar" id="notchBar" hidden>
-        <div class="nrow"><div class="seg" id="notchMode" role="group" aria-label="Notch tool"><button id="ntSelM" aria-pressed="true" title="Click a notch to select it, then drag it or use the arrow keys. Clicking a piece selects its decal (A switches)">Select</button><button id="ntAddM" aria-pressed="false" title="Click a piece's edge to cut a new notch there. Shift-click to keep adding (A switches)">Add notch</button></div><span class="spacer"></span><button class="btn" id="notchBig" title="Show the cut sheet big, to place notches comfortably (Esc goes back)">Enlarge</button></div>
-        <div class="nrow"><b id="notchHead">V-notch</b><select class="btn" id="notchTpl" aria-label="Notch template"></select></div>
-        <div class="nrow nnum"><label title="Width of the V at the edge of the piece">Width<input type="number" id="notchW" min="0.5" max="80" step="0.5"> mm</label><label title="How far the V reaches into the piece">Length<input type="number" id="notchL" min="1" max="150" step="0.5"> mm</label><label title="Radius of the rounded tip, so the film does not tear there">Tip r<input type="number" id="notchR" min="0" max="20" step="0.25"> mm</label></div>
+      <details class="notchbar sec fold" id="notchBar" hidden open>
+        <summary><h2>Notches</h2><span class="sum" id="notchSum"></span></summary>
+        <div class="nrow"><div class="seg" id="notchMode" role="group" aria-label="Notch tool"><button id="ntSelM" aria-pressed="true" title="Click a notch to select it, then drag it or use the arrow keys. Clicking a piece selects its decal (A switches)">Select</button><button id="ntAddM" aria-pressed="false" title="Click a piece's edge to cut a new notch there. Shift-click to keep adding (A switches)">Add notch</button></div><span class="spacer"></span><button class="btn" id="notchBig" title="Sheet edit: the cut sheet over the whole window, to place notches comfortably (E; Esc goes back)">Sheet edit</button></div>
+        <div class="grid2">
+          <label class="field span3"><span id="notchHead">New notches</span><select id="notchTpl" aria-label="Notch template"></select></label>
+          <label class="field" title="Width of the V at the edge of the piece">Width (mm)<input type="number" id="notchW" min="0.5" max="80" step="0.5"></label>
+          <label class="field" title="How far the V reaches into the piece">Length (mm)<input type="number" id="notchL" min="1" max="150" step="0.5"></label>
+          <label class="field" title="Radius of the rounded tip, so the film does not tear there">Tip r (mm)<input type="number" id="notchR" min="0" max="20" step="0.25"></label>
+        </div>
         <div class="nrow"><button class="btn" id="notchSave" title="Keep these numbers as a template you can pick again (stays in this browser)">Save as template</button><button class="btn" id="notchDelTpl" title="Delete the picked template">Delete template</button><button class="btn" id="notchDel" title="Take the selected notch out (Delete)" hidden>Remove notch</button><button class="btn tog" id="notchRelief" aria-pressed="true" title="On: the unwrap treats the notch as a slit, so the film may open or close there as the frame needs, and the stretch colours and numbers count it. Off: the notch is only cut out of the finished flat piece">Count in stretch</button></div>
         <p class="note" id="notchNote">Add notch, then click a piece's edge to cut one there (Shift-click to keep adding). In Select, click a notch to select it, drag it along the edge or use the arrow keys (Shift: 5 mm), and change its numbers here. With Count in stretch on, the unwrap treats a notch as a slit, so the stretch counts it.</p>
-      </div>
+      </details>
       <div class="sec">
         <div class="dhead"><h2>Decals</h2>
           <div class="seg boolseg" role="group" aria-label="Combine with another decal">
@@ -1118,11 +1152,24 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     </footer>
   </form>
 </dialog>
+<dialog class="geo privdlg" id="keysDlg" aria-labelledby="keysTitle">
+  <form method="dialog">
+    <header><h2 id="keysTitle">Keyboard shortcuts</h2></header>
+    <div class="body" id="keysBody"></div>
+    <footer><span class="spacer"></span><button class="btn primary" value="ok" autofocus>OK</button></footer>
+  </form>
+</dialog>
 <dialog class="geo privdlg" id="privacyDlg" aria-labelledby="privTitle">
   <form method="dialog">
     <header><h2 id="privTitle">Privacy</h2></header>
     <div class="body" id="privBody"></div>
     <footer><span class="spacer"></span><button class="btn primary" value="ok" autofocus>OK</button></footer>
+  </form>
+</dialog>
+<dialog class="geo unitdlg" id="unsavedDlg" aria-labelledby="unsavedTitle">
+  <form method="dialog" onsubmit="return false">
+    <header><h2 id="unsavedTitle">Save the changes first?</h2><p id="unsavedMsg"></p></header>
+    <footer><button type="button" class="btn" id="unsCancel">Cancel</button><span class="spacer"></span><button type="button" class="btn" id="unsDiscard">Don't save</button><button type="button" class="btn primary" id="unsSave">Save</button></footer>
   </form>
 </dialog>
 <dialog class="geo unitdlg" id="storeDlg" aria-labelledby="storeTitle">
@@ -3379,10 +3426,19 @@ function openFile(file) {
 stage.addEventListener('dragover', e => { e.preventDefault(); stage.classList.add('dragging'); });
 stage.addEventListener('dragleave', () => stage.classList.remove('dragging'));
 stage.addEventListener('drop', e => { e.preventDefault(); stage.classList.remove('dragging'); const f = e.dataTransfer.files[0]; if (f) openFile(f); });
-$('#demo').addEventListener('click', () => {
-  if (S.decals.length && S.dirty && !confirm('Start a new file? Decals that are not saved will be lost.')) return;
-  S.project = { id: null, name: '' }; demoFrame();
-});
+// unsaved changes: Save, Don't save or Cancel
+function askUnsaved(msg) { return new Promise(res => { const d = $('#unsavedDlg'); $('#unsavedMsg').textContent = msg;
+  const done = v => { d.close(); res(v); }; $('#unsSave').onclick = () => done('save'); $('#unsDiscard').onclick = () => done('discard'); $('#unsCancel').onclick = () => done('cancel');
+  d.oncancel = e => { e.preventDefault(); done('cancel'); }; d.showModal(); $('#unsSave').focus(); }); }
+// New: a fresh project on the start frame; asks to save the open one first when it has changes
+async function newProject() {
+  if (S.dirty && S.source && (S.decals.length || S.project?.id)) {
+    const a = await askUnsaved(tr('"{0}" has changes that are not saved. Save them before starting a new project?').replace('{0}', S.project?.name || tr('Untitled project')));
+    if (a === 'cancel') return; if (a === 'save' && !(await saveProject(false))) return; }
+  S.dirty = false; S.project = { id: null, name: '' }; demoFrame(); S.dirty = false; updateProjName(); flash(tr('New project on the start frame. Open a scan or build your frame to begin.'));
+}
+$('#demo').addEventListener('click', newProject);
+$('#newBtn').addEventListener('click', newProject);
 
 // ---------- project save / load ----------
 function b64(arr) { const u8 = new Uint8Array(arr.buffer, arr.byteOffset, arr.byteLength); let s = ''; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(s); }
@@ -3568,6 +3624,24 @@ function updateWhere() {
   if (h && canFolder) { FOLDER.handle = h; FOLDER.name = h.name; await folderPerm(false); } if (m === 'folder' && h) S.storeMode = 'folder'; } catch (e) {} updateWhere(); updateStoreBtn(); })();
 // privacy (GDPR) information: Help > Privacy
 const PROVIDER = { name: 'Max Soldatkin', address: '', email: '' }; // fill in address and email: they appear in the notice
+// Help > Keyboard shortcuts: the same keys the app listens for
+function openKeys() {
+  const mac = /Mac|iPhone|iPad/.test(navigator.platform), C = mac ? '⌘' : 'Ctrl', A = mac ? '⌥' : 'Alt';
+  const K = s => s.split(' / ').map(x => `<kbd>${x.replace(/Ctrl/g, C).replace(/Alt/g, A)}</kbd>`).join(' ');
+  const G = [
+    ['Tools', [['Draw', 'D'], ['Edit (select and move)', 'V'], ['Knife', 'K'], ['Sheet edit: the cut sheet over the whole window', 'E']]],
+    ['Project', [['Save', 'Ctrl S'], ['Open a saved project', 'Ctrl O'], ['Undo', 'Ctrl Z'], ['Redo', 'Ctrl Shift Z / Ctrl Y']]],
+    ['Unwrap', [['Unwrap what changed', 'U'], ['Unwrap now', 'Shift Space'], ['Live unwrap on or off', 'L'], ['Seam snap on or off', 'Q']]],
+    ['View', [['Front, side, top', '1 / 3 / 7'], ['The opposite side', 'Ctrl 1 / Ctrl 3 / Ctrl 7'], ['Turn the view by 45°', '4 / 6 / 8 / 2'], ['Perspective or flat (orthographic)', '5'], ['Show everything', '0 / Home'], ['Zoom to the selection', 'F'], ['Grid on or off', 'G'], ['See through the model (X-ray)', 'Alt Z'], ['Turn the view (hold Space to turn it over a decal)', 'drag / Space drag'], ['Slide the view', 'right-drag'], ['Zoom (Alt: finer)', 'scroll']]],
+    ['Decals and points', [['Duplicate the decal', 'Ctrl D'], ['Select all its points', 'Ctrl A'], ['Select several points', 'Shift drag'], ['Add a point', 'Ctrl click'], ['Delete a point', 'Alt click'], ['Delete the selected points', 'Delete'], ['Merge the selected points', 'M'], ['Nudge the selection (Shift: 10×)', '← → ↑ ↓'], ['Turn the decal (Shift: bigger steps)', 'Ctrl scroll'], ['Size the decal (Shift: bigger steps)', 'Alt scroll'], ['Close a drawn outline / apply the knife', 'Enter'], ['Stop, cancel, let go', 'Esc']]],
+    ['Placing artwork', [['Turn it (Shift: back)', 'R'], ['Smaller, bigger', '[ / ]'], ['Place it', 'Enter']]],
+    ['Knife', [['Cut through every surface', 'T'], ['Take back the last point', 'Delete']]],
+    ['Sheet and notches', [['Add notch or Select', 'A'], ['Move the selected notch (Shift: 5 mm)', '← → ↑ ↓'], ['Remove the selected notch', 'Delete'], ['Zoom the sheet', 'scroll'], ['Whole sheet', 'double-click'], ['Close sheet edit', 'Esc']]],
+  ];
+  $('#keysTitle').textContent = tr('Keyboard shortcuts');
+  $('#keysBody').innerHTML = G.map(([h, rows]) => `<section><h3>${tr(h)}</h3>${rows.map(([t, k]) => `<div class="kr"><span>${tr(t)}</span><span>${K(tr(k))}</span></div>`).join('')}</section>`).join('');
+  $('#keysDlg').showModal();
+}
 function openPrivacy() {
   const de = LANG === 'de', who = [PROVIDER.name, PROVIDER.address, PROVIDER.email && `<a href="mailto:${PROVIDER.email}">${PROVIDER.email}</a>`].filter(Boolean).join(' · ');
   $('#privTitle').textContent = de ? 'Datenschutz' : 'Privacy';
@@ -4824,6 +4898,7 @@ window.addEventListener('keydown', e => {
   if (!mod && e.key.toLowerCase() === 'q' && S.model) { setSeamSnap(!S.seamSnap); e.preventDefault(); return; }
   if (!mod && e.key.toLowerCase() === 'l' && S.model) { setLiveUnwrap(!S.liveUnwrap); e.preventDefault(); return; }
   if (!mod && e.key.toLowerCase() === 'u' && S.model && staleDecals().length) { unwrapNow(); e.preventDefault(); return; }
+  if (!mod && e.key.toLowerCase() === 'e' && S.model && window.__sheetEdit) { window.__sheetEdit(); e.preventDefault(); return; }
   if (!mod && e.key.toLowerCase() === 'g' && S.model) { S.grid.show = !S.grid.show; gridKey = ''; renderGrid(); updateGridUI(); e.preventDefault(); return; }
   if ((e.key === '5' || e.code === 'Numpad5') && S.model) { setOrtho(!camera.isOrthographicCamera); e.preventDefault(); }
   const orb = { '4': ['yaw', -45], '6': ['yaw', 45], '8': ['pitch', -45], '2': ['pitch', 45] }[e.key];
@@ -5481,10 +5556,30 @@ window.addEventListener('keydown', e => {
 document.querySelectorAll('#turnAxis [data-ax]').forEach(b => b.addEventListener('click', () => { S.turnAxis = b.dataset.ax; document.querySelectorAll('#turnAxis [data-ax]').forEach(x => x.setAttribute('aria-pressed', x.dataset.ax === S.turnAxis)); flash(S.turnAxis === 'view' ? 'Turning around the view: the decal turns as you see it.' : S.turnAxis === 'surface' ? 'Turning around the surface normal at the decal\'s centre.' : `Turning around the ${S.turnAxis.toUpperCase()} axis through the middle of the tube.`); }));
 $('#shapeMid').addEventListener('click', () => { S.shapeMid = !S.shapeMid; updateUI(); flash(S.shapeMid ? 'Shapes snap their centre onto the mirror plane.' : 'Shapes sit where you draw them.'); });
 // the tips panel folds down to a small button; the choice is remembered
-function setHintOpen(open) { $('#hintBox').classList.toggle('collapsed', !open); const t = $('#hintTog'); t.setAttribute('aria-expanded', open); t.title = open ? 'Hide the tips' : 'Show the tips'; $('#tipsSw').checked = !!open; try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
-$('#hintTog').addEventListener('click', () => setHintOpen($('#hintBox').classList.contains('collapsed')));
+// Hints (Settings): on shows the explanations in the panels and the tips in the view; off (the default) keeps them
+// behind small (i) buttons, by each panel's heading and at the bottom of the view
+const I_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><path d="M12 7.5v.5"/></svg>';
+function setHintOpen(open, keep) { $('#hintBox').classList.toggle('collapsed', !open); $('#hintBox').classList.remove('peek'); const t = $('#hintTog'); t.hidden = !!open; t.setAttribute('aria-expanded', 'false'); t.title = tr('Show the tip');
+  document.body.classList.toggle('nohints', !open); document.querySelectorAll('.xp.show').forEach(n => n.classList.remove('show')); document.querySelectorAll('.ibtn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+  $('#tipsSw').checked = !!open; if (!keep) try { localStorage.setItem('decal-studio-hint', open ? '1' : '0'); } catch (e) {} }
+$('#hintTog').addEventListener('click', () => { const on = $('#hintBox').classList.toggle('peek'); $('#hintTog').setAttribute('aria-expanded', String(on)); });
 $('#tipsSw').addEventListener('change', e => setHintOpen(e.target.checked));
-try { if (localStorage.getItem('decal-studio-hint') === '0') setHintOpen(false); } catch (e) {}
+// the explanations: every plain note in the side panel (not warnings or live status lines)
+function markHints() {
+  document.querySelectorAll('.panel p.note, .flatdock p.note').forEach(n => {
+    if (n.classList.contains('xp') || n.classList.contains('warn') || n.getAttribute('role') === 'status' || n.closest('.ff-noxp')) return;
+    n.classList.add('xp');
+    const box = n.closest('.notchbar, details.sec, .sec, .export') || n.parentNode;
+    if (box.querySelector(':scope .ibtn[data-for]') && box.__ib) { box.__ib.push(n); return; }
+    box.__ib = [n];
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'ibtn'; b.dataset.for = '1'; b.innerHTML = I_SVG; b.setAttribute('aria-expanded', 'false'); b.title = tr('Show the explanation'); b.setAttribute('aria-label', tr('Show the explanation'));
+    b.addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); const on = b.getAttribute('aria-expanded') !== 'true'; b.setAttribute('aria-expanded', String(on)); box.__ib.forEach(x => x.classList.toggle('show', on)); });
+    const head = box.querySelector(':scope > summary h2, :scope > h2, :scope > .dhead h2');
+    if (head) head.after(b); else { b.classList.add('solo'); const row = box.querySelector(':scope > .exprow'); if (row) row.appendChild(b); else n.before(b); }
+  });
+}
+markHints();
+try { setHintOpen(localStorage.getItem('decal-studio-hint') === '1', true); } catch (e) { setHintOpen(false, true); }
 $('#knifeThrough').addEventListener('click', () => setKnifeThrough(!S.knifeThrough));
 S.drawShape = 'free';
 document.querySelectorAll('#drawShape [data-shape]').forEach(b => b.addEventListener('click', () => { S.drawShape = b.dataset.shape; updateUI(); }));
@@ -6162,7 +6257,41 @@ function sheetZoom(k, cx, cy) {
   svg.addEventListener('dblclick', () => { S.sheetView = null; sheetVB(); });
   $('#shIn').addEventListener('click', () => sheetZoom(1 / 1.5)); $('#shOut').addEventListener('click', () => sheetZoom(1.5));
   $('#shFit').addEventListener('click', () => { S.sheetView = null; sheetVB(); });
-  const big = on => { $('#matBox').classList.toggle('big', on); $('#shBig').setAttribute('aria-pressed', String(on)); $('#notchBig').textContent = tr(on ? 'Smaller' : 'Enlarge'); S.sheetView = on && S.notch.on ? piecesView() : null; sheetVB(); };
+  // Sheet edit: the piece and notch panels move into a floating dock; drag it by its top, it snaps to a corner or side
+  const dock = document.createElement('div'); dock.className = 'flatdock'; dock.id = 'flatDock'; dock.hidden = true; dock.setAttribute('role', 'region'); dock.setAttribute('aria-label', 'Sheet tools');
+  const PINS = ['tl', 't', 'tr', 'l', '', 'r', 'bl', 'b', 'br'];
+  dock.innerHTML = `<div class="fdhead"><span class="grip" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></span><span id="fdTitle">${tr('Sheet tools')}</span><span class="spacer"></span><div class="pins" role="group" aria-label="${tr('Pin to')}">${PINS.map(k => `<button type="button" data-pin="${k}" class="${k ? '' : 'mid'}" title="${tr('Pin here')}" ${k ? '' : 'tabindex="-1" aria-hidden="true"'}></button>`).join('')}</div></div><div class="fdbody"></div>`;
+  document.body.appendChild(dock);
+  const homes = ['#pieceBar', '#notchBar'].map(sel => { const el = $(sel); return { el, parent: el.parentNode, next: el.nextSibling }; });
+  let dockPos = (() => { try { return JSON.parse(localStorage.getItem('fitflat-dock') || 'null') || { pin: 'bl' }; } catch (e) { return { pin: 'bl' }; } })();
+  const M = 28, TOP = 72; // clear of the window edge and of the sheet's zoom bar
+  const pinXY = (pin, w, h) => { const W = innerWidth, H = innerHeight;
+    const x = /l$/.test(pin) || pin === 'l' ? M : /r$/.test(pin) || pin === 'r' ? W - w - M : (W - w) / 2, y = pin[0] === 't' ? TOP + 8 : pin[0] === 'b' ? H - h - M : TOP + (H - TOP - h) / 2;
+    return [Math.round(x), Math.round(y)]; };
+  const placeDock = () => { if (dock.hidden) return; const w = dock.offsetWidth, h = dock.offsetHeight;
+    let [x, y] = dockPos.pin ? pinXY(dockPos.pin, w, h) : [dockPos.x, dockPos.y];
+    x = Math.min(Math.max(8, x), innerWidth - w - 8); y = Math.min(Math.max(TOP, y), innerHeight - Math.min(h, 60) - 8);
+    dock.style.left = x + 'px'; dock.style.top = y + 'px';
+    dock.querySelectorAll('[data-pin]').forEach(b => b.setAttribute('aria-pressed', String(!!dockPos.pin && b.dataset.pin === dockPos.pin))); };
+  const saveDock = () => { try { localStorage.setItem('fitflat-dock', JSON.stringify(dockPos)); } catch (e) {} };
+  const syncDock = () => { const on = $('#matBox').classList.contains('big'), any = homes.some(h => !h.el.hidden); dock.hidden = !(on && any); placeDock(); };
+  const mo = new MutationObserver(syncDock); homes.forEach(h => mo.observe(h.el, { attributes: true, attributeFilter: ['hidden', 'open'] }));
+  new ResizeObserver(() => placeDock()).observe(dock); addEventListener('resize', placeDock);
+  dock.querySelectorAll('[data-pin]').forEach(b => b.addEventListener('click', () => { if (!b.dataset.pin) return; dockPos = { pin: b.dataset.pin }; saveDock(); placeDock(); }));
+  { let drag = null, ghost = null;
+    const near = (x, y, w, h) => { let best = null; for (const k of PINS) { if (!k) continue; const [px, py] = pinXY(k, w, h), d = Math.hypot(px - x, py - y); if (d < 90 && (!best || d < best.d)) best = { k, d, px, py }; } return best; };
+    dock.querySelector('.fdhead').addEventListener('pointerdown', e => { if (e.button !== 0 || e.target.closest('button')) return; const r = dock.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, w: r.width, h: r.height }; dock.classList.add('dragging'); e.currentTarget.setPointerCapture(e.pointerId); e.preventDefault(); });
+    dock.querySelector('.fdhead').addEventListener('pointermove', e => { if (!drag) return; const x = e.clientX - drag.dx, y = e.clientY - drag.dy; dock.style.left = x + 'px'; dock.style.top = y + 'px';
+      const n = near(x, y, drag.w, drag.h); if (n) { if (!ghost) { ghost = document.createElement('div'); ghost.className = 'dockghost'; document.body.appendChild(ghost); } Object.assign(ghost.style, { left: n.px + 'px', top: n.py + 'px', width: drag.w + 'px', height: drag.h + 'px' }); } else if (ghost) { ghost.remove(); ghost = null; } });
+    const end = e => { if (!drag) return; const x = parseFloat(dock.style.left), y = parseFloat(dock.style.top), n = near(x, y, drag.w, drag.h);
+      dockPos = n ? { pin: n.k } : { pin: null, x, y }; drag = null; dock.classList.remove('dragging'); if (ghost) { ghost.remove(); ghost = null; } saveDock(); placeDock(); };
+    dock.querySelector('.fdhead').addEventListener('pointerup', end); dock.querySelector('.fdhead').addEventListener('pointercancel', end); }
+  const big = on => { $('#matBox').classList.toggle('big', on); $('#shBig').setAttribute('aria-pressed', String(on)); $('#notchBig').textContent = tr(on ? 'Close sheet edit' : 'Sheet edit');
+    const body = dock.querySelector('.fdbody');
+    for (const h of homes) { if (on) body.appendChild(h.el); else h.parent.insertBefore(h.el, h.next); }
+    syncDock(); S.sheetView = on && S.notch.on ? piecesView() : null; sheetVB(); };
+  window.__sheetEdit = on => { if (on == null) on = !$('#matBox').classList.contains('big'); if (on && window.__showTab) window.__showTab('sheet'); big(on); };
   $('#notchBig').addEventListener('click', () => big(!$('#matBox').classList.contains('big')));
   $('#shBig').addEventListener('click', () => big(!$('#matBox').classList.contains('big')));
   window.addEventListener('keydown', e => { if (e.key !== 'Escape' || e.target.closest?.('input, textarea, select')) return;
@@ -6396,6 +6525,7 @@ function renderNotchBar() {
   $('#notchW').value = v.w; $('#notchL').value = v.L; $('#notchR').value = v.r;
   $('#notchDelTpl').disabled = !(cur >= NOTCH_BUILTIN.length); $('#notchDel').hidden = !sel; $('#notchRelief').setAttribute('aria-pressed', String(!!(sel ? sel.n.relief : S.notch.relief))); $('#notchRelief').disabled = !!sel?.n.hole;
   $('#notchHead').textContent = tr(sel ? 'Selected notch' : 'New notches');
+  { const n = S.decals.reduce((a, d) => a + (d.notches?.length || 0), 0); $('#notchSum').textContent = (n === 1 ? tr('1 notch') : tr('{0} notches').replace('{0}', n)) + ' · ' + tr(S.notch.add ? 'Add notch' : 'Select'); }
 }
 function setNotchVals(o) { // the numbers go to the selected notch, or to the next new one
   const sel = selNotch(); if (sel) { pushHistory('Notch size'); Object.assign(sel.n, o); if (sel.n.relief && 'L' in o) notchResolve(sel.d); else renderSheet(); notchSplitWarn(sel.d); } else Object.assign(S.notch, o);
@@ -9352,6 +9482,7 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "Hints": "Hinweise", "Show hints in the panels and tips in the view": "Hinweise in den Feldern und Tipps in der Ansicht zeigen", "On: the explanations in the panels and the tips at the bottom of the view are shown. Off: they wait behind small (i) buttons": "Ein: Erklärungen in den Feldern und Tipps unten in der Ansicht werden gezeigt. Aus: sie warten hinter kleinen (i)-Knöpfen", "Show the tip": "Tipp zeigen", "Show the explanation": "Erklärung zeigen", "Notches": "Kerben", "1 notch": "1 Kerbe", "{0} notches": "{0} Kerben", "Sheet edit": "Bogen bearbeiten", "Close sheet edit": "Bogen schließen", "Sheet edit: the cut sheet over the whole window, to place notches comfortably (E; Esc goes back)": "Bogen bearbeiten: der Schnittbogen über das ganze Fenster, um Kerben bequem zu setzen (E; Esc geht zurück)", "Sheet tools": "Bogen-Werkzeuge", "Pin to": "Anheften an", "Pin here": "Hier anheften", "Width (mm)": "Breite (mm)", "Length (mm)": "Länge (mm)", "Tip r (mm)": "Spitze r (mm)", "Start a new project (asks to save the open one first)": "Neues Projekt beginnen (fragt vorher, ob das offene gespeichert werden soll)", "Save the changes first?": "Änderungen zuerst speichern?", "Don't save": "Nicht speichern", "Cancel": "Abbrechen", "Save": "Speichern", "\"{0}\" has changes that are not saved. Save them before starting a new project?": "„{0}“ hat ungespeicherte Änderungen. Vor dem neuen Projekt speichern?", "New project on the start frame. Open a scan or build your frame to begin.": "Neues Projekt auf dem Startrahmen. Öffne einen Scan oder baue deinen Rahmen, um zu beginnen.", "Keyboard shortcuts": "Tastenkürzel", "every key and mouse trick on one page": "alle Tasten und Maus-Kniffe auf einer Seite", "Tools": "Werkzeuge", "Draw": "Zeichnen", "Edit (select and move)": "Bearbeiten (auswählen und verschieben)", "Knife": "Messer", "Sheet edit: the cut sheet over the whole window": "Bogen bearbeiten: der Schnittbogen über das ganze Fenster", "Project": "Projekt", "Open a saved project": "Gespeichertes Projekt öffnen", "Undo": "Rückgängig", "Redo": "Wiederholen", "Unwrap what changed": "Geändertes abwickeln", "Live unwrap on or off": "Live-Abwicklung ein oder aus", "Seam snap on or off": "Naht-Fang ein oder aus", "View": "Ansicht", "Front, side, top": "Vorne, Seite, oben", "The opposite side": "Die Gegenseite", "Turn the view by 45°": "Ansicht um 45° drehen", "Perspective or flat (orthographic)": "Perspektive oder flach (orthografisch)", "Show everything": "Alles zeigen", "Zoom to the selection": "Auf die Auswahl zoomen", "Grid on or off": "Raster ein oder aus", "See through the model (X-ray)": "Durch das Modell sehen (Röntgen)", "Turn the view (hold Space to turn it over a decal)": "Ansicht drehen (Leertaste halten, um auch über einem Dekor zu drehen)", "Slide the view": "Ansicht verschieben", "Zoom (Alt: finer)": "Zoomen (Alt: feiner)", "drag / Space drag": "ziehen / Leertaste ziehen", "right-drag": "rechts ziehen", "scroll": "scrollen", "double-click": "Doppelklick", "Shift drag": "Umschalt ziehen", "Ctrl click": "Strg Klick", "Alt click": "Alt Klick", "Ctrl scroll": "Strg scrollen", "Alt scroll": "Alt scrollen", "Shift Space": "Umschalt Leertaste", "Ctrl Shift Z / Ctrl Y": "Strg Umschalt Z / Strg Y", "Ctrl S": "Strg S", "Ctrl O": "Strg O", "Ctrl Z": "Strg Z", "Ctrl D": "Strg D", "Ctrl A": "Strg A", "Ctrl 1 / Ctrl 3 / Ctrl 7": "Strg 1 / Strg 3 / Strg 7", "0 / Home": "0 / Pos1", "Delete": "Entf", "Enter": "Eingabe", "Decals and points": "Dekore und Punkte", "Duplicate the decal": "Dekor duplizieren", "Select all its points": "Alle seine Punkte auswählen", "Select several points": "Mehrere Punkte auswählen", "Add a point": "Punkt hinzufügen", "Delete a point": "Punkt löschen", "Delete the selected points": "Gewählte Punkte löschen", "Merge the selected points": "Gewählte Punkte verschmelzen", "Nudge the selection (Shift: 10×)": "Auswahl schieben (Umschalt: 10×)", "Turn the decal (Shift: bigger steps)": "Dekor drehen (Umschalt: größere Schritte)", "Size the decal (Shift: bigger steps)": "Dekor skalieren (Umschalt: größere Schritte)", "Close a drawn outline / apply the knife": "Gezeichnete Kontur schließen / Messer anwenden", "Stop, cancel, let go": "Beenden, abbrechen, loslassen", "Placing artwork": "Grafik platzieren", "Turn it (Shift: back)": "Drehen (Umschalt: zurück)", "Smaller, bigger": "Kleiner, größer", "Place it": "Platzieren", "Cut through every surface": "Durch alle Flächen schneiden", "Take back the last point": "Letzten Punkt zurücknehmen", "Sheet and notches": "Bogen und Kerben", "Add notch or Select": "Kerbe hinzufügen oder Auswählen", "Move the selected notch (Shift: 5 mm)": "Gewählte Kerbe schieben (Umschalt: 5 mm)", "Remove the selected notch": "Gewählte Kerbe entfernen", "Zoom the sheet": "Bogen zoomen", "Whole sheet": "Ganzer Bogen",
   "Joint radius (mm)": "Verbindungsradius (mm)", "Fine (1.5 mm)": "Fein (1,5 mm)", "Normal (2.5 mm)": "Normal (2,5 mm)", "Draft (3.5 mm)": "Grob (3,5 mm)", "Separate tubes": "Einzelne Rohre", "Where should FitFlat keep your projects?": "Wo soll FitFlat deine Projekte aufbewahren?", "In a folder, every project, starting point and decal template is a file you can back up, sync or share, for example on the company network or in a cloud folder. In this browser they stay on this computer, in this browser only. You can change this any time in Settings.": "In einem Ordner ist jedes Projekt, jeder Ausgangspunkt und jede Decal-Vorlage eine Datei, die du sichern, synchronisieren oder teilen kannst, zum Beispiel im Firmennetz oder in einem Cloud-Ordner. Im Browser bleiben sie auf diesem Computer, nur in diesem Browser. Du kannst das jederzeit in den Einstellungen ändern.", "Keep in this browser": "Im Browser behalten", "Choose a folder…": "Ordner wählen …", "Choose another folder…": "Anderen Ordner wählen …", "Now: this browser.": "Jetzt: dieser Browser.", "Now: the folder \"{0}\".": "Jetzt: der Ordner „{0}“.", "This browser": "Dieser Browser", "Privacy": "Datenschutz", "what FitFlat does with your data (nothing, mostly)": "was FitFlat mit deinen Daten macht (fast nichts)", "Your frames, drawings and projects stay on your computer. FitFlat collects no personal data and sends nothing about your work anywhere.": "Deine Rahmen, Zeichnungen und Projekte bleiben auf deinem Computer. FitFlat sammelt keine persönlichen Daten und schickt nichts über deine Arbeit irgendwohin.", "Accent": "Akzent", "Blue (default)": "Blau (Standard)", "Indigo": "Indigo", "Teal": "Petrol", "Green": "Grün", "Orange": "Orange", "Pink": "Pink", "Graphite": "Graphit", "Any colour…": "Beliebige Farbe …", "Where your projects, starting points and decal templates are kept": "Wo deine Projekte, Ausgangspunkte und Decal-Vorlagen aufbewahrt werden", "Building the frame…": "Rahmen wird gebaut…",
   "How round the joints are where the tubes meet, like a weld or a carbon joint. 0 gives the tightest the surface detail allows (about 1.2 × its triangle size)": "Wie rund die Verbindungen sind, wo die Rohre aufeinandertreffen, wie eine Schweißnaht oder eine Carbon-Verbindung. 0 ergibt das Engste, was die Oberflächendetails zulassen (etwa 1,2 × die Dreiecksgröße)",
   "The size of the triangles of the frame's surface. Finer follows the joints more closely but makes the model heavier": "Die Größe der Dreiecke der Rahmenoberfläche. Feiner folgt den Verbindungen genauer, macht das Modell aber schwerer",
@@ -9931,7 +10062,7 @@ setLang(LANG);
   tour.addEventListener('pointerdown', e => { if (e.target === tour) endTour(); });
   addEventListener('keydown', e => { if (tour.hidden) return; if (e.key === 'Escape') endTour(); else if (e.key === 'ArrowRight') go(at + 1); else if (e.key === 'ArrowLeft') go(at - 1); else return; e.preventDefault(); e.stopPropagation(); }, true);
   addEventListener('resize', () => { if (!tour.hidden) place(); });
-  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'privacy') openPrivacy(); else if (m === 'manual') window.open('https://fitflat.app/manual/' + (LANG === 'de' ? 'de.html' : ''), '_blank', 'noopener'); });
+  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'privacy') openPrivacy(); else if (m === 'keys') openKeys(); else if (m === 'manual') window.open('https://fitflat.app/manual/' + (LANG === 'de' ? 'de.html' : ''), '_blank', 'noopener'); });
   let seen = false; try { seen = !!localStorage.getItem(KEY); } catch (e) {}
   if (!seen) setTimeout(() => { if (!document.querySelector('dialog[open]')) welcome(); }, 700);
   else setTimeout(askStoreOnce, 1500); // seen the welcome before: ask now, once
