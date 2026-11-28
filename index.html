@@ -690,7 +690,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 #importMenu button, #helpMenu button{ flex-direction:column; align-items:flex-start; gap:1px; }
 .tmenu.dd kbd{ font:inherit; font-size:11.5px; color:var(--muted); }
 .tmenu.dd hr{ border:0; border-top:1px solid var(--line); margin:5px 8px; }
-.top .tbtn.openbtn{ padding:0 14px; } .top a.tbtn{ text-decoration:none; color:inherit; display:inline-flex; align-items:center; } .top a.tbtn.getapp{ color:var(--accent); } .top a.tbtn.buybtn{ background:var(--accent); color:#fff; } .top a.tbtn.buybtn:hover{ filter:brightness(1.08); } .top #importBtn{ padding:0 10px 0 14px; }
+.top .tbtn.openbtn{ padding:0 14px; } .top a.tbtn{ text-decoration:none; color:inherit; display:inline-flex; align-items:center; } #settingsPop .trbtns{ display:inline-flex; gap:6px; align-items:center; } #settingsPop a.btn{ text-decoration:none; } #settingsPop a.btn.primary{ background:var(--accent); color:#fff; } .top #importBtn{ padding:0 10px 0 14px; }
 .split{ display:inline-flex; } .split .savebtn{ border-radius:8px 0 0 8px; }
 .top .savemore{ height:30px; padding:0 7px; border-radius:0 8px 8px 0; margin-left:1px; display:inline-grid; place-items:center; }
 .savemore .chev{ width:10px; height:10px; fill:none; stroke:#fff; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -720,8 +720,6 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <span class="spacer"></span>
     <button class="tbtn wide" id="importBtn" aria-haspopup="menu" aria-expanded="false" title="Bring in a 3D model or scan, SVG artwork, or a reference photo"><span>Import</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
     <button class="tbtn wide openbtn" id="geoBtn" title="Frame builder: build a frame from geometry numbers or change its size"><span>Frame builder</span></button>
-    <a class="tbtn wide openbtn getapp webonly" id="getApp" href="https://fitflat.app/download.html" target="_blank" rel="noopener" title="FitFlat for Mac and Windows: free to download and try" hidden><span>Download</span></a>
-    <a class="tbtn wide openbtn buybtn" id="buyBtn" href="https://fitflat.app/buy.html" target="_blank" rel="noopener" title="Exporting cut files needs a licence" hidden><span>Buy a licence</span></a>
     <button class="tbtn wide openbtn" id="newBtn" title="Start a new project: build a frame or import a 3D model (asks to save the open one first)"><span>New</span></button>
     <button class="tbtn wide openbtn" id="openBtn" title="Open one of your saved projects (Ctrl O)"><span>Open</span></button>
     <div class="split"><button class="btn primary savebtn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button><button class="btn primary savemore" id="saveMore" aria-haspopup="menu" aria-expanded="false" title="More ways to save" aria-label="More ways to save"><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button></div>
@@ -767,6 +765,9 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <button role="menuitem" data-m="ref"><b>Reference photo</b><small>a photo of the real frame, to trace from</small></button>
     </div>
     <div class="tmenu" id="settingsPop" role="dialog" aria-label="Settings" hidden>
+      <div class="trow" id="buyRow" hidden><span>Licence</span><span class="trbtns"><button type="button" class="btn" id="licOpenWeb" hidden title="Open your licence file to unlock exporting in this browser">Open file…</button><a class="btn primary" id="buyBtn" href="https://fitflat.app/buy.html" target="_blank" rel="noopener" title="Exporting cut files needs a licence">Buy</a></span></div>
+      <div class="trow" id="licWebOk" hidden><span>Licence</span><span class="trbtns"><span class="note" id="licWebTxt">Exporting unlocked</span><button type="button" class="btn" id="licWebForget" title="Lock exporting again in this browser">Forget</button></span></div>
+      <div class="trow webonly" id="dlRow" hidden><span>Desktop app</span><a class="btn" id="getApp" href="https://fitflat.app/download.html" target="_blank" rel="noopener" title="FitFlat for Mac and Windows: free to download and try">Download</a></div>
       <div class="trow"><span>Language</span><div class="seg" id="lang" role="group" aria-label="Language"><button data-lang="en" aria-pressed="true" title="English">EN</button><button data-lang="de" aria-pressed="false" title="Deutsch">DE</button></div></div>
       <div class="trow"><span>Appearance</span><div class="seg" id="theme" role="group" aria-label="Colours"><button data-theme="auto" aria-pressed="true" title="Colours: same as your system" aria-label="Same as your system"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 2a6 6 0 0 1 0 12z" fill="currentColor"/></svg></button><button data-theme="light" aria-pressed="false" title="Light" aria-label="Light"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="3" fill="none" stroke="currentColor" stroke-width="1.5"/><g stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M8 1v1.6M8 13.4V15M1 8h1.6M13.4 8H15M3.05 3.05l1.13 1.13M11.82 11.82l1.13 1.13M3.05 12.95l1.13-1.13M11.82 4.18l1.13-1.13"/></g></svg></button><button data-theme="dark" aria-pressed="false" title="Dark" aria-label="Dark"><svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><path d="M13.5 9.6A5.8 5.8 0 0 1 6.4 2.5a5.8 5.8 0 1 0 7.1 7.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button></div></div>
       <div class="trow"><span>Accent</span><div class="accents" id="accents" role="radiogroup" aria-label="Accent colour"></div></div>
@@ -9030,7 +9031,8 @@ async function ffxOpen(id, dkRaw) {
   const el = document.createElement('script'); el.textContent = js; document.head.appendChild(el); el.remove();
   if (!window.__FFX) throw new Error('load'); updateBuyBtn(); return true;
 }
-function updateBuyBtn() { const b = $('#buyBtn'); if (b && window.__FFX_SEALED) b.hidden = !!window.__FFX; }
+function updateBuyBtn() { if (!window.__FFX_SEALED) return; const ok = !!window.__FFX; $('#buyRow').hidden = ok; $('#licOpenWeb').hidden = false; $('#licWebOk').hidden = !ok;
+  if (ok) { let id = ''; try { id = JSON.parse(localStorage.getItem(FFX_STORE) || 'null')?.id || ''; } catch (e) {} $('#licWebTxt').textContent = id ? tr('Exporting unlocked ({0})').replace('{0}', id) : tr('Exporting unlocked'); } }
 async function exportReady() {
   if (!window.__FFX_SEALED || window.__FFX) return true;
   let s = null; try { s = JSON.parse(localStorage.getItem(FFX_STORE) || 'null'); } catch (e) {}
@@ -9046,7 +9048,7 @@ function openLicGate(done) {
     try { const f = JSON.parse(await file.text()), u = x => Uint8Array.from(atob(x.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((x.length + 3) % 4)), c => c.charCodeAt(0));
       const p = JSON.parse(new TextDecoder().decode(u(f.payload))); id = p.id; dk = new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array([...new TextEncoder().encode('fitflat-web:'), ...u(f.signature)]))); }
     catch (e) { err.textContent = tr('This is not a FitFlat licence file.'); return; }
-    try { await ffxOpen(id, dk); keep(id, dk); flash(tr('Licence opened: exporting is unlocked.')); finish(true); } catch (e) { fail(e); } };
+    try { await ffxOpen(id, dk); keep(id, dk); updateBuyBtn(); flash(tr('Licence opened: exporting is unlocked.')); finish(true); } catch (e) { fail(e); } };
   $('#lgFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) withLicence(f); };
   $('#lgOpen').onclick = () => $('#lgFile').click();
   d.ondragover = e => e.preventDefault(); d.ondrop = e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) withLicence(f); };
@@ -9055,13 +9057,15 @@ function openLicGate(done) {
     try { const a = await (await fetch('access.json', { cache: 'no-store' })).json(), w = a.users?.[key.slice(0, 4)]; if (!w) throw new Error('wrong');
       const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(key), 'PBKDF2', false, ['deriveBits']);
       const dk = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Uint8Array.from(atob(w.salt), c => c.charCodeAt(0)), iterations: w.iter }, base, 256));
-      await ffxOpen(key.slice(0, 4), dk); keep(key.slice(0, 4), dk); flash(tr('Exporting is unlocked.')); finish(true); } catch (e) { fail(e); } };
+      await ffxOpen(key.slice(0, 4), dk); keep(key.slice(0, 4), dk); updateBuyBtn(); flash(tr('Exporting is unlocked.')); finish(true); } catch (e) { fail(e); } };
   $('#lgCancel').onclick = () => finish(false); d.oncancel = e => { e.preventDefault(); finish(false); };
   d.showModal();
 }
 // on the website: a remembered licence unlocks exporting quietly in the background; until then Buy shows in the top bar
 if (window.__FFX_SEALED) { updateBuyBtn(); (async () => { let s = null; try { s = JSON.parse(localStorage.getItem(FFX_STORE) || 'null'); } catch (e) {} if (s) try { await ffxOpen(s.id, Uint8Array.from(atob(s.dk), c => c.charCodeAt(0))); } catch (e) {} })(); }
-window.FFBuyButton = on => { const b = $('#buyBtn'); if (b) b.hidden = !on; }; // the desktop app shows it while there is no licence
+window.FFBuyButton = on => { $('#buyRow').hidden = !on; }; // the desktop app shows it while there is no licence
+$('#licOpenWeb').addEventListener('click', () => { $('#settingsPop').hidden = true; openLicGate(); });
+$('#licWebForget').addEventListener('click', () => { try { localStorage.removeItem(FFX_STORE); } catch (e) {} window.__FFX = null; updateBuyBtn(); flash(tr('Exporting is locked again in this browser.')); });
 let downloadsApi = null;
 if (window.claude?.use) window.claude.use('downloads').then(d => { downloadsApi = d; }).catch(() => {});
 $('#export').addEventListener('click', async () => { if (!(await exportReady())) return; flushStaleThen(async () => {
@@ -9761,6 +9765,8 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step": "alles, Schritt für Schritt",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "Buy": "Kaufen", "Open your licence file to unlock exporting in this browser": "Öffne deine Lizenzdatei, um den Export in diesem Browser freizuschalten",
+  "Desktop app": "Desktop-App", "Exporting unlocked ({0})": "Export freigeschaltet ({0})", "Exporting unlocked": "Export freigeschaltet", "Forget": "Vergessen", "Lock exporting again in this browser": "Den Export in diesem Browser wieder sperren", "Exporting is locked again in this browser.": "Der Export ist in diesem Browser wieder gesperrt.",
   "Exporting cut files needs a licence": "Für den Export von Schnittdateien braucht es eine Lizenz",
   "Exporting needs a licence": "Exportieren braucht eine Lizenz", "Everything else in FitFlat is free to use here. To download cut files, open your licence file: it is read only in this browser and never uploaded.": "Alles andere in FitFlat kannst du hier frei nutzen. Um Schnittdateien herunterzuladen, öffne deine Lizenzdatei: sie wird nur in diesem Browser gelesen und nie hochgeladen.", "Open licence file…": "Lizenzdatei öffnen …", "or drop it here": "oder hier ablegen", "Remember on this computer": "Auf diesem Computer merken", "I have an access key": "Ich habe einen Zugangsschlüssel", "Unlock": "Freischalten", "No licence yet?": "Noch keine Lizenz?", "Buy a licence": "Lizenz kaufen", "download FitFlat": "lade FitFlat herunter", "Not now": "Später", "This licence does not unlock exporting (it may have ended or been withdrawn).": "Diese Lizenz schaltet den Export nicht frei (vielleicht ist sie abgelaufen oder wurde zurückgezogen).", "Exporting could not be unlocked: {0}": "Der Export konnte nicht freigeschaltet werden: {0}", "This is not a FitFlat licence file.": "Das ist keine FitFlat-Lizenzdatei.", "Licence opened: exporting is unlocked.": "Lizenz geöffnet: der Export ist freigeschaltet.", "An access key has 20 letters and digits.": "Ein Zugangsschlüssel hat 20 Buchstaben und Ziffern.", "Exporting is unlocked.": "Der Export ist freigeschaltet.",
   "Welcome screen": "Startbildschirm", "the start page again": "die Startseite noch einmal", "Download FitFlat": "FitFlat herunterladen", "the app for Mac and Windows: free to try": "die App für Mac und Windows: kostenlos testen", "Get the app": "App holen",
