@@ -482,6 +482,12 @@ dialog.splash form{ height:100%; display:flex; flex-direction:column; align-item
 .sword i:nth-child(5){ animation-delay:4.9s } .sword i:nth-child(6){ animation-delay:4.95s } .sword i:nth-child(7){ animation-delay:5s }
 .sline span, .sline b{ display:block; }
 .sline b{ color:#FFFFFF; font-weight:650; font-size:21px; letter-spacing:-.01em; margin-bottom:4px; }
+#privacyDlg{ width:min(640px, calc(100vw - 32px)); }
+#privBody{ max-height:min(62vh, 620px); overflow:auto; font-size:13.5px; line-height:1.55; }
+#privBody h3{ font-size:14px; margin:16px 0 4px; } #privBody h3:first-child{ margin-top:0; }
+#privBody p, #privBody ul{ margin:0 0 6px; color:var(--ink); } #privBody ul{ padding-left:18px; }
+#privBody .lead{ font-size:15px; font-weight:600; }
+.spriv{ font-size:13.5px !important; max-width:52ch !important; color:rgba(255,255,255,.55) !important; margin-top:12px !important; }
 .sline{ text-wrap:balance; margin:6px 0 0; max-width:44ch; color:rgba(255,255,255,.72); font-size:17px; line-height:1.45; opacity:0; animation:sup .5s ease 5.3s forwards; }
 .sbtns{ display:flex; gap:10px; margin-top:14px; opacity:0; animation:sup .5s ease 1.2s forwards; }
 .sbtns .btn{ padding:9px 16px; font-size:14.5px; }
@@ -706,6 +712,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <div class="tmenu dd" id="helpMenu" role="menu" aria-label="Help" hidden>
       <button role="menuitem" data-m="tour"><b>Walkthrough</b><small>the short tour of FitFlat, again</small></button>
       <button role="menuitem" data-m="manual"><b>Manual</b><small>everything, step by step (opens in a new tab)</small></button>
+      <button role="menuitem" data-m="privacy"><b>Privacy</b><small>what FitFlat does with your data (nothing, mostly)</small></button>
     </div>
     <div class="tmenu dd" id="importMenu" role="menu" aria-label="Import" hidden>
       <button role="menuitem" data-m="model"><b>3D model or scan</b><small>.obj, .stl, .glb, .gltf</small></button>
@@ -1072,6 +1079,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <canvas class="slogo" id="introLogo" width="720" height="720" aria-hidden="true"></canvas>
     <h1 class="sword" translate="no" aria-label="FitFlat"><i>F</i><i>i</i><i>t</i><i>F</i><i>l</i><i>a</i><i>t</i></h1>
     <p class="sline"><b>Draw in 3D. Export flat. Done.</b></p>
+    <p class="sline spriv">Your frames, drawings and projects stay on your computer. FitFlat collects no personal data and sends nothing about your work anywhere.</p>
     <div class="sbtns">
       <button type="button" class="btn" id="introSkip">Skip</button>
       <button type="button" class="btn primary" id="introGo" autofocus>Show me around</button>
@@ -1108,6 +1116,13 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <button type="button" class="btn" id="boolApply">Apply</button>
       <button type="button" class="btn primary" id="boolKeep" autofocus>Keep editable</button>
     </footer>
+  </form>
+</dialog>
+<dialog class="geo privdlg" id="privacyDlg" aria-labelledby="privTitle">
+  <form method="dialog">
+    <header><h2 id="privTitle">Privacy</h2></header>
+    <div class="body" id="privBody"></div>
+    <footer><span class="spacer"></span><button class="btn primary" value="ok" autofocus>OK</button></footer>
   </form>
 </dialog>
 <dialog class="geo unitdlg" id="storeDlg" aria-labelledby="storeTitle">
@@ -3529,6 +3544,33 @@ function updateWhere() {
 // on start: the folder chosen last time (the browser asks again for permission when needed)
 (async () => { try { let h = await KV.get('folder'); const m = await KV.get('storeMode'); if (h && h.__ffpath && window.FFDesk) h = FFDesk.dir(h.__ffpath, h.name); // the desktop app keeps folders by path
   if (h && canFolder) { FOLDER.handle = h; FOLDER.name = h.name; await folderPerm(false); } if (m === 'folder' && h) S.storeMode = 'folder'; } catch (e) {} updateWhere(); updateStoreBtn(); })();
+// privacy (GDPR) information: Help > Privacy
+const PROVIDER = { name: 'Max Soldatkin', address: '', email: '' }; // fill in address and email: they appear in the notice
+function openPrivacy() {
+  const de = LANG === 'de', who = [PROVIDER.name, PROVIDER.address, PROVIDER.email && `<a href="mailto:${PROVIDER.email}">${PROVIDER.email}</a>`].filter(Boolean).join(' · ');
+  $('#privTitle').textContent = de ? 'Datenschutz' : 'Privacy';
+  $('#privBody').innerHTML = de ? `
+    <p class="lead">Deine Arbeit bleibt bei dir. FitFlat sammelt keine personenbezogenen Daten und schickt nichts über deine Projekte irgendwohin.</p>
+    <h3>Deine Projekte</h3><p>Modelle, Scans, Zeichnungen, Projekte und Exporte bleiben auf deinem Computer: im Browser oder in dem Ordner, den du wählst. Es gibt kein Konto, keine Cloud, kein Tracking, keine Analyse, keine Werbung und keine Cookies.</p>
+    <h3>Die Website fitflat.app</h3><ul><li>Sie liegt bei GitHub Pages (GitHub, Inc., USA, ein Microsoft-Unternehmen). Beim Aufruf sehen dessen Server, wie bei jeder Website, deine IP-Adresse; das ist nötig, um die Seite auszuliefern (Art. 6 Abs. 1 lit. f DSGVO). GitHub ist nach dem EU-US Data Privacy Framework zertifiziert.</li>
+      <li>Zum Anmelden wird deine Lizenzdatei nur in deinem Browser gelesen, nie hochgeladen. „Auf diesem Computer merken" speichert einen Schlüssel im lokalen Speicher deines Browsers (kein Cookie; du kannst ihn jederzeit löschen).</li></ul>
+    <h3>Die Desktop-App</h3><ul><li>Sie geht nur ins Internet, um nach Updates und zurückgezogenen Lizenzen zu sehen (fitflat.app bzw. GitHub). Dabei wird keine Projekt- oder Personeninformation gesendet. Ausschalten: Einstellungen → Lizenz → „Auf fitflat.app nach Updates … sehen".</li>
+      <li>Der Maschinencode ist ein Einwegcode aus der Kennung deines Computers. Er verlässt den Computer nur, wenn du ihn uns für eine Lizenz schickst.</li>
+      <li>Netzwerk-Plätze: Der Lizenz-Host in deinem Büro sieht Benutzername und Maschinencode der Computer, die einen Platz nutzen, nur innerhalb deines Netzes.</li></ul>
+    <h3>Lizenzen und Kontakt</h3><p>Wenn du eine Lizenz kaufst, speichern wir Firmenname, Kontakt-E-Mail, Lizenznummer und Maschinencodes, um die Lizenz auszustellen und zu betreuen (Art. 6 Abs. 1 lit. b DSGVO), so lange die Lizenz läuft und die gesetzlichen Aufbewahrungsfristen es verlangen. Du hast das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung, Datenübertragbarkeit und Widerspruch, und du kannst dich bei einer Datenschutz-Aufsichtsbehörde beschweren.</p>
+    ${who ? `<h3>Verantwortlich</h3><p>${who}</p>` : ''}`
+  : `
+    <p class="lead">Your work stays with you. FitFlat collects no personal data and sends nothing about your projects anywhere.</p>
+    <h3>Your projects</h3><p>Models, scans, drawings, projects and exports stay on your computer: in your browser or in the folder you choose. There is no account, no cloud, no tracking, no analytics, no ads and no cookies.</p>
+    <h3>The website fitflat.app</h3><ul><li>It is hosted on GitHub Pages (GitHub, Inc., USA, a Microsoft company). Like for any website, its servers see your IP address when you open it; that is needed to deliver the page (Art. 6(1)(f) GDPR). GitHub is certified under the EU-US Data Privacy Framework.</li>
+      <li>To sign in, your licence file is read in your browser only and never uploaded. "Remember on this computer" keeps a key in your browser's local storage (no cookie; you can delete it any time).</li></ul>
+    <h3>The desktop app</h3><ul><li>It goes online only to check for updates and withdrawn licences (fitflat.app and GitHub). No project or personal information is sent. To switch it off: Settings → Licence → "Check fitflat.app for updates…".</li>
+      <li>The machine code is a one-way code made from your computer's ID. It leaves your computer only when you send it to us for a licence.</li>
+      <li>Office seats: the licence host in your office sees the user name and machine code of the computers using a seat, inside your network only.</li></ul>
+    <h3>Licences and contact</h3><p>When you buy a licence, we keep your company name, contact email, licence number and machine codes to issue and support it (Art. 6(1)(b) GDPR), for as long as the licence runs and the law requires us to keep records. You have the right to access, correct, delete, restrict and move your data and to object, and you can complain to a data protection authority.</p>
+    ${who ? `<h3>Responsible</h3><p>${who}</p>` : ''}`;
+  $('#privacyDlg').showModal();
+}
 // accent colour: a few presets or any colour; stored on this computer
 (() => {
   const KEY = 'fitflat-accent', PRESETS = [['', 'Blue (default)', '#0A84FF'], ['#5E5CE6', 'Indigo'], ['#30B0C7', 'Teal'], ['#34C759', 'Green'], ['#FF9500', 'Orange'], ['#FF2D55', 'Pink'], ['#8E8E93', 'Graphite']];
@@ -9288,7 +9330,7 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
-  "Joint radius (mm)": "Verbindungsradius (mm)", "Fine (1.5 mm)": "Fein (1,5 mm)", "Normal (2.5 mm)": "Normal (2,5 mm)", "Draft (3.5 mm)": "Grob (3,5 mm)", "Separate tubes": "Einzelne Rohre", "Where should FitFlat keep your projects?": "Wo soll FitFlat deine Projekte aufbewahren?", "In a folder, every project, starting point and decal template is a file you can back up, sync or share, for example on the company network or in a cloud folder. In this browser they stay on this computer, in this browser only. You can change this any time in Settings.": "In einem Ordner ist jedes Projekt, jeder Ausgangspunkt und jede Decal-Vorlage eine Datei, die du sichern, synchronisieren oder teilen kannst, zum Beispiel im Firmennetz oder in einem Cloud-Ordner. Im Browser bleiben sie auf diesem Computer, nur in diesem Browser. Du kannst das jederzeit in den Einstellungen ändern.", "Keep in this browser": "Im Browser behalten", "Choose a folder…": "Ordner wählen …", "Choose another folder…": "Anderen Ordner wählen …", "Now: this browser.": "Jetzt: dieser Browser.", "Now: the folder \"{0}\".": "Jetzt: der Ordner „{0}“.", "This browser": "Dieser Browser", "Accent": "Akzent", "Blue (default)": "Blau (Standard)", "Indigo": "Indigo", "Teal": "Petrol", "Green": "Grün", "Orange": "Orange", "Pink": "Pink", "Graphite": "Graphit", "Any colour…": "Beliebige Farbe …", "Where your projects, starting points and decal templates are kept": "Wo deine Projekte, Ausgangspunkte und Decal-Vorlagen aufbewahrt werden", "Building the frame…": "Rahmen wird gebaut…",
+  "Joint radius (mm)": "Verbindungsradius (mm)", "Fine (1.5 mm)": "Fein (1,5 mm)", "Normal (2.5 mm)": "Normal (2,5 mm)", "Draft (3.5 mm)": "Grob (3,5 mm)", "Separate tubes": "Einzelne Rohre", "Where should FitFlat keep your projects?": "Wo soll FitFlat deine Projekte aufbewahren?", "In a folder, every project, starting point and decal template is a file you can back up, sync or share, for example on the company network or in a cloud folder. In this browser they stay on this computer, in this browser only. You can change this any time in Settings.": "In einem Ordner ist jedes Projekt, jeder Ausgangspunkt und jede Decal-Vorlage eine Datei, die du sichern, synchronisieren oder teilen kannst, zum Beispiel im Firmennetz oder in einem Cloud-Ordner. Im Browser bleiben sie auf diesem Computer, nur in diesem Browser. Du kannst das jederzeit in den Einstellungen ändern.", "Keep in this browser": "Im Browser behalten", "Choose a folder…": "Ordner wählen …", "Choose another folder…": "Anderen Ordner wählen …", "Now: this browser.": "Jetzt: dieser Browser.", "Now: the folder \"{0}\".": "Jetzt: der Ordner „{0}“.", "This browser": "Dieser Browser", "Privacy": "Datenschutz", "what FitFlat does with your data (nothing, mostly)": "was FitFlat mit deinen Daten macht (fast nichts)", "Your frames, drawings and projects stay on your computer. FitFlat collects no personal data and sends nothing about your work anywhere.": "Deine Rahmen, Zeichnungen und Projekte bleiben auf deinem Computer. FitFlat sammelt keine persönlichen Daten und schickt nichts über deine Arbeit irgendwohin.", "Accent": "Akzent", "Blue (default)": "Blau (Standard)", "Indigo": "Indigo", "Teal": "Petrol", "Green": "Grün", "Orange": "Orange", "Pink": "Pink", "Graphite": "Graphit", "Any colour…": "Beliebige Farbe …", "Where your projects, starting points and decal templates are kept": "Wo deine Projekte, Ausgangspunkte und Decal-Vorlagen aufbewahrt werden", "Building the frame…": "Rahmen wird gebaut…",
   "How round the joints are where the tubes meet, like a weld or a carbon joint. 0 gives the tightest the surface detail allows (about 1.2 × its triangle size)": "Wie rund die Verbindungen sind, wo die Rohre aufeinandertreffen, wie eine Schweißnaht oder eine Carbon-Verbindung. 0 ergibt das Engste, was die Oberflächendetails zulassen (etwa 1,2 × die Dreiecksgröße)",
   "The size of the triangles of the frame's surface. Finer follows the joints more closely but makes the model heavier": "Die Größe der Dreiecke der Rahmenoberfläche. Feiner folgt den Verbindungen genauer, macht das Modell aber schwerer",
   "Import": "Importieren", "Bring in a 3D model or scan, SVG artwork, or a reference photo": "3D-Modell oder Scan, SVG-Grafik oder Referenzfoto hereinholen", "3D model or scan": "3D-Modell oder Scan", "SVG artwork as decals": "SVG-Grafik als Decals", "logos and shapes, placed on the frame": "Logos und Formen, auf den Rahmen gesetzt", "Reference photo": "Referenzfoto", "a photo of the real frame, to trace from": "ein Foto des echten Rahmens, zum Nachzeichnen",
@@ -9867,7 +9909,7 @@ setLang(LANG);
   tour.addEventListener('pointerdown', e => { if (e.target === tour) endTour(); });
   addEventListener('keydown', e => { if (tour.hidden) return; if (e.key === 'Escape') endTour(); else if (e.key === 'ArrowRight') go(at + 1); else if (e.key === 'ArrowLeft') go(at - 1); else return; e.preventDefault(); e.stopPropagation(); }, true);
   addEventListener('resize', () => { if (!tour.hidden) place(); });
-  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'manual') window.open('https://fitflat.app/manual/' + (LANG === 'de' ? 'de.html' : ''), '_blank', 'noopener'); });
+  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'privacy') openPrivacy(); else if (m === 'manual') window.open('https://fitflat.app/manual/' + (LANG === 'de' ? 'de.html' : ''), '_blank', 'noopener'); });
   let seen = false; try { seen = !!localStorage.getItem(KEY); } catch (e) {}
   if (!seen) setTimeout(() => { if (!document.querySelector('dialog[open]')) welcome(); }, 700);
   else setTimeout(askStoreOnce, 1500); // seen the welcome before: ask now, once
