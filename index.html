@@ -444,7 +444,7 @@ button.swatch:hover{ box-shadow:0 0 0 2px var(--ink); }
 .checks input{ accent-color:var(--accent); }
 .export{ margin:0 12px 16px; display:flex; flex-direction:column; gap:8px; }
 .layoutsel{ width:auto !important; flex:none !important; max-width:170px; }
-.exprow{ display:flex; gap:8px; } .exprow .btn{ flex:1 1 0; }
+.exprow{ display:flex; gap:8px; } .exprow .btn{ flex:1 1 0; } .exprow #exportDxf{ background:var(--fill); } .exprow #exportDxf:hover:not(:disabled){ background:color-mix(in srgb, var(--fill) 80%, var(--ink)); } .exprow .btn:focus:not(:focus-visible){ outline:none; box-shadow:none; }
 .export .btn{ justify-content:center; padding:11px; border-radius:12px; font-weight:600; }
 .note{ font-size:12px; color:var(--muted); margin:0; }
 .note.warn{ color:var(--bad); }
@@ -504,6 +504,10 @@ dialog.splash form{ height:100%; display:flex; flex-direction:column; align-item
 .sline b{ color:#FFFFFF; font-weight:650; font-size:21px; letter-spacing:-.01em; margin-bottom:4px; }
 #privacyDlg{ width:min(640px, calc(100vw - 32px)); }
 #keysDlg{ width:min(880px, 94vw); max-width:none; }
+.mandlg{ width:min(900px, 94vw); max-width:none; } .mandlg header{ display:flex; align-items:center; gap:12px; }
+#manBody{ height:min(72vh, 820px); overflow:auto; font-size:14px; line-height:1.6; padding-right:6px; } #manBody h1{ font-size:22px; margin:0 0 10px; } #manBody h2{ font-size:17px; margin:26px 0 8px; padding-top:14px; border-top:1px solid var(--line); }
+#manBody h3{ font-size:14.5px; margin:18px 0 6px; } #manBody p, #manBody li{ color:var(--ink); } #manBody a{ color:var(--accent); } #manBody code, #manBody kbd{ background:var(--fill); padding:1px 5px; border-radius:5px; font-size:.92em; }
+#manBody table{ border-collapse:collapse; width:100%; font-size:13px; } #manBody th, #manBody td{ border-bottom:1px solid var(--line); padding:5px 7px; text-align:left; vertical-align:top; } #manBody img{ max-width:100%; }
 .newdlg{ width:min(560px, 94vw); } .newpick{ display:grid; gap:12px; }
 .newpick .pick{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; text-align:left; padding:16px; border-radius:14px; border:1px solid var(--line); background:var(--fill); color:var(--ink); font:inherit; cursor:pointer; transition:border-color .12s, background-color .12s; }
 .newpick .pick:hover, .newpick .pick:focus-visible{ border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--fill)); outline:none; }
@@ -684,7 +688,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 #importMenu button, #helpMenu button{ flex-direction:column; align-items:flex-start; gap:1px; }
 .tmenu.dd kbd{ font:inherit; font-size:11.5px; color:var(--muted); }
 .tmenu.dd hr{ border:0; border-top:1px solid var(--line); margin:5px 8px; }
-.top .tbtn.openbtn{ padding:0 14px; } .top #importBtn{ padding:0 10px 0 14px; }
+.top .tbtn.openbtn{ padding:0 14px; } .top a.tbtn{ text-decoration:none; color:inherit; display:inline-flex; align-items:center; } .top a.tbtn.getapp{ color:var(--accent); } .top #importBtn{ padding:0 10px 0 14px; }
 .split{ display:inline-flex; } .split .savebtn{ border-radius:8px 0 0 8px; }
 .top .savemore{ height:30px; padding:0 7px; border-radius:0 8px 8px 0; margin-left:1px; display:inline-grid; place-items:center; }
 .savemore .chev{ width:10px; height:10px; fill:none; stroke:#fff; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -714,6 +718,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <span class="spacer"></span>
     <button class="tbtn wide" id="importBtn" aria-haspopup="menu" aria-expanded="false" title="Bring in a 3D model or scan, SVG artwork, or a reference photo"><span>Import</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
     <button class="tbtn wide openbtn" id="geoBtn" title="Frame builder: build a frame from geometry numbers or change its size"><span>Frame builder</span></button>
+    <a class="tbtn wide openbtn getapp webonly" id="getApp" href="https://fitflat.app/download.html" target="_blank" rel="noopener" title="FitFlat for Mac and Windows: free to download and try" hidden><span>Get the app</span></a>
     <button class="tbtn wide openbtn" id="newBtn" title="Start a new project: build a frame or import a 3D model (asks to save the open one first)"><span>New</span></button>
     <button class="tbtn wide openbtn" id="openBtn" title="Open one of your saved projects (Ctrl O)"><span>Open</span></button>
     <div class="split"><button class="btn primary savebtn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button><button class="btn primary savemore" id="saveMore" aria-haspopup="menu" aria-expanded="false" title="More ways to save" aria-label="More ways to save"><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button></div>
@@ -744,8 +749,10 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <button role="menuitem" data-m="download">Download the project file</button>
     </div>
     <div class="tmenu dd" id="helpMenu" role="menu" aria-label="Help" hidden>
+      <button role="menuitem" data-m="welcome"><b>Welcome screen</b><small>the start page again</small></button>
+      <button role="menuitem" data-m="download" class="webonly" hidden><b>Download FitFlat</b><small>the app for Mac and Windows: free to try</small></button>
       <button role="menuitem" data-m="tour"><b>Walkthrough</b><small>the short tour of FitFlat, again</small></button>
-      <button role="menuitem" data-m="manual"><b>Manual</b><small>everything, step by step (opens in a new tab)</small></button>
+      <button role="menuitem" data-m="manual"><b>Manual</b><small>everything, step by step</small></button>
       <button role="menuitem" data-m="keys"><b>Keyboard shortcuts</b><small>every key and mouse trick on one page</small></button>
       <button role="menuitem" data-m="request"><b>Send a request</b><small>a question, a problem or a licence: we answer by email</small></button>
       <button role="menuitem" data-m="imprint"><b>Legal notice</b><small>who makes FitFlat (Impressum)</small></button>
@@ -1179,6 +1186,13 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <p class="note warn" id="reqErr" role="alert"></p>
     </div>
     <footer><button type="button" class="btn" id="reqCancel">Cancel</button><span class="spacer"></span><button type="button" class="btn primary" id="reqSend">Send</button></footer>
+  </form>
+</dialog>
+<dialog class="geo mandlg" id="manDlg" aria-labelledby="manTitle">
+  <form method="dialog">
+    <header><h2 id="manTitle">Manual</h2><span class="spacer"></span><div class="seg" id="manLang"><button type="button" data-l="en" aria-pressed="true">English</button><button type="button" data-l="de" aria-pressed="false">Deutsch</button></div></header>
+    <div class="body" id="manBody"></div>
+    <footer><a class="btn" id="manWeb" href="https://fitflat.app/manual/" target="_blank" rel="noopener">Open on fitflat.app</a><span class="spacer"></span><button class="btn primary" value="ok">Close</button></footer>
   </form>
 </dialog>
 <dialog class="geo privdlg" id="keysDlg" aria-labelledby="keysTitle">
@@ -3751,6 +3765,25 @@ function privacyTail(lang, who) {
   return `<h3>${de ? 'Fragen?' : 'Questions?'}</h3><p>${de ? 'Zu deinen Daten, zu einer Lizenz oder zu FitFlat überhaupt:' : 'About your data, a licence or FitFlat in general:'} <button type="button" class="btn" id="privReq">${de ? 'Anfrage senden' : 'Send a request'}</button></p>
     <details class="pfull"><summary>${de ? 'Vollständige Datenschutzerklärung (DSGVO)' : 'Full privacy policy (GDPR)'}</summary>${body}</details>`;
 }
+// Help > Manual: shown inside FitFlat (the app carries it; on fitflat.app it is the site's manual), so it works offline too
+const MAN = {};
+async function openManual(lang) {
+  lang = lang || (LANG === 'de' ? 'de' : 'en'); const d = $('#manDlg'), body = $('#manBody'), file = lang === 'de' ? 'de.html' : 'index.html';
+  $('#manTitle').textContent = lang === 'de' ? 'Handbuch' : 'Manual'; $('#manWeb').href = 'https://fitflat.app/manual/' + (lang === 'de' ? 'de.html' : '');
+  $('#manWeb').textContent = lang === 'de' ? 'Auf fitflat.app öffnen' : 'Open on fitflat.app';
+  d.querySelectorAll('#manLang button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.l === lang)));
+  if (!MAN[lang]) { for (const url of ['manual/' + file, 'https://fitflat.app/manual/' + file]) { try { const r = await fetch(url, { cache: 'no-cache' }); if (!r.ok) continue;
+      const doc = new DOMParser().parseFromString(await r.text(), 'text/html'), m = doc.querySelector('main') || doc.body; m.querySelector('.top')?.remove(); MAN[lang] = m.innerHTML; break; } catch (e) {} } }
+  if (!MAN[lang]) { window.open($('#manWeb').href, '_blank', 'noopener'); return; } // neither here nor online: the browser tries
+  body.innerHTML = MAN[lang]; body.scrollTop = 0;
+  body.querySelectorAll('a[href]').forEach(a => { const h = a.getAttribute('href');
+    if (/MANUAL\.de\.md$|^de\.html$/.test(h)) { a.onclick = e => { e.preventDefault(); openManual('de'); }; }
+    else if (/MANUAL\.md$|^\.\/?$|^index\.html$/.test(h)) { a.onclick = e => { e.preventDefault(); openManual('en'); }; }
+    else if (h.startsWith('#')) { a.onclick = e => { e.preventDefault(); let id = decodeURIComponent(h.slice(1)); const t = body.querySelector(`[id="${CSS.escape(id)}"]`) || [...body.querySelectorAll('h1,h2,h3,h4')].find(x => x.textContent.trim().toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-|-$/g, '') === id.replace(/^-|-$/g, '')); if (t) body.scrollTo({ top: t.offsetTop - body.offsetTop - 8, behavior: 'smooth' }); }; }
+    else { a.target = '_blank'; a.rel = 'noopener'; } });
+  if (!d.open) d.showModal();
+}
+document.querySelectorAll('#manLang button').forEach(b => b.addEventListener('click', () => openManual(b.dataset.l)));
 // Help > Legal notice (Impressum, § 5 DDG), in the privacy dialog
 function openImprint() {
   const de = LANG === 'de', a = PROVIDER.address.split(', ');
@@ -9659,9 +9692,11 @@ const DE = {
   "Layout: Drawing": "Layout: Zeichnen",
   "Drawing": "Zeichnen",
   "Open one of your saved projects (Ctrl O)": "Eines deiner gespeicherten Projekte öffnen (Strg O)",
-  "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
+  "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step": "alles, Schritt für Schritt",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "Welcome screen": "Startbildschirm", "the start page again": "die Startseite noch einmal", "Download FitFlat": "FitFlat herunterladen", "the app for Mac and Windows: free to try": "die App für Mac und Windows: kostenlos testen", "Get the app": "App holen",
+  "Open on fitflat.app": "Auf fitflat.app öffnen",
   "Legal notice": "Impressum", "who makes FitFlat (Impressum)": "wer FitFlat macht (Impressum)",
   "From a template": "Aus einer Vorlage", "A starting point you saved: a frame with the decals you always use on it.": "Ein gespeicherter Startpunkt: ein Rahmen mit den Dekoren, die du immer darauf verwendest.", "Continue in the browser": "Im Browser weiter", "Download the app": "App herunterladen", "FitFlat for Mac and Windows: free to download and try": "FitFlat für Mac und Windows: kostenlos laden und ausprobieren",
   "Unwrapping {0} decals…": "{0} Dekore werden abgewickelt …", "Unwrapping… {0} of {1} parts": "Wird abgewickelt … {0} von {1} Teilen",
@@ -10242,6 +10277,7 @@ setLang(LANG);
   dlg.addEventListener('close', () => logo.stop());
   const leave = then => { if (still) { dlg.close(); then && then(); return; } dlg.classList.add('out'); setTimeout(() => { dlg.classList.remove('out'); dlg.close(); then && then(); }, 260); };
   $('#introSkip').addEventListener('click', () => leave(() => setTimeout(askStoreOnce, 300)));
+  if (!window.FFDesk && !window.__TAURI__) document.querySelectorAll('.webonly').forEach(el => el.hidden = false); // in the browser: point to the desktop app
   if (!window.FFDesk && !window.__TAURI__) { $('#introSkip').textContent = tr('Continue in the browser'); $('#introDl').hidden = false; $('#introDl').title = tr('FitFlat for Mac and Windows: free to download and try');
     $('#introDl').addEventListener('click', () => window.open('https://fitflat.app/download.html', '_blank', 'noopener')); }
   $('#introGo').addEventListener('click', () => leave(startTour));
@@ -10251,7 +10287,7 @@ setLang(LANG);
   tour.addEventListener('pointerdown', e => { if (e.target === tour) endTour(); });
   addEventListener('keydown', e => { if (tour.hidden) return; if (e.key === 'Escape') endTour(); else if (e.key === 'ArrowRight') go(at + 1); else if (e.key === 'ArrowLeft') go(at - 1); else return; e.preventDefault(); e.stopPropagation(); }, true);
   addEventListener('resize', () => { if (!tour.hidden) place(); });
-  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'privacy') openPrivacy(); else if (m === 'keys') openKeys(); else if (m === 'request') openRequest(); else if (m === 'imprint') openImprint(); else if (m === 'manual') window.open('https://fitflat.app/manual/' + (LANG === 'de' ? 'de.html' : ''), '_blank', 'noopener'); });
+  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'privacy') openPrivacy(); else if (m === 'keys') openKeys(); else if (m === 'request') openRequest(); else if (m === 'imprint') openImprint(); else if (m === 'manual') openManual(); else if (m === 'welcome') window.FFWelcome?.(); else if (m === 'download') window.open('https://fitflat.app/download.html', '_blank', 'noopener'); });
   let seen = false; try { seen = !!localStorage.getItem(KEY); } catch (e) {}
   if (!seen) setTimeout(() => { if (!document.querySelector('dialog[open]')) welcome(); }, 700);
   else setTimeout(askStoreOnce, 1500); // seen the welcome before: ask now, once
