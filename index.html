@@ -748,6 +748,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
       <button role="menuitem" data-m="manual"><b>Manual</b><small>everything, step by step (opens in a new tab)</small></button>
       <button role="menuitem" data-m="keys"><b>Keyboard shortcuts</b><small>every key and mouse trick on one page</small></button>
       <button role="menuitem" data-m="request"><b>Send a request</b><small>a question, a problem or a licence: we answer by email</small></button>
+      <button role="menuitem" data-m="imprint"><b>Legal notice</b><small>who makes FitFlat (Impressum)</small></button>
       <button role="menuitem" data-m="privacy"><b>Privacy</b><small>what FitFlat does with your data (nothing, mostly)</small></button>
     </div>
     <div class="tmenu dd" id="importMenu" role="menu" aria-label="Import" hidden>
@@ -3667,7 +3668,7 @@ function updateWhere() {
 (async () => { try { let h = await KV.get('folder'); const m = await KV.get('storeMode'); if (h && h.__ffpath && window.FFDesk) h = FFDesk.dir(h.__ffpath, h.name); // the desktop app keeps folders by path
   if (h && canFolder) { FOLDER.handle = h; FOLDER.name = h.name; await folderPerm(false); } if (m === 'folder' && h) S.storeMode = 'folder'; } catch (e) {} updateWhere(); updateStoreBtn(); })();
 // privacy (GDPR) information: Help > Privacy
-const PROVIDER = { name: 'Maksym Soldatkin', address: '', email: 'maxsoldatkin@gmail.com' }; // add the postal address: the notice needs it
+const PROVIDER = { name: 'Maksym Soldatkin', address: 'Kurhausstr. 15, 73342 Bad Ditzenbach, Germany', email: 'maxsoldatkin@gmail.com' }; // shown in Privacy and Legal notice
 const PRIVACY_DATE = { en: '28 November 2026', de: '28. November 2026' };
 // the full privacy policy (GDPR); the short friendly version is above it in the dialog. Kept in step with PRIVACY.md (tools/privacy-md.mjs writes that from here)
 const PRIVACY_FULL = {
@@ -3749,6 +3750,18 @@ function privacyTail(lang, who) {
   const body = PRIVACY_FULL[lang].map(([h, t]) => `<h4>${h}</h4>${t.replace('{C}', C).replace('{D}', PRIVACY_DATE[lang])}`).join('');
   return `<h3>${de ? 'Fragen?' : 'Questions?'}</h3><p>${de ? 'Zu deinen Daten, zu einer Lizenz oder zu FitFlat überhaupt:' : 'About your data, a licence or FitFlat in general:'} <button type="button" class="btn" id="privReq">${de ? 'Anfrage senden' : 'Send a request'}</button></p>
     <details class="pfull"><summary>${de ? 'Vollständige Datenschutzerklärung (DSGVO)' : 'Full privacy policy (GDPR)'}</summary>${body}</details>`;
+}
+// Help > Legal notice (Impressum, § 5 DDG), in the privacy dialog
+function openImprint() {
+  const de = LANG === 'de', a = PROVIDER.address.split(', ');
+  $('#privTitle').textContent = de ? 'Impressum' : 'Legal notice';
+  $('#privBody').innerHTML = `<h3>${de ? 'Angaben gemäß § 5 DDG' : 'Information under § 5 DDG (German Digital Services Act)'}</h3>
+    <p>${PROVIDER.name}<br>FitFlat<br>${a.join('<br>')}</p>
+    <h3>${de ? 'Kontakt' : 'Contact'}</h3><p>${de ? 'E-Mail' : 'Email'}: <a href="mailto:${PROVIDER.email}">${PROVIDER.email}</a><br>${de ? 'Anfragen' : 'Requests'}: <button type="button" class="btn" id="privReq">${de ? 'Anfrage senden' : 'Send a request'}</button></p>
+    <h3>${de ? 'Umsatzsteuer' : 'VAT'}</h3><p>${de ? 'Kleinunternehmer gemäß § 19 UStG; es wird keine Umsatzsteuer ausgewiesen.' : 'Small business under § 19 UStG (German VAT Act); no VAT is charged.'}</p>
+    <h3>${de ? 'Verbraucherstreitbeilegung' : 'Consumer dispute resolution'}</h3><p>${de ? 'Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.' : 'We are neither willing nor obliged to take part in dispute resolution proceedings before a consumer arbitration board.'}</p>`;
+  $('#privBody').querySelector('#privReq')?.addEventListener('click', () => { $('#privacyDlg').close(); openRequest(); });
+  $('#privacyDlg').showModal();
 }
 function openPrivacy() {
   const de = LANG === 'de', who = [PROVIDER.name, PROVIDER.address, PROVIDER.email && `<a href="mailto:${PROVIDER.email}">${PROVIDER.email}</a>`].filter(Boolean).join(' · ');
@@ -9649,6 +9662,7 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "Legal notice": "Impressum", "who makes FitFlat (Impressum)": "wer FitFlat macht (Impressum)",
   "From a template": "Aus einer Vorlage", "A starting point you saved: a frame with the decals you always use on it.": "Ein gespeicherter Startpunkt: ein Rahmen mit den Dekoren, die du immer darauf verwendest.", "Continue in the browser": "Im Browser weiter", "Download the app": "App herunterladen", "FitFlat for Mac and Windows: free to download and try": "FitFlat für Mac und Windows: kostenlos laden und ausprobieren",
   "Unwrapping {0} decals…": "{0} Dekore werden abgewickelt …", "Unwrapping… {0} of {1} parts": "Wird abgewickelt … {0} von {1} Teilen",
   "On: the explanations in the panels and the tips at the bottom of the view are shown. Off: hover a panel's heading to read its explanation, and click the (i) at the bottom left for the tip": "Ein: Erklärungen in den Feldern und Tipps unten in der Ansicht werden gezeigt. Aus: fahre über die Überschrift eines Felds, um seine Erklärung zu lesen, und klicke auf das (i) unten links für den Tipp",
@@ -10237,7 +10251,7 @@ setLang(LANG);
   tour.addEventListener('pointerdown', e => { if (e.target === tour) endTour(); });
   addEventListener('keydown', e => { if (tour.hidden) return; if (e.key === 'Escape') endTour(); else if (e.key === 'ArrowRight') go(at + 1); else if (e.key === 'ArrowLeft') go(at - 1); else return; e.preventDefault(); e.stopPropagation(); }, true);
   addEventListener('resize', () => { if (!tour.hidden) place(); });
-  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'privacy') openPrivacy(); else if (m === 'keys') openKeys(); else if (m === 'request') openRequest(); else if (m === 'manual') window.open('https://fitflat.app/manual/' + (LANG === 'de' ? 'de.html' : ''), '_blank', 'noopener'); });
+  headerMenu($('#introBtn'), $('#helpMenu'), m => { if (m === 'tour') startTour(); else if (m === 'privacy') openPrivacy(); else if (m === 'keys') openKeys(); else if (m === 'request') openRequest(); else if (m === 'imprint') openImprint(); else if (m === 'manual') window.open('https://fitflat.app/manual/' + (LANG === 'de' ? 'de.html' : ''), '_blank', 'noopener'); });
   let seen = false; try { seen = !!localStorage.getItem(KEY); } catch (e) {}
   if (!seen) setTimeout(() => { if (!document.querySelector('dialog[open]')) welcome(); }, 700);
   else setTimeout(askStoreOnce, 1500); // seen the welcome before: ask now, once

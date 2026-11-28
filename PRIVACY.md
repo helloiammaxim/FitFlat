@@ -28,6 +28,7 @@ When you buy a licence, we keep your company name, contact email, licence number
 Responsible for processing personal data in connection with FitFlat (the website fitflat.app, the FitFlat web app and desktop app, licences and support) is:
 
 Maksym Soldatkin  
+Kurhausstr. 15, 73342 Bad Ditzenbach, Germany  
 [maxsoldatkin@gmail.com](mailto:maxsoldatkin@gmail.com)
 
 We are not required to appoint a data protection officer. For any question about your data, write to the email address above or use **Send a request**.

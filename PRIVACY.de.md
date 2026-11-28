@@ -28,6 +28,7 @@ Wenn du eine Lizenz kaufst, speichern wir Firmenname, Kontakt-E-Mail, Lizenznumm
 Verantwortlich für die Verarbeitung personenbezogener Daten im Zusammenhang mit FitFlat (der Website fitflat.app, der FitFlat Web- und Desktop-App, Lizenzen und Support) ist:
 
 Maksym Soldatkin  
+Kurhausstr. 15, 73342 Bad Ditzenbach, Germany  
 [maxsoldatkin@gmail.com](mailto:maxsoldatkin@gmail.com)
 
 Wir sind nicht verpflichtet, einen Datenschutzbeauftragten zu benennen. Bei Fragen zu deinen Daten schreib an die E-Mail-Adresse oben oder nutze **Anfrage senden**.
