@@ -1224,7 +1224,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <div class="body">
       <div class="lgrow"><button type="button" class="btn primary" id="lgOpen">Open licence file…</button><span class="note">or drop it here</span><input type="file" id="lgFile" accept=".fitflat-licence,.json" hidden></div>
       <label class="chk"><input type="checkbox" id="lgRem" checked> Remember on this computer</label>
-      <details class="lgkey"><summary>I have an access key</summary><div class="lgrow"><input id="lgKey" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="lgKeyGo">Unlock</button></div></details>
+      <details class="lgkey"><summary>I have a licence key or access key</summary><div class="lgrow"><input id="lgKey" placeholder="FITFLAT-… or XXXX-XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="lgKeyGo">Unlock</button></div></details>
       <p class="note warn" id="lgErr" role="alert"></p>
       <div class="lgnone"><b>No licence yet?</b> <a href="https://fitflat.app/buy.html" target="_blank" rel="noopener">Buy a licence</a>, or <a href="https://fitflat.app/download.html" target="_blank" rel="noopener">download FitFlat</a> and try exporting free for 14 days.</div>
     </div>
@@ -9165,21 +9165,24 @@ async function exportReady() {
   if (s) { try { return await ffxOpen(s.id, Uint8Array.from(atob(s.dk), c => c.charCodeAt(0))); } catch (e) { try { localStorage.removeItem(FFX_STORE); } catch (x) {} } }
   return new Promise(res => openLicGate(res));
 }
+// a licence as a file (JSON) or as a licence key (FITFLAT-<payload>.<signature>, one line to copy and paste)
+function licFromText(t) { const k = String(t).replace(/\s+/g, ''); if (/^FITFLAT-/i.test(k)) { const [payload, signature] = k.slice(8).split('.'); if (payload && signature) return { fitflat_licence: 1, payload, signature }; throw new Error('key'); } return JSON.parse(t); }
 function openLicGate(done) {
   const d = $('#licGate'), err = $('#lgErr'); err.textContent = ''; $('#lgKey').value = '';
   const finish = ok => { d.close(); done && done(ok); done = null; };
   const keep = (id, dk) => { if ($('#lgRem').checked) try { localStorage.setItem(FFX_STORE, JSON.stringify({ id, dk: btoa(String.fromCharCode(...dk)) })); } catch (e) {} };
   const fail = e => { err.textContent = e.message === 'revoked' || e.message === 'wrong' ? tr('This licence does not unlock exporting (it may have ended or been withdrawn).') : tr('Exporting could not be unlocked: {0}').replace('{0}', e.message); };
   const withLicence = async file => { let id, dk;
-    try { const f = JSON.parse(await file.text()), u = x => Uint8Array.from(atob(x.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((x.length + 3) % 4)), c => c.charCodeAt(0));
+    try { const f = licFromText(await file.text()), u = x => Uint8Array.from(atob(x.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((x.length + 3) % 4)), c => c.charCodeAt(0));
       const p = JSON.parse(new TextDecoder().decode(u(f.payload))); id = p.id; dk = new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array([...new TextEncoder().encode('fitflat-web:'), ...u(f.signature)]))); }
     catch (e) { err.textContent = tr('This is not a FitFlat licence file.'); return; }
     try { await ffxOpen(id, dk); keep(id, dk); updateBuyBtn(); flash(tr('Licence opened: exporting is unlocked.')); finish(true); } catch (e) { fail(e); } };
   $('#lgFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) withLicence(f); };
   $('#lgOpen').onclick = () => $('#lgFile').click();
   d.ondragover = e => e.preventDefault(); d.ondrop = e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) withLicence(f); };
-  $('#lgKeyGo').onclick = async () => { const key = $('#lgKey').value.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0');
-    if (key.length !== 20) { err.textContent = tr('An access key has 20 letters and digits.'); return; }
+  $('#lgKeyGo').onclick = async () => { if (/^\s*FITFLAT-/i.test($('#lgKey').value)) { const t = $('#lgKey').value; withLicence({ text: async () => t }); return; } // a licence key
+    const key = $('#lgKey').value.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0');
+    if (key.length !== 20) { err.textContent = tr('An access key has 20 letters and digits; a licence key starts with FITFLAT-.'); return; }
     try { const a = await (await fetch('access.json', { cache: 'no-store' })).json(), w = a.users?.[key.slice(0, 4)]; if (!w) throw new Error('wrong');
       const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(key), 'PBKDF2', false, ['deriveBits']);
       const dk = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Uint8Array.from(atob(w.salt), c => c.charCodeAt(0)), iterations: w.iter }, base, 256));
@@ -9899,7 +9902,7 @@ const DE = {
   "Buy": "Kaufen", "Open your licence file to unlock exporting in this browser": "Öffne deine Lizenzdatei, um den Export in diesem Browser freizuschalten",
   "Desktop app": "Desktop-App", "Exporting unlocked ({0})": "Export freigeschaltet ({0})", "Exporting unlocked": "Export freigeschaltet", "Forget": "Vergessen", "Lock exporting again in this browser": "Den Export in diesem Browser wieder sperren", "Exporting is locked again in this browser.": "Der Export ist in diesem Browser wieder gesperrt.",
   "Exporting cut files needs a licence": "Für den Export von Schnittdateien braucht es eine Lizenz",
-  "Exporting needs a licence": "Exportieren braucht eine Lizenz", "Everything else in FitFlat is free to use here. To download cut files, open your licence file: it is read only in this browser and never uploaded.": "Alles andere in FitFlat kannst du hier frei nutzen. Um Schnittdateien herunterzuladen, öffne deine Lizenzdatei: sie wird nur in diesem Browser gelesen und nie hochgeladen.", "Open licence file…": "Lizenzdatei öffnen …", "or drop it here": "oder hier ablegen", "Remember on this computer": "Auf diesem Computer merken", "I have an access key": "Ich habe einen Zugangsschlüssel", "Unlock": "Freischalten", "No licence yet?": "Noch keine Lizenz?", "Buy a licence": "Lizenz kaufen", "download FitFlat": "lade FitFlat herunter", "Not now": "Später", "This licence does not unlock exporting (it may have ended or been withdrawn).": "Diese Lizenz schaltet den Export nicht frei (vielleicht ist sie abgelaufen oder wurde zurückgezogen).", "Exporting could not be unlocked: {0}": "Der Export konnte nicht freigeschaltet werden: {0}", "This is not a FitFlat licence file.": "Das ist keine FitFlat-Lizenzdatei.", "Licence opened: exporting is unlocked.": "Lizenz geöffnet: der Export ist freigeschaltet.", "An access key has 20 letters and digits.": "Ein Zugangsschlüssel hat 20 Buchstaben und Ziffern.", "Exporting is unlocked.": "Der Export ist freigeschaltet.",
+  "Exporting needs a licence": "Exportieren braucht eine Lizenz", "Everything else in FitFlat is free to use here. To download cut files, open your licence file: it is read only in this browser and never uploaded.": "Alles andere in FitFlat kannst du hier frei nutzen. Um Schnittdateien herunterzuladen, öffne deine Lizenzdatei: sie wird nur in diesem Browser gelesen und nie hochgeladen.", "Open licence file…": "Lizenzdatei öffnen …", "or drop it here": "oder hier ablegen", "Remember on this computer": "Auf diesem Computer merken", "I have an access key": "Ich habe einen Zugangsschlüssel", "I have a licence key or access key": "Ich habe einen Lizenzschlüssel oder Zugangsschlüssel", "An access key has 20 letters and digits; a licence key starts with FITFLAT-.": "Ein Zugangsschlüssel hat 20 Buchstaben und Ziffern; ein Lizenzschlüssel beginnt mit FITFLAT-.", "Unlock": "Freischalten", "No licence yet?": "Noch keine Lizenz?", "Buy a licence": "Lizenz kaufen", "download FitFlat": "lade FitFlat herunter", "Not now": "Später", "This licence does not unlock exporting (it may have ended or been withdrawn).": "Diese Lizenz schaltet den Export nicht frei (vielleicht ist sie abgelaufen oder wurde zurückgezogen).", "Exporting could not be unlocked: {0}": "Der Export konnte nicht freigeschaltet werden: {0}", "This is not a FitFlat licence file.": "Das ist keine FitFlat-Lizenzdatei.", "Licence opened: exporting is unlocked.": "Lizenz geöffnet: der Export ist freigeschaltet.", "An access key has 20 letters and digits.": "Ein Zugangsschlüssel hat 20 Buchstaben und Ziffern.", "Exporting is unlocked.": "Der Export ist freigeschaltet.",
   "Welcome screen": "Startbildschirm", "the start page again": "die Startseite noch einmal", "Download FitFlat": "FitFlat herunterladen", "the app for Mac and Windows: free to try": "die App für Mac und Windows: kostenlos testen", "Get the app": "App holen",
   "Open on fitflat.app": "Auf fitflat.app öffnen",
   "Legal notice": "Impressum", "who makes FitFlat (Impressum)": "wer FitFlat macht (Impressum)",
