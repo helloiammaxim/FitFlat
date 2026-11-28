@@ -112,6 +112,7 @@ The real frame model gives the most accurate production patterns.
 - **Paste a geometry chart** — copy the geometry table from a brand website and paste it; the sizes and measurements are recognised and saved as your own preset.
 - The *Resulting frame* line shows wheelbase, front-centre, effective top tube and trail as a check.
 - **Move my decals onto the new frame** keeps your work when you change the size.
+- The frame is built as **one closed surface**: the tubes flow into each other with rounded joints, like a welded or moulded frame, instead of being separate tubes pushed into each other. **Joint radius (mm)** sets how round those joints are (default 8; 0 gives the tightest the surface allows). **Surface** sets the triangle size: *Fine (1.5 mm)*, *Normal (2.5 mm)* or *Draft (3.5 mm)*; finer follows the joints more closely but takes longer to build. Tube ends get a small rounded edge. *Separate tubes* builds the old way, one tube per part, which is fastest.
 
 Use a generated frame for layout and sizing; for production cuts use the real frame model.
 

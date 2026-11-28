@@ -1178,6 +1178,10 @@ select optgroup{ font-weight:600; color:#6E6E73; }
         <button type="button" class="btn" id="gDelPreset">Delete</button>
       </div>
       <div class="gfields" id="gFields"></div>
+      <div class="row2">
+        <label class="field" title="How round the joints are where the tubes meet, like a weld or a carbon joint. 0 gives the tightest the surface detail allows (about 1.2 × its triangle size)">Joint radius (mm)<input id="gJoint" type="number" min="0" max="40" step="1" value="8"></label>
+        <label class="field" title="The size of the triangles of the frame's surface. Finer follows the joints more closely but makes the model heavier">Surface<select id="gDetail"><option value="1.5">Fine (1.5 mm)</option><option value="2.5" selected>Normal (2.5 mm)</option><option value="3.5">Draft (3.5 mm)</option><option value="0">Separate tubes</option></select></label>
+      </div>
       <details><summary>Tube shape and diameters</summary><div class="gfields" id="gTubes"></div></details>
       <details><summary>Paste a geometry chart</summary>
         <p class="note">Copy the geometry table from a brand website and paste it here. Rows like stack, reach, head and seat angles, head tube, seat tube, top tube slope, chainstay, BB drop and wheelbase are recognised, with one column per size.</p>
@@ -12630,7 +12634,100 @@ ${opts.labels ? `<g id="labels">\n${lab}</g>\n` : ''}</svg>`;
     const t0 = tri.length; for (let i = 0; i < t0; i += 3) tri.push(twin[tri[i]], twin[tri[i+2]], twin[tri[i+1]]);
     return { pos: out, idx: tri };
   }
-  return { fitCurves, handlesFor, splitAt, computeRegion, flatten, weld, subdivide, topology, buildGrid, closestPoint, catmull, sampleOutline, solveDecal, pack, buildSVG, closestOnTri, buildBVH, rayBVH, alignScan, symmetrize };
+
+  // ---------- frames as one smooth surface: tubes as distance fields, blended at the joints, meshed with Surface Nets ----------
+  // tubes: { A, B, r1 (at A), r2 (at B), sx, sz (oval scale), sq (superellipse exponent), group }. Tubes of one group blend into
+  // each other with the joint radius (a smooth union); groups (frame, fork) only touch. Only the space near the surface is sampled.
+  function sdfFrame(tubes, opt = {}) {
+    const c = Math.max(0.4, opt.cell || 1.2), k = Math.max(opt.fillet || 0, c * 1.2), B = 8; // the smallest joint radius is about a grid cell: a sharper crease would not mesh cleanly
+    const T = tubes.map(tb => { const A = tb.A, Bp = tb.B, d = [Bp[0]-A[0], Bp[1]-A[1], Bp[2]-A[2]], len = Math.hypot(...d) || 1e-9, y = d.map(v => v / len);
+      let ref = Math.abs(y[2]) > 0.9 ? [0, 1, 0] : [0, 0, 1]; const dp = ref[0]*y[0] + ref[1]*y[1] + ref[2]*y[2]; let z = [ref[0]-y[0]*dp, ref[1]-y[1]*dp, ref[2]-y[2]*dp]; const zl = Math.hypot(...z); z = z.map(v => v / zl);
+      const x = [y[1]*z[2]-y[2]*z[1], y[2]*z[0]-y[0]*z[2], y[0]*z[1]-y[1]*z[0]], sx = tb.sx || 1, sz = tb.sz || 1, rmax = Math.max(tb.r1, tb.r2) * Math.max(sx, sz);
+      return { A, y, x, z, len, r1: tb.r1, r2: tb.r2, sx, sz, n: tb.sq > 2.05 ? tb.sq : 2, ms: Math.min(sx, sz), g: tb.group || 0, rmax, rr: Math.min(Math.max(1.5, c * 1.2), Math.min(tb.r1, tb.r2) * 0.4) }; }); // rr: the tube ends get a round edge over a few grid cells, so they mesh cleanly (like a chamfered tube end)
+    const one = (t, px, py, pz) => { const wx = px - t.A[0], wy = py - t.A[1], wz = pz - t.A[2], h = wx*t.y[0] + wy*t.y[1] + wz*t.y[2];
+      const qx = Math.abs((wx*t.x[0] + wy*t.x[1] + wz*t.x[2]) / t.sx), qz = Math.abs((wx*t.z[0] + wy*t.z[1] + wz*t.z[2]) / t.sz), tc = h <= 0 ? 0 : h >= t.len ? 1 : h / t.len;
+      const r = t.r1 + (t.r2 - t.r1) * tc, rho = t.n === 2 ? Math.hypot(qx, qz) : Math.pow(Math.pow(qx, t.n) + Math.pow(qz, t.n), 1 / t.n);
+      const dr = (rho - r) * t.ms + t.rr, dh = Math.max(-h, h - t.len) + t.rr; return (dr > 0 && dh > 0 ? Math.hypot(dr, dh) : Math.max(dr, dh)) - t.rr; };
+    const smin = (a, b) => { if (k <= 0) return a < b ? a : b; const h = Math.max(k - Math.abs(a - b), 0) / k; return (a < b ? a : b) - h * h * k * 0.25; };
+    const field = (list, px, py, pz) => { let g0 = Infinity, g1 = Infinity; for (const t of list) { const d = one(t, px, py, pz); if (t.g) g1 = smin(g1, d); else g0 = smin(g0, d); } return g0 < g1 ? g0 : g1; };
+    // the grid, in blocks of B x B x B cells; a block is sampled only when the surface may pass through it
+    let lo = [Infinity, Infinity, Infinity], hi = [-Infinity, -Infinity, -Infinity];
+    for (const tb of tubes) for (const P of [tb.A, tb.B]) for (let a = 0; a < 3; a++) { const r = Math.max(tb.r1, tb.r2) * Math.max(tb.sx || 1, tb.sz || 1) + 2 * c + k; lo[a] = Math.min(lo[a], P[a] - r); hi[a] = Math.max(hi[a], P[a] + r); }
+    const NB = [0, 1, 2].map(a => Math.ceil((hi[a] - lo[a]) / (c * B)) + 1), N = NB.map(v => v * B), bs = c * B, rb = bs * Math.sqrt(3) / 2;
+    const blocks = new Map(); // block key -> { tubes, vals }
+    for (let bk = 0; bk < NB[2]; bk++) for (let bj = 0; bj < NB[1]; bj++) for (let bi = 0; bi < NB[0]; bi++) {
+      const cx = lo[0] + (bi + 0.5) * bs, cy = lo[1] + (bj + 0.5) * bs, cz = lo[2] + (bk + 0.5) * bs, near = []; let dmin = Infinity;
+      for (const t of T) { const d = one(t, cx, cy, cz) / Math.min(1, t.ms); if (d < rb + k + 3 * c) near.push(t); if (d < dmin) dmin = d; }
+      if (!near.length || Math.abs(field(near, cx, cy, cz)) > (rb + 3 * c + k) * 1.25 && dmin > -(rb + 3 * c)) continue;
+      const vals = new Float32Array((B + 1) ** 3); let pos = 0, neg = 0;
+      for (let z = 0; z <= B; z++) for (let y = 0; y <= B; y++) for (let x = 0; x <= B; x++) { const v = field(near, lo[0] + (bi*B + x) * c, lo[1] + (bj*B + y) * c, lo[2] + (bk*B + z) * c); vals[x + (B+1)*(y + (B+1)*z)] = v; if (v < 0) neg++; else pos++; }
+      if (pos && neg) blocks.set(bi + NB[0] * (bj + NB[1] * bk), { bi, bj, bk, near, vals });
+    }
+    // one vertex per cell the surface crosses: at the mean of its edge crossings where the surface is smooth, and where it bends
+    // sharply (a tube end, a sharp joint) at the point that best fits the crossings' tangent planes (dual contouring), so edges stay crisp
+    const pos = [], vid = new Map(), cellVals = new Map(), sharp = [], E = [[0,1],[2,3],[4,5],[6,7],[0,2],[1,3],[4,6],[5,7],[0,4],[1,5],[2,6],[3,7]], B1 = B + 1;
+    const qef = (P, Nn, m) => { // min sum (n.(x-p))^2, solved around the mass point with small eigenvalues dropped
+      const A = [0,0,0,0,0,0], bv = [0,0,0]; for (let i = 0; i < P.length; i++) { const n = Nn[i], d = n[0]*(P[i][0]-m[0]) + n[1]*(P[i][1]-m[1]) + n[2]*(P[i][2]-m[2]);
+        A[0] += n[0]*n[0]; A[1] += n[0]*n[1]; A[2] += n[0]*n[2]; A[3] += n[1]*n[1]; A[4] += n[1]*n[2]; A[5] += n[2]*n[2]; bv[0] += n[0]*d; bv[1] += n[1]*d; bv[2] += n[2]*d; }
+      let a = [[A[0],A[1],A[2]],[A[1],A[3],A[4]],[A[2],A[4],A[5]]], V = [[1,0,0],[0,1,0],[0,0,1]];
+      for (let sweep = 0; sweep < 8; sweep++) for (const [p, q] of [[0,1],[0,2],[1,2]]) { if (Math.abs(a[p][q]) < 1e-12) continue;
+        const th = (a[q][q] - a[p][p]) / (2 * a[p][q]), t = Math.sign(th || 1) / (Math.abs(th) + Math.sqrt(th*th + 1)), cs = 1 / Math.sqrt(t*t + 1), sn = t * cs;
+        for (let k2 = 0; k2 < 3; k2++) { const akp = a[k2][p], akq = a[k2][q]; a[k2][p] = cs*akp - sn*akq; a[k2][q] = sn*akp + cs*akq; }
+        for (let k2 = 0; k2 < 3; k2++) { const apk = a[p][k2], aqk = a[q][k2]; a[p][k2] = cs*apk - sn*aqk; a[q][k2] = sn*apk + cs*aqk; }
+        for (let k2 = 0; k2 < 3; k2++) { const vkp = V[k2][p], vkq = V[k2][q]; V[k2][p] = cs*vkp - sn*vkq; V[k2][q] = sn*vkp + cs*vkq; } }
+      const ev = [a[0][0], a[1][1], a[2][2]], top = Math.max(...ev), x = [0, 0, 0];
+      for (let j = 0; j < 3; j++) { if (ev[j] < top * 0.08) continue; const proj = (V[0][j]*bv[0] + V[1][j]*bv[1] + V[2][j]*bv[2]) / ev[j]; x[0] += V[0][j]*proj; x[1] += V[1][j]*proj; x[2] += V[2][j]*proj; }
+      return [m[0] + x[0], m[1] + x[1], m[2] + x[2]]; };
+    for (const blk of blocks.values()) { const { bi, bj, bk, vals } = blk, at = (x, y, z) => vals[x + B1*(y + B1*z)];
+      const grad = (x, y, z) => { const g = [0, 0, 0], P = [x, y, z]; for (let a2 = 0; a2 < 3; a2++) { const lo2 = P.slice(), hi2 = P.slice(); lo2[a2] = Math.max(0, P[a2] - 1); hi2[a2] = Math.min(B, P[a2] + 1); g[a2] = (at(...hi2) - at(...lo2)) / ((hi2[a2] - lo2[a2]) || 1); } const l = Math.hypot(...g) || 1; return g.map(v => v / l); };
+      for (let z = 0; z < B; z++) for (let y = 0; y < B; y++) for (let x = 0; x < B; x++) {
+        const v = []; for (let q = 0; q < 8; q++) v.push(at(x + (q & 1), y + ((q >> 1) & 1), z + (q >> 2)));
+        let ins = 0; for (const a2 of v) if (a2 < 0) ins++; if (!ins || ins === 8) continue;
+        const P = [], Nn = []; let mx = 0, my = 0, mz = 0;
+        for (const [a2, b2] of E) { if ((v[a2] < 0) === (v[b2] < 0)) continue; const t = v[a2] / (v[a2] - v[b2]);
+          const ca = [a2 & 1, (a2 >> 1) & 1, a2 >> 2], cb = [b2 & 1, (b2 >> 1) & 1, b2 >> 2], pp = [ca[0] + (cb[0]-ca[0])*t, ca[1] + (cb[1]-ca[1])*t, ca[2] + (cb[2]-ca[2])*t];
+          const ga = grad(x + ca[0], y + ca[1], z + ca[2]), gb = grad(x + cb[0], y + cb[1], z + cb[2]), n = [ga[0]*(1-t) + gb[0]*t, ga[1]*(1-t) + gb[1]*t, ga[2]*(1-t) + gb[2]*t], nl = Math.hypot(...n) || 1;
+          P.push(pp); Nn.push(n.map(w => w / nl)); mx += pp[0]; my += pp[1]; mz += pp[2]; }
+        const m = [mx / P.length, my / P.length, mz / P.length]; let minDot = 1;
+        for (let i = 0; i < Nn.length; i++) for (let j = i + 1; j < Nn.length; j++) minDot = Math.min(minDot, Nn[i][0]*Nn[j][0] + Nn[i][1]*Nn[j][1] + Nn[i][2]*Nn[j][2]);
+        let L = m, isSharp = false;
+        if (k <= 0 && minDot < 0.8) { // sharp joints only (joint radius 0): the exact surface normals at the crossings decide, and place the point
+          const ee = c * 0.05, wx0 = lo[0] + (bi*B + x) * c, wy0 = lo[1] + (bj*B + y) * c, wz0 = lo[2] + (bk*B + z) * c;
+          const NX2 = P.map(pp => { const px = wx0 + pp[0]*c, py = wy0 + pp[1]*c, pz = wz0 + pp[2]*c, f = (a3, b3, c3) => field(blk.near, a3, b3, c3);
+            const g = [f(px + ee, py, pz) - f(px - ee, py, pz), f(px, py + ee, pz) - f(px, py - ee, pz), f(px, py, pz + ee) - f(px, py, pz - ee)], l = Math.hypot(...g) || 1; return g.map(w => w / l); });
+          let md2 = 1; for (let i = 0; i < NX2.length; i++) for (let j = i + 1; j < NX2.length; j++) md2 = Math.min(md2, NX2[i][0]*NX2[j][0] + NX2[i][1]*NX2[j][1] + NX2[i][2]*NX2[j][2]);
+          if (md2 < 0.8) { const q = qef(P, NX2, m); if (q.every(w => w > -0.25 && w < 1.25)) { L = q; isSharp = true; } } }
+        const gx = bi*B + x, gy = bj*B + y, gz = bk*B + z, key = gx + N[0] * (gy + N[1] * gz);
+        vid.set(key, pos.length / 3); cellVals.set(key, v); sharp.push(isSharp); pos.push(lo[0] + (gx + L[0]) * c, lo[1] + (gy + L[1]) * c, lo[2] + (gz + L[2]) * c);
+      } }
+    // a quad around every grid edge the surface crosses, from the four cells that share it
+    const idx = [], NX = N[0], NXY = N[0] * N[1];
+    for (const [key, v] of cellVals) { const a0 = vid.get(key);
+      // the three edges leaving this cell's lowest corner: along x (corner 0 to 1), y (0 to 2), z (0 to 4)
+      for (const [q, o1, o2] of [[1, NX, NXY], [2, NXY, 1], [4, 1, NX]]) { if ((v[0] < 0) === (v[q] < 0)) continue;
+        const b = vid.get(key - o1), cc = vid.get(key - o1 - o2), d = vid.get(key - o2); if (b == null || cc == null || d == null) continue;
+        if (v[0] < 0) idx.push(a0, b, cc, a0, cc, d); else idx.push(a0, cc, b, a0, d, cc); } }
+    // the vertices onto the surface (steps along the field's slope), then evened out along it: clean, even triangles
+    const nearOf = (px, py, pz) => { const bi = Math.floor((px - lo[0]) / bs), bj = Math.floor((py - lo[1]) / bs), bk = Math.floor((pz - lo[2]) / bs); return blocks.get(bi + NB[0] * (bj + NB[1] * bk))?.near || T; };
+    const e = c * 0.25, nv = pos.length / 3;
+    const project = (i, steps) => { const near = nearOf(pos[i], pos[i+1], pos[i+2]);
+      for (let it = 0; it < steps; it++) { const px = pos[i], py = pos[i+1], pz = pos[i+2], f = field(near, px, py, pz);
+        const gx = (field(near, px + e, py, pz) - field(near, px - e, py, pz)) / (2*e), gy = (field(near, px, py + e, pz) - field(near, px, py - e, pz)) / (2*e), gz = (field(near, px, py, pz + e) - field(near, px, py, pz - e)) / (2*e), g2 = gx*gx + gy*gy + gz*gz;
+        if (g2 < 1e-8) break; const s2 = f / g2, mv = Math.min(1, c * 1.5 / (Math.abs(s2) * Math.sqrt(g2) || 1)); pos[i] -= gx * s2 * mv; pos[i+1] -= gy * s2 * mv; pos[i+2] -= gz * s2 * mv; } };
+    for (let i = 0; i < pos.length; i += 3) if (!sharp[i / 3]) project(i, 3);
+    const nbr = Array.from({ length: nv }, () => []);
+    for (let i = 0; i < idx.length; i += 3) for (let q = 0; q < 3; q++) { const a = idx[i+q], b = idx[i+(q+1)%3]; nbr[a].push(b); } // each edge is seen from both of its triangles, so every neighbour appears; doubles only weigh it twice
+    for (let pass = 0; pass < (opt.relax ?? 2); pass++) { const old = pos.slice();
+      for (let v = 0; v < nv; v++) { const L = nbr[v]; if (L.length < 3 || sharp[v]) continue; let mx = 0, my = 0, mz = 0; for (const u of L) { mx += old[3*u]; my += old[3*u+1]; mz += old[3*u+2]; }
+        pos[3*v] = old[3*v] * 0.5 + mx / L.length * 0.5; pos[3*v+1] = old[3*v+1] * 0.5 + my / L.length * 0.5; pos[3*v+2] = old[3*v+2] * 0.5 + mz / L.length * 0.5; project(3*v, 1); } }
+    // outward: the enclosed volume must come out positive
+    let vol = 0; for (let i = 0; i < idx.length; i += 3) { const a = 3*idx[i], b = 3*idx[i+1], d = 3*idx[i+2];
+      vol += pos[a]*(pos[b+1]*pos[d+2] - pos[b+2]*pos[d+1]) - pos[a+1]*(pos[b]*pos[d+2] - pos[b+2]*pos[d]) + pos[a+2]*(pos[b]*pos[d+1] - pos[b+1]*pos[d]); }
+    if (vol < 0) for (let i = 0; i < idx.length; i += 3) { const t = idx[i+1]; idx[i+1] = idx[i+2]; idx[i+2] = t; }
+    return { pos, idx, cells: blocks.size, field: (x, y, z) => field(T, x, y, z) };
+  }
+
+  return { sdfFrame, fitCurves, handlesFor, splitAt, computeRegion, flatten, weld, subdivide, topology, buildGrid, closestPoint, catmull, sampleOutline, solveDecal, pack, buildSVG, closestOnTri, buildBVH, rayBVH, alignScan, symmetrize };
 })();
 if (typeof module !== 'undefined') module.exports = Core;
 
@@ -13031,6 +13128,12 @@ function fromTube(rec, tubes, ends) {
   return [p.x, p.y, p.z];
 }
 
+// the frame's mesh: one closed surface with rounded joints (distance fields), or the tubes as separate cylinders
+S.frameMesh = (() => { try { const o = JSON.parse(localStorage.getItem('fitflat-framemesh') || 'null'); if (o && Number.isFinite(o.fillet) && Number.isFinite(o.cell)) return o; } catch (e) {} return { fillet: 8, cell: 2.5 }; })();
+function frameRaw(tubes, opt = S.frameMesh) {
+  if (opt && opt.cell > 0) { try { const m = Core.sdfFrame(tubes.map(t => ({ ...t, group: /^Fork/.test(t.name) ? 1 : 0 })), opt); if (m.idx.length > 300) return { pos: m.pos, idx: m.idx }; } catch (e) { console.error(e); } }
+  return tubesToRaw(tubes);
+}
 function buildFromGeometry(geo, tubesIn, name, carryDecals, meta) {
   const t = { ...TUBE_DEFAULT, ...tubesIn };
   const tubes = frameTubes(geo, t);
@@ -13042,7 +13145,7 @@ function buildFromGeometry(geo, tubesIn, name, carryDecals, meta) {
       ctrl: d.ctrl.map(c => ({ p: toTube(c.p, old), hin: c.hin && toTube(c.hin, old), hout: c.hout && toTube(c.hout, old), type: c.type, plane: c.plane, seam: c.seam })),
     }));
   }
-  const raw = tubesToRaw(tubes);
+  const raw = frameRaw(tubes);
   $('#units').value = 'mm';
   const keepViews = S.views;
   loadSource(raw, 'geometry', name, () => {
@@ -13111,7 +13214,7 @@ function savePresets() { try { localStorage.setItem('decal-unwrap-presets', JSON
 function allPresets() { return [...BUILTIN_PRESETS, ...userPresets, ...(S.projectPresets || [])].filter((p, i, a) => a.findIndex(q => q.name === p.name) === i); }
 
 function geoDialog() {
-  const dlg = $('#geoDlg');
+  const dlg = $('#geoDlg'); $('#gJoint').value = S.frameMesh.fillet; $('#gDetail').value = String(S.frameMesh.cell);
   const presets = allPresets();
   const cur = S.source?.geo ? { geo: S.source.geo, tubes: S.source.tubeSizes } : null;
   const groups = {};
@@ -13192,8 +13295,9 @@ $('#gBuild').addEventListener('click', () => {
   const name = p ? `${p.name} ${p.sizes[si]}` : 'Custom frame';
   const carry = !$('#gCarryWrap').hidden && $('#gCarry').checked;
   if (S.decals.length && S.dirty && !carry && !confirm('Building a new frame clears the current decals. Continue?')) return;
-  $('#geoDlg').close();
-  buildFromGeometry(r.geo, r.tubes, name, carry, { presetName: p?.name, sizeIndex: si });
+  S.frameMesh = { fillet: Math.max(0, Math.min(40, +$('#gJoint').value || 0)), cell: +$('#gDetail').value || 0 }; try { localStorage.setItem('fitflat-framemesh', JSON.stringify(S.frameMesh)); } catch (e) {}
+  $('#geoDlg').close(); setBusy(tr('Building the frame…'));
+  setTimeout(() => buildFromGeometry(r.geo, r.tubes, name, carry, { presetName: p?.name, sizeIndex: si }), 30);
 });
 $('#gParse').addEventListener('click', () => {
   const res = parseChart($('#gPaste').value);
@@ -13720,7 +13824,7 @@ $('#sizeShow').addEventListener('change', e => {
 });
 // the decals of this frame, unwrapped on another size (the 3D view is not touched)
 function gradedPieces(pr, i) {
-  const tubes = frameTubes(geoForSize(pr, i), { ...TUBE_DEFAULT, ...S.source.tubeSizes }), model = prepModel(tubesToRaw(tubes), 1), old = S.source.tubes;
+  const tubes = frameTubes(geoForSize(pr, i), { ...TUBE_DEFAULT, ...S.source.tubeSizes }), model = prepModel(frameRaw(tubes), 1), old = S.source.tubes;
   const map = q => q && fromTube(toTube(q, old), tubes, S.gradeEnds);
   const idMap = new Map(), copies = [];
   for (const d of S.decals) { if (!d.closed || d.ctrl.length < 3) continue;
@@ -16273,7 +16377,7 @@ function deselectNotch() { if (!S.notch.sel) return; S.notch.sel = null; renderS
 // a click on the empty sheet (not a drag) lets go of the selected notch
 { let down = null; const sh = $('#sheet');
   sh.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; }, true);
-  sh.addEventListener('click', e => { if (!S.notch.on || S.notch.add || !down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return; if (!e.target.closest('.nt, path[data-id]')) deselectNotch(); }); }
+  sh.addEventListener('click', e => { if (!S.notch.on || S.notch.add || S.notch.ate || !down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return; if (!e.target.closest('.nt, path[data-id]')) deselectNotch(); }); }
 function setNotchAdd(on) {
   if (on && S.notch.sel) { S.notch.sel = null; renderSheet(); renderNotchBar(); } // a new notch takes the numbers in the panel, not the selected one's
   S.notch.add = on; $('#ntSelM').setAttribute('aria-pressed', String(!on)); $('#ntAddM').setAttribute('aria-pressed', String(on));
@@ -19245,6 +19349,9 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "Joint radius (mm)": "Verbindungsradius (mm)", "Fine (1.5 mm)": "Fein (1,5 mm)", "Normal (2.5 mm)": "Normal (2,5 mm)", "Draft (3.5 mm)": "Grob (3,5 mm)", "Separate tubes": "Einzelne Rohre", "Building the frame…": "Rahmen wird gebaut…",
+  "How round the joints are where the tubes meet, like a weld or a carbon joint. 0 gives the tightest the surface detail allows (about 1.2 × its triangle size)": "Wie rund die Verbindungen sind, wo die Rohre aufeinandertreffen, wie eine Schweißnaht oder eine Carbon-Verbindung. 0 ergibt das Engste, was die Oberflächendetails zulassen (etwa 1,2 × die Dreiecksgröße)",
+  "The size of the triangles of the frame's surface. Finer follows the joints more closely but makes the model heavier": "Die Größe der Dreiecke der Rahmenoberfläche. Feiner folgt den Verbindungen genauer, macht das Modell aber schwerer",
   "Import": "Importieren", "Bring in a 3D model or scan, SVG artwork, or a reference photo": "3D-Modell oder Scan, SVG-Grafik oder Referenzfoto hereinholen", "3D model or scan": "3D-Modell oder Scan", "SVG artwork as decals": "SVG-Grafik als Decals", "logos and shapes, placed on the frame": "Logos und Formen, auf den Rahmen gesetzt", "Reference photo": "Referenzfoto", "a photo of the real frame, to trace from": "ein Foto des echten Rahmens, zum Nachzeichnen",
   "Project: new, open, save, rename, download": "Projekt: neu, öffnen, speichern, umbenennen, herunterladen", "New project": "Neues Projekt", "Open a saved project…": "Gespeichertes Projekt öffnen…", "Save as a new project": "Als neues Projekt speichern", "Rename…": "Umbenennen…", "Open a project file (.json)…": "Projektdatei öffnen (.json)…", "Download the project file": "Projektdatei herunterladen", "Manage projects and templates…": "Projekte und Vorlagen verwalten…", "Project name": "Projektname", "Editing": "Bearbeiten", "Clean": "Aufgeräumt", "Settings": "Einstellungen", "Language": "Sprache", "Appearance": "Darstellung", "Panel layout": "Anordnung", "Model units": "Modelleinheiten", "Frame": "Rahmen", "New": "Neu", "Open": "Öffnen",
   "New: start over with the start frame": "Neu: mit dem Startrahmen neu beginnen", "Import SVG: place SVG artwork on the frame as editable decals": "SVG importieren: SVG-Grafik als bearbeitbare Decals auf den Rahmen setzen", "Settings: language, appearance, panel layout, model units": "Einstellungen: Sprache, Darstellung, Panel-Anordnung, Modelleinheiten",

@@ -112,6 +112,7 @@ Das echte Rahmenmodell ergibt die genauesten Produktionsschnitte.
 - **Geometrietabelle einfügen** — kopiere die Geometrietabelle von der Website des Herstellers und füge sie ein; Größen und Maße werden erkannt und als eigene Vorlage gespeichert.
 - Die Zeile *Ergebnis* zeigt Radstand, Front-Center, effektives Oberrohr und Nachlauf zur Kontrolle.
 - **Meine Decals auf den neuen Rahmen übertragen** behält deine Arbeit, wenn du die Größe wechselst.
+- Der Rahmen wird als **eine geschlossene Oberfläche** gebaut: Die Rohre gehen mit gerundeten Übergängen ineinander über, wie bei einem geschweißten oder geformten Rahmen, statt als einzelne Rohre ineinander zu stecken. **Verbindungsradius (mm)** bestimmt, wie rund diese Übergänge sind (Standard 8; 0 ergibt den engsten, den die Oberfläche erlaubt). **Fläche** bestimmt die Dreiecksgröße: *Fein (1,5 mm)*, *Normal (2,5 mm)* oder *Grob (3,5 mm)*; feiner folgt den Übergängen genauer, braucht aber länger zum Bauen. Rohrenden bekommen eine kleine gerundete Kante. *Einzelne Rohre* baut wie bisher, ein Rohr pro Teil, und ist am schnellsten.
 
 Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte das echte Rahmenmodell.
 
