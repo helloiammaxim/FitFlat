@@ -137,12 +137,15 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 Z is the vertical axis. X runs front to back along the bike, Y side to side.
 
 ### Reference image
-In the View panel, **Reference image → Load…** puts a photo of the real frame over the view, with **Adjust** on: drag the photo to move it, scroll over it to size it (hold **Alt** for fine steps), turn it by the round handle above it or type an exact angle in the **°** box (arrow keys in the box: 0.5°, Shift: 5°), and nudge it with the arrow keys. **Fit** brings the whole photo back into view when it is bigger than the screen. Switch **Adjust** off to turn and zoom the model behind the photo again, and set its opacity with the slider. Then fix it in place:
+In the View panel, **Reference image → Load…** stands a photo of the real frame in the scene, on one of three planes through the middle of the model: **Side (XZ)** (the default), **Front (YZ)** or **Ground (XY)**. It is sized to the model on that plane, and stays where it is when you turn the view, so you can trace paint lines, logos and cable ports against it.
 
-- **Stick to model** projects the photo onto the frame from that view, so it stays on the tubes when you turn the model. Good for tracing paint lines, logos and cable ports.
-- **Stick as plane** stands the photo in the scene as a flat board through the middle of the model, facing the view it was lined up in. Good for a side photo you want to compare against from other angles.
+- **Adjust** (on after loading): drag the photo to move it on its plane, scroll over it to size it around the pointer (hold **Alt** for fine steps), **Shift** + scroll to turn it, and nudge it with the arrow keys (Shift: 10 mm). Switch it off to turn and zoom the view over the photo again.
+- The numbers: **W** and **H** (its size in mm; change one to stretch the photo), **Scale** (both together), the angle **°** on its plane (arrow keys in the box: 0.5°, Shift: 5°) and **Depth** (moves the plane towards you or away; 0 is through the middle of the model).
+- **In front** shows the photo over the model, also where the model is in front of it. Otherwise the model hides the part behind it.
+- **On model** projects the photo onto the frame straight along the plane's direction, on the side you look from, instead of a flat board.
+- **Fit** centres the photo on the model and sizes it to it again; **Flip** mirrors it (a photo of the other side); the slider sets its opacity; **Remove** clears it.
 
-**Unstick** goes back to the view the photo was lined up in and turns Adjust on again; **Remove** clears it.
+A photo from an older project (laid over the view or stuck onto the model) opens on the side plane, centred on the model.
 
 ---
 

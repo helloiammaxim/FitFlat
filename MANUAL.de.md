@@ -137,12 +137,15 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 Z ist die senkrechte Achse. X verläuft von vorne nach hinten entlang des Rads, Y seitlich.
 
 ### Referenzbild
-Im Ansicht-Panel legt **Referenzbild → Laden…** ein Foto des echten Rahmens über die Ansicht, mit **Anpassen** eingeschaltet: Zieh das Foto, um es zu verschieben, scroll darüber, um die Größe zu ändern (mit **Alt** in feinen Schritten), dreh es am runden Griff darüber oder gib im **°**-Feld einen genauen Winkel ein (Pfeiltasten im Feld: 0,5°, Umschalt: 5°), und schieb es mit den Pfeiltasten fein. **Alles** holt das ganze Foto wieder in die Ansicht, wenn es größer als der Bildschirm ist. Schalt **Anpassen** aus, um das Modell hinter dem Foto wieder zu drehen und zu zoomen, und stell die Deckkraft mit dem Regler ein. Dann fixierst du es:
+Im Ansicht-Panel stellt **Referenzbild → Laden…** ein Foto des echten Rahmens in die Szene, auf eine von drei Ebenen durch die Mitte des Modells: **Side (XZ)** (Standard), **Front (YZ)** oder **Ground (XY)**. Es wird auf dieser Ebene an das Modell angepasst und bleibt stehen, wenn du die Ansicht drehst, sodass du Lackkanten, Logos und Kabelöffnungen daran nachzeichnen kannst.
 
-- **Aufs Modell kleben** projiziert das Foto aus dieser Ansicht auf den Rahmen, sodass es beim Drehen auf den Rohren bleibt. Gut zum Nachzeichnen von Lackkanten, Logos und Zugdurchführungen.
-- **Als Ebene fixieren** stellt das Foto als flache Tafel durch die Mitte des Modells in die Szene, zur Ansicht gedreht, in der es ausgerichtet war. Gut für ein Seitenfoto, mit dem du aus anderen Winkeln vergleichen willst.
+- **Anpassen** (nach dem Laden an): Foto ziehen verschiebt es auf seiner Ebene, Scrollen darüber skaliert es um den Mauszeiger (**Alt** für feine Schritte), **Umschalt** + Scrollen dreht es, die Pfeiltasten schieben es (Umschalt: 10 mm). Ausschalten, um die Ansicht über dem Foto wieder zu drehen und zu zoomen.
+- Die Werte: **W** und **H** (Größe in mm; einen ändern streckt das Foto), **Skalierung** (beide zusammen), der Winkel **°** auf der Ebene (Pfeiltasten im Feld: 0,5°, Umschalt: 5°) und **Tiefe** (verschiebt die Ebene zu dir hin oder weg; 0 ist durch die Mitte des Modells).
+- **Davor** zeigt das Foto über dem Modell, auch wo das Modell davor ist. Sonst verdeckt das Modell den Teil dahinter.
+- **Aufs Modell** projiziert das Foto gerade entlang der Richtung der Ebene auf den Rahmen, auf der Seite, von der du schaust, statt als flache Tafel.
+- **Alles** zentriert das Foto auf dem Modell und passt es wieder an; **Spiegeln** spiegelt es (ein Foto der anderen Seite); der Regler setzt die Deckkraft; **Entfernen** löscht es.
 
-**Lösen** geht zurück in die Ansicht, in der das Foto ausgerichtet war, und schaltet Anpassen wieder ein; **Entfernen** löscht es.
+Ein Foto aus einem älteren Projekt (über die Ansicht gelegt oder aufs Modell geklebt) öffnet auf der Seitenebene, auf dem Modell zentriert.
 
 ---
 
