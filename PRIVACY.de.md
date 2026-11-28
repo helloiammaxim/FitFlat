@@ -63,13 +63,13 @@ Wir speichern diese Daten, solange die Lizenz läuft und Support nötig sein kan
 
 ### 6. Anfragen und Support
 
-Wenn du **Anfrage senden** nutzt (in der App oder auf der Website), verarbeiten wir deine Angaben: Name, E-Mail-Adresse, deine Nachricht und, falls du sie angibst, Lizenznummer, App-Version und Betriebssystem. Die Nachricht wird über ein kleines Relais bei Cloudflare (Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA) weitergeleitet und als Ticket in einem privaten GitHub-Repository gespeichert, das nur wir lesen können; Cloudflare speichert sie nicht, und deine IP-Adresse wird nicht mit dem Ticket gespeichert. Wir antworten per E-Mail (Gmail, Google Ireland Ltd.). Schreibst du uns direkt eine E-Mail, verarbeiten wir sie genauso.
+Wenn du **Anfrage senden** nutzt (in der App oder auf der Website), verarbeiten wir deine Angaben: Name, E-Mail-Adresse, deine Nachricht und, falls du sie angibst, Lizenznummer, App-Version und Betriebssystem. Die Nachricht wird über ein kleines Relais bei Cloudflare (Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA) weitergeleitet und als Ticket in einem privaten GitHub-Repository gespeichert, das nur wir lesen können; Cloudflare speichert sie nicht, und deine IP-Adresse wird nicht mit dem Ticket gespeichert. Wir antworten per E-Mail (Gmail, Google Ireland Ltd.). Um schneller zu antworten, lassen wir gegebenenfalls Claude, einen KI-Assistenten von Anthropic (Anthropic, PBC, 548 Market St, San Francisco, CA 94104, USA), aus deiner Nachricht einen Antwortentwurf schreiben; wir prüfen jede Antwort, bevor sie verschickt wird, und nichts wird automatisch entschieden. Schreibst du uns direkt eine E-Mail, verarbeiten wir sie genauso.
 
 Rechtsgrundlage: Art. 6 Abs. 1 lit. b DSGVO, wenn deine Anfrage eine Lizenz oder einen Kauf betrifft, sonst Art. 6 Abs. 1 lit. f DSGVO (unser berechtigtes Interesse, dir zu antworten). Wir löschen ein Ticket 12 Monate nach seinem Abschluss, sofern wir es nicht länger aufbewahren müssen (zum Beispiel als Geschäftsbrief, siehe Abschnitt 5).
 
 ### 7. Empfänger und Übermittlung außerhalb der EU
 
-Wir nutzen diese Dienstleister, die Daten in unserem Auftrag verarbeiten: GitHub, Inc. (Hosting, Downloads, private Repositories), Cloudflare, Inc. (Relais für Anfragen), Microsoft Ireland Operations Ltd. (OneDrive-Sicherung) und Google Ireland Ltd. (E-Mail). GitHub, Cloudflare, Microsoft und Google können Daten in den USA verarbeiten. Sie sind nach dem EU-US Data Privacy Framework zertifiziert, sodass ein Angemessenheitsbeschluss der EU-Kommission gilt (Art. 45 DSGVO); zusätzlich sind die EU-Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO) Teil ihrer Bedingungen. Wir verkaufen deine Daten nicht und geben sie sonst an niemanden weiter, außer das Gesetz verlangt es.
+Wir nutzen diese Dienstleister, die Daten in unserem Auftrag verarbeiten: GitHub, Inc. (Hosting, Downloads, private Repositories), Cloudflare, Inc. (Relais für Anfragen), Microsoft Ireland Operations Ltd. (OneDrive-Sicherung), Google Ireland Ltd. (E-Mail) und Anthropic, PBC (Antwortentwürfe zu Anfragen). Diese Dienstleister können Daten in den USA verarbeiten. GitHub, Cloudflare, Microsoft und Google sind nach dem EU-US Data Privacy Framework zertifiziert, sodass ein Angemessenheitsbeschluss der EU-Kommission gilt (Art. 45 DSGVO); zusätzlich, und für Anthropic, sind die EU-Standardvertragsklauseln (Art. 46 Abs. 2 lit. c DSGVO) Teil ihrer Bedingungen zur Auftragsverarbeitung. Wir verkaufen deine Daten nicht und geben sie sonst an niemanden weiter, außer das Gesetz verlangt es.
 
 ### 8. Deine Rechte
 
@@ -79,6 +79,6 @@ Außerdem hast du das Recht, dich bei einer Datenschutz-Aufsichtsbehörde zu bes
 
 ### 9. Weiteres
 
-Die Angabe deiner Daten ist freiwillig. Ohne die für eine Lizenz nötigen Angaben können wir keine ausstellen, und ohne E-Mail-Adresse können wir auf eine Anfrage nicht antworten. Wir treffen keine automatisierten Entscheidungen und betreiben kein Profiling. Verbindungen zu fitflat.app, GitHub und dem Anfrage-Relais sind verschlüsselt (TLS); Lizenzen sind signiert, damit sie nicht gefälscht werden können.
+Die Angabe deiner Daten ist freiwillig. Ohne die für eine Lizenz nötigen Angaben können wir keine ausstellen, und ohne E-Mail-Adresse können wir auf eine Anfrage nicht antworten. Wir treffen keine automatisierten Entscheidungen und betreiben kein Profiling; ein KI-Entwurf ist nur ein Vorschlag, den wir prüfen. Verbindungen zu fitflat.app, GitHub und dem Anfrage-Relais sind verschlüsselt (TLS); Lizenzen sind signiert, damit sie nicht gefälscht werden können.
 
 Wir passen diese Erklärung an, wenn sich FitFlat oder das Recht ändert. Stand: 28. November 2026.

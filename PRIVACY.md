@@ -63,13 +63,13 @@ We keep these data for as long as the licence runs and support may be needed, an
 
 ### 6. Requests and support
 
-If you use **Send a request** (in the app or on the website), we process the details you enter: name, email address, your message, and if you add them, your licence number, the app version and your operating system. The message is passed through a small relay at Cloudflare (Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA) and stored as a ticket in a private GitHub repository that only we can read; Cloudflare does not keep it, and your IP address is not stored with the ticket. We answer by email (Gmail, Google Ireland Ltd.). If you write to us by email directly, we process your email the same way.
+If you use **Send a request** (in the app or on the website), we process the details you enter: name, email address, your message, and if you add them, your licence number, the app version and your operating system. The message is passed through a small relay at Cloudflare (Cloudflare, Inc., 101 Townsend St, San Francisco, CA 94107, USA) and stored as a ticket in a private GitHub repository that only we can read; Cloudflare does not keep it, and your IP address is not stored with the ticket. We answer by email (Gmail, Google Ireland Ltd.). To answer faster, we may let Claude, an AI assistant by Anthropic (Anthropic, PBC, 548 Market St, San Francisco, CA 94104, USA), draft a reply from your message; we check every answer before it is sent, and nothing is decided automatically. If you write to us by email directly, we process your email the same way.
 
 Legal basis: Art. 6(1)(b) GDPR where your request is about a licence or a purchase, otherwise Art. 6(1)(f) GDPR (our legitimate interest in answering you). We delete a ticket 12 months after it is closed, unless we must keep it longer (for example as a business letter, see section 5).
 
 ### 7. Recipients and transfers outside the EU
 
-We use these service providers, who process data for us under data processing terms: GitHub, Inc. (hosting, downloads, private repositories), Cloudflare, Inc. (request relay), Microsoft Ireland Operations Ltd. (OneDrive backup) and Google Ireland Ltd. (email). GitHub, Cloudflare, Microsoft and Google may process data in the USA. They are certified under the EU-U.S. Data Privacy Framework, so an adequacy decision of the European Commission applies (Art. 45 GDPR); in addition, the EU standard contractual clauses (Art. 46(2)(c) GDPR) are part of their terms. We do not sell or pass on your data to anyone else, unless the law requires it.
+We use these service providers, who process data for us under data processing terms: GitHub, Inc. (hosting, downloads, private repositories), Cloudflare, Inc. (request relay), Microsoft Ireland Operations Ltd. (OneDrive backup), Google Ireland Ltd. (email) and Anthropic, PBC (drafting answers to requests). These providers may process data in the USA. GitHub, Cloudflare, Microsoft and Google are certified under the EU-U.S. Data Privacy Framework, so an adequacy decision of the European Commission applies (Art. 45 GDPR); in addition, and for Anthropic, the EU standard contractual clauses (Art. 46(2)(c) GDPR) are part of their data processing terms. We do not sell or pass on your data to anyone else, unless the law requires it.
 
 ### 8. Your rights
 
@@ -79,6 +79,6 @@ You also have the right to lodge a complaint with a data protection supervisory 
 
 ### 9. Other points
 
-Providing your data is voluntary. Without the details needed for a licence we cannot issue one, and without an email address we cannot answer a request. We make no automated decisions and do no profiling. Connections to fitflat.app, GitHub and the request relay are encrypted (TLS); licences are signed so they cannot be forged.
+Providing your data is voluntary. Without the details needed for a licence we cannot issue one, and without an email address we cannot answer a request. We make no automated decisions and do no profiling; an AI draft is only a suggestion that we check. Connections to fitflat.app, GitHub and the request relay are encrypted (TLS); licences are signed so they cannot be forged.
 
 We update this notice when FitFlat or the law changes. Last updated: 28 November 2026.
