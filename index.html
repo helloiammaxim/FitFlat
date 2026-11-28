@@ -2954,9 +2954,9 @@ function frameTubes(g, t) {
     // out of it, thick at the top and thinning towards the axle; big blends make it one smooth piece, the arch opens between the legs
     const ax3 = [axis[0], axis[1], 0], nF = [Math.sin(ha), Math.cos(ha), 0], hb = P(htBot), at = (a, w) => v3.add(v3.add(hb, v3.mul(ax3, a)), [0, 0, w]);
     const fh = fOf('ht'), fz = fOf('fk')[0], fa = fOf('fk')[1] / fz, rL = t.fkT / 2 * fz, rB = t.fkB / 2 * fz, top = 9, KF = 14;
-    out.push({ name: 'Fork crown', A: at(top - 4, 0), B: at(top + 40, 0), r1: t.htBot / 2, r2: t.htBot / 2 * 0.45, sz: fh[0], sx: fh[1], sq: 2, noDecal: true, kMin: KF, capGroup: { P: at(top, 0), seam: 5 } }); // starts above the cut, so the top face is the cut alone, with a soft edge
+    out.push({ name: 'Fork crown', A: at(top - 4, 0), B: at(top + 22, 0), r1: t.htBot / 2, r2: t.htBot / 2 * 0.6, sz: fh[0], sx: fh[1], sq: 2, noDecal: true, kMin: KF, capGroup: { P: at(top, 0), seam: 5 } }); // starts above the cut, so the top face is the cut alone, with a soft edge
     for (const sgn of [1, -1]) { const L0 = at(20, sgn * (t.crownW || 66) / 2), L1 = P(front, sgn * (t.frontW / 2 - t.fkB * 0.7)), dl = v3.norm(v3.sub(L1, L0));
-      const T0 = at(top + 24, sgn * 6), S1 = v3.add(L0, v3.mul(dl, Math.max(10, 55 / Math.max(0.3, v3.dot(dl, ax3))))), hh = Math.hypot(...v3.sub(S1, T0)) * 0.45;
+      const T0 = at(top + 12, sgn * 8), S1 = v3.add(L0, v3.mul(dl, Math.max(10, 36 / Math.max(0.3, v3.dot(dl, ax3))))), hh = Math.hypot(...v3.sub(S1, T0)) * 0.45;
       const bend = bez(T0, v3.add(T0, v3.mul(ax3, hh)), v3.sub(S1, v3.mul(dl, hh)), S1, 12);
       sweep('Fork ' + (sgn > 0 ? 'right' : 'left'), [...bend, L1], [...bend.map((_, i) => rL * (1.1 - 0.1 * smooth(i / 12))), rB], { n: nF, fa, kMin: KF }); }
   }
