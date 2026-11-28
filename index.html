@@ -1319,7 +1319,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 // On the public site, only this page and its own copies of the libraries (lib/) may run, and nothing may be sent anywhere:
 // a crafted project or SVG file cannot load or leak anything even if it slipped past the checks below.
 if (!/(^|\.)claude(usercontent)?\.(ai|com)$|^localhost$|^$/.test(location.hostname)) { const m = document.createElement('meta'); m.httpEquiv = 'Content-Security-Policy';
-  m.content = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'";
+  m.content = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' data: blob: https://fitflat.app https://*.workers.dev; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'";
   document.head.appendChild(m); }
 </script>
 <script src="lib/polygon-clipping/dist/polygon-clipping.umd.min.js"></script>
@@ -5214,6 +5214,7 @@ const UNWRAPS = (() => {
   const prune = db => { try { const t = db.transaction('solves', 'readwrite'), st = t.objectStore('solves'), cq = st.count(); // keep the last 300
     cq.onsuccess = () => { let extra = cq.result - 300; if (extra <= 0) return; st.index('t').openCursor().onsuccess = e => { const c = e.target.result; if (!c || extra-- <= 0) return; c.delete(); c.continue(); }; }; } catch (e) {} };
   return {
+    restore(o) { const r = unpack(o); delete r._kept; return r; }, // a result that came from a worker
     save(m, key, r) { if (!m || !r || r.error || !r.flat) return; const k = full(m, key); queue.set(k, { k, t: Date.now(), r: pack(r) }); if (!timer) timer = setTimeout(flush, 800); },
     // everything kept for this model, into the solve cache, before a project's decals are unwrapped
     async preload(m) { if (!m) return 0; const db = await open(); if (!db) return 0; const pre = modelKey(m) + '|' + solverTag() + '|';
@@ -5234,6 +5235,59 @@ function solveOne(ctrl, flip, dir, darts) {
   UNWRAPS.save(S.model, key, r);
   return r;
 }
+// ---------- unwraps on all processor cores ----------
+// Workers run the same unwrapper (the Core script) on a copy of the model. Before decals are unwrapped, the unwraps they
+// will ask for are worked out in parallel and put into the solve cache; the usual code then finds them there at once.
+// Anything not prepared (or a worker that fails) is simply unwrapped here as before.
+const POOL = (() => {
+  const N = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 2) - 1)); let W = null, sent = null, seq = 0, off = false; const wait = new Map(), busy = new Map();
+  const H = (i,j,k) => ((i*73856093) ^ (j*19349663) ^ (k*83492791)) | 0;
+  const start = () => { if (W || off) return !off; try {
+      const sc = [...document.scripts].find(x => x.textContent.includes('const Core = (() => {')); if (!sc || typeof Worker === 'undefined') throw 0;
+      const body = sc.textContent + `
+;const H = ${H.toString()}; let M = null;
+self.onmessage = e => { const m = e.data;
+  if (m.t === 'model') { M = m.model; M.grid.h = H; if (m.sameTopo) M.mesh._topo = M.topo; return; }
+  try { const d = m.darts ? Object.assign(m.darts.list.map(x => Object.assign(x.p, { v: x.v, ni: x.ni, mir: x.mir })), { hole: m.darts.hole }) : null;
+    const ctrl = Object.assign(m.ctrl, m.ctrlX || {}), r = Core.solveDecal(M, ctrl, m.flip, m.dir, d, m.sh); delete r.uvOf; postMessage({ id: m.id, r }); }
+  catch (err) { postMessage({ id: m.id, err: String(err && err.message || err) }); } };`;
+      const url = URL.createObjectURL(new Blob([body], { type: 'text/javascript' }));
+      W = Array.from({ length: N }, () => { const w = new Worker(url); w.onmessage = e => { const f = wait.get(e.data.id); wait.delete(e.data.id); busy.set(w, busy.get(w) - 1); f && f(e.data); };
+        w.onerror = () => { off = true; for (const f of wait.values()) f({ err: 'worker' }); wait.clear(); }; busy.set(w, 0); return w; });
+      return true; } catch (e) { off = true; return false; } };
+  const ensureModel = () => { const m = S.model; if (!m || sent === m) return !!m;
+    if (String(m.grid.h) !== String(H)) { off = true; return false; } // the grid hash changed: workers would look up the wrong cells
+    const { h, ...grid } = m.grid, { _topo, ...mesh } = m.mesh, model = { ...m, grid, mesh };
+    try { for (const w of W) w.postMessage({ t: 'model', model, sameTopo: _topo === m.topo }); } catch (e) { off = true; return false; }
+    sent = m; return true; };
+  const extra = a => { const o = {}; for (const k of Object.keys(a)) if (!/^\d+$/.test(k)) o[k] = a[k]; return Object.keys(o).length ? o : null; };
+  const run = (ctrl, flip, dir, darts, sh) => new Promise(res => { const w = W.reduce((a, b) => (busy.get(b) < busy.get(a) ? b : a)); const id = ++seq; wait.set(id, res); busy.set(w, busy.get(w) + 1);
+    const dl = darts?.length ? { list: darts.map(p => ({ p: p.slice(), v: p.v, ni: p.ni, mir: p.mir })), hole: RELIEF_HOLE / 2 } : null;
+    try { w.postMessage({ t: 'solve', id, ctrl: ctrl.slice(), ctrlX: extra(ctrl), flip, dir, darts: dl, sh }); } catch (e) { wait.delete(id); res({ err: 'clone' }); } });
+  return {
+    // fill the solve cache with these unwraps, in parallel; resolves when all are back (failures are left to the usual path)
+    async prefetch(jobs, onDone) {
+      if (!jobs.length || !S.model || !start() || !ensureModel()) return 0; const m = S.model, sh = filmShrink(); let done = 0;
+      const todo = new Map(); for (const [ctrl, flip, dir, darts] of jobs) { const key = (sh ? 'T' + sh.toFixed(4) : '') + solveKey(ctrl, flip, dir, darts), hit = SOLVES.get(key);
+        if (!(hit && hit.model === m) && !todo.has(key)) todo.set(key, [ctrl, flip, dir, darts]); }
+      await Promise.all([...todo].map(async ([key, a]) => { const out = await run(...a, sh); onDone && onDone(++done, todo.size);
+        if (!out.r || S.model !== m) return; if (out.r.error) return; const r = UNWRAPS.restore(out.r); r._v = ++RESV;
+        SOLVES.set(key, { model: m, r }); if (SOLVES.size > 300) SOLVES.delete(SOLVES.keys().next().value); UNWRAPS.save(m, key, r); }));
+      return todo.size; },
+    get size() { return N; },
+  };
+})();
+// the unwraps solveNow(d) will ask for first (darts without chosen angles are worked out by trying several: left to solveNow)
+function solveJobs(d) {
+  if (!S.model || !d.closed || d.ctrl.length < 3 || (d.darts?.length && d.darts.some((_, i) => typeof d.dartV?.[i] !== 'number'))) return [];
+  try { const mc = mergedCtrl(d), dir = d.seamDir || null, nd = notchDarts(d, !!mc), dts = d.darts?.length || nd.length ? [...(d.darts?.length ? dartList(d) : []), ...nd] : null, J = [[mc || d.ctrl, d.flip, dir, dts]];
+    if (nd.length) J.push([mc || d.ctrl, d.flip, dir, d.darts?.length ? dartList(d) : null]);
+    if (mc?.holes?.length) for (const h of mc.holes) J.push([h, false, null, null]);
+    if (!mc && d.mirror) { const tc = twinCtrl(d), pl = mirrorPlane(), td = dir && pl ? dir.map((v, k) => k === pl.k ? -v : v) : dir; J.push([tc, d.flip, td, dts && pl ? dts.map(p => Object.assign(p.map(reflect), { v: p.v })) : null]); }
+    return J.filter(j => j[0] && j[0].length >= 3); } catch (e) { return []; }
+}
+// unwrap these decals' parts on all cores first, then the usual (now instant) unwrap; with a progress note for several
+function prepareUnwraps(list, progress) { const jobs = list.flatMap(solveJobs); return jobs.length ? POOL.prefetch(jobs, progress).catch(() => 0) : Promise.resolve(0); }
 // how good a cut is: the worst excess and stretch near it, each against the film's limit (plus a little of the average)
 function cutScore(r, polys) {
   if (!r || r.error || !r.faceSig) return 1e9;
@@ -5310,7 +5364,7 @@ function solve(d) {
   if (!S.liveUnwrap && !S.restoring && !S.recomputing) { d.stale = true; updateDecalVisual(d, true); updateUI(); return; }
   d.stale = false;
   setBusy(d.mirror ? 'Unwrapping both sides…' : 'Unwrapping…');
-  setTimeout(() => { solveNow(d); setBusy(false); updateUI(); }, 20);
+  prepareUnwraps([d]).then(() => { if (!S.decals.includes(d)) { setBusy(false); return; } solveNow(d); setBusy(false); updateUI(); });
 }
 
 S.liveUnwrap = false; try { S.liveUnwrap = localStorage.getItem('decal-studio-live2') === '1'; } catch (e) {} // off unless turned on
@@ -5318,8 +5372,10 @@ const staleDecals = () => S.decals.filter(d => d.stale);
 // unwrap everything still waiting, right now (callers that need the flat shapes use this)
 function flushStale() { const L = staleDecals(); if (!L.length) return false; for (const d of L) { d.stale = false; solveNow(d); } return true; }
 // unwrap a list of decals one at a time, with the page drawn in between: one long run makes the browser offer "Wait / Exit page"
-function unwrapEach(list, each, done) {
+function unwrapEach(list, each, done, ready) {
   const L = list.slice(), n = L.length; let i = 0;
+  if (!ready && n) { setBusy(n > 1 ? tr('Unwrapping {0} decals…').replace('{0}', n) : tr('Unwrapping…')); // first the parts on all cores, then each decal (from the cache)
+    prepareUnwraps(L, (k, m) => { if (m > 1) setBusy(tr('Unwrapping… {0} of {1} parts').replace('{0}', k).replace('{1}', m)); }).then(() => unwrapEach(L, each, done, true)); return; }
   const step = () => {
     if (i >= n) { setBusy(false); done && done(); return; }
     setBusy(n > 1 ? tr('Unwrapping {0} of {1}…').replace('{0}', i + 1).replace('{1}', n) : tr('Unwrapping…'));
@@ -6855,7 +6911,7 @@ function cutClick(hit, shift) {
   const da = newDecalFrom(d, A, true, 'a'), db = newDecalFrom(d, B, true, 'b');
   removeDecal(d, true);
   setBusy('Unwrapping both pieces…');
-  setTimeout(() => { solveNow(da); solveNow(db); S.active = da; setBusy(false); renderHandles(); updateUI(); flash('Cut into two pieces.'); }, 20);
+  prepareUnwraps([da, db]).then(() => { solveNow(da); solveNow(db); S.active = da; setBusy(false); renderHandles(); updateUI(); flash('Cut into two pieces.'); });
 }
 let cutMark = null;
 function renderCutMark() {
@@ -7203,7 +7259,7 @@ function closeViewLine() {
   mirrorNewDecal(d);
   S.decals.push(d); S.active = d; S.sel = null; S.dirty = true;
   setBusy('Unwrapping…');
-  setTimeout(() => { solveNow(d); setBusy(false); renderHandles(); updateUI(); flash(d.res?.error ? d.res.error : 'Outline projected onto the surface. Switch to Edit to adjust its points.'); }, 20);
+  prepareUnwraps([d]).then(() => { solveNow(d); setBusy(false); renderHandles(); updateUI(); flash(d.res?.error ? d.res.error : 'Outline projected onto the surface. Switch to Edit to adjust its points.'); });
 }
 function setKnifeThrough(on) { S.knifeThrough = on; renderKnife(); updateUI(); flash(on ? 'Cut through: the knife cuts every surface under the line, front and back.' : 'Visible side only: the knife cuts just the surface you can see.'); }
 function clearKnife() { S.knife = []; S.knifeRuns = []; S.knifeClosed = false; renderKnife(); updateUI(); }
@@ -8080,7 +8136,7 @@ function splitAtPoints() {
   const da = newDecalFrom(d, A, true, 'a'), db = newDecalFrom(d, B, true, 'b');
   removeDecal(d, true); S.sel = null;
   setBusy('Unwrapping both pieces…');
-  setTimeout(() => { solveNow(da); solveNow(db); S.active = da; setBusy(false); renderHandles(); updateUI(); flash('Split into two pieces.'); }, 20);
+  prepareUnwraps([da, db]).then(() => { solveNow(da); solveNow(db); S.active = da; setBusy(false); renderHandles(); updateUI(); flash('Split into two pieces.'); });
 }
 // a closed knife loop cuts its area out of every decal it overlaps
 // a closed loop that cuts through: everything inside the drawn area, on every layer, is cut away
@@ -9590,6 +9646,7 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step (opens in a new tab)": "alles, Schritt für Schritt (öffnet in einem neuen Tab)",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "Unwrapping {0} decals…": "{0} Dekore werden abgewickelt …", "Unwrapping… {0} of {1} parts": "Wird abgewickelt … {0} von {1} Teilen",
   "On: the explanations in the panels and the tips at the bottom of the view are shown. Off: hover a panel's heading to read its explanation, and click the (i) at the bottom left for the tip": "Ein: Erklärungen in den Feldern und Tipps unten in der Ansicht werden gezeigt. Aus: fahre über die Überschrift eines Felds, um seine Erklärung zu lesen, und klicke auf das (i) unten links für den Tipp",
   "Frame builder": "Rahmen-Baukasten", "Frame builder: build a frame from geometry numbers or change its size": "Rahmen-Baukasten: einen Rahmen aus Geometriedaten bauen oder seine Größe ändern",
   "What is the new project about?": "Worum geht es im neuen Projekt?", "Build a frame": "Rahmen bauen", "From geometry numbers or a size chart: road, gravel and mountain bike frames in every size.": "Aus Geometriedaten oder einer Größentabelle: Rennrad-, Gravel- und Mountainbike-Rahmen in jeder Größe.", "Import a 3D model": "3D-Modell importieren", "Your scan or CAD model: .obj, .stl, .glb or .gltf.": "Dein Scan oder CAD-Modell: .obj, .stl, .glb oder .gltf.", "Start a new project: build a frame or import a 3D model (asks to save the open one first)": "Neues Projekt: Rahmen bauen oder 3D-Modell importieren (fragt vorher, ob das offene gespeichert werden soll)",
