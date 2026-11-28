@@ -2605,7 +2605,7 @@ const S = {
 
 // ---------- three setup ----------
 const stage = $('#stage');
-const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' }) // the fast graphics card where there are two (e.g. NVIDIA next to Intel);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
 stage.prepend(renderer.domElement);
 const canvas = renderer.domElement;
