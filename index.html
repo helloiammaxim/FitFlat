@@ -512,6 +512,8 @@ dialog.splash form{ height:100%; display:flex; flex-direction:column; align-item
 .newpick .pick{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; text-align:left; padding:16px; border-radius:14px; border:1px solid var(--line); background:var(--fill); color:var(--ink); font:inherit; cursor:pointer; transition:border-color .12s, background-color .12s; }
 .newpick .pick:hover, .newpick .pick:focus-visible{ border-color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--fill)); outline:none; }
 .newpick .pick svg{ width:34px; height:28px; fill:none; stroke:var(--accent); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; } .newpick .pick b{ font-size:14px; } .newpick .pick span{ font-size:12px; color:var(--muted); line-height:1.4; }
+#licGate{ width:min(520px, 94vw); } #licGate .lgrow{ display:flex; gap:10px; align-items:center; margin:4px 0 10px; } #licGate .lgrow input{ flex:1; border:0; background:var(--fill); border-radius:8px; padding:8px 10px; color:var(--ink); font:inherit; letter-spacing:.06em; }
+#licGate .lgkey{ background:none; border:0; padding:0; border-radius:0; } #licGate .lgkey summary{ cursor:pointer; color:var(--muted); font-size:13px; margin:6px 0; } #licGate .lgnone{ margin-top:12px; padding-top:12px; border-top:1px solid var(--line); font-size:13px; color:var(--muted); } #licGate .lgnone a{ color:var(--accent); }
 .reqdlg{ width:min(560px, 94vw); } .reqdlg textarea{ box-sizing:border-box; width:100%; border:0; background:var(--fill); border-radius:8px; padding:8px 9px; color:var(--ink); font:inherit; font-size:13px; resize:vertical; }
 .reqdlg .chk{ margin:10px 0 6px; } .reqdlg .ok{ text-align:center; padding:18px 6px; } .reqdlg .ok b{ display:block; font-size:16px; margin-bottom:6px; color:var(--ink); }
 #keysBody{ max-height:min(70vh, 720px); overflow:auto; font-size:13px; display:grid !important; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:0 32px; align-items:start; }
@@ -688,7 +690,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 #importMenu button, #helpMenu button{ flex-direction:column; align-items:flex-start; gap:1px; }
 .tmenu.dd kbd{ font:inherit; font-size:11.5px; color:var(--muted); }
 .tmenu.dd hr{ border:0; border-top:1px solid var(--line); margin:5px 8px; }
-.top .tbtn.openbtn{ padding:0 14px; } .top a.tbtn{ text-decoration:none; color:inherit; display:inline-flex; align-items:center; } .top a.tbtn.getapp{ color:var(--accent); } .top #importBtn{ padding:0 10px 0 14px; }
+.top .tbtn.openbtn{ padding:0 14px; } .top a.tbtn{ text-decoration:none; color:inherit; display:inline-flex; align-items:center; } .top a.tbtn.getapp{ color:var(--accent); } .top a.tbtn.buybtn{ background:var(--accent); color:#fff; } .top a.tbtn.buybtn:hover{ filter:brightness(1.08); } .top #importBtn{ padding:0 10px 0 14px; }
 .split{ display:inline-flex; } .split .savebtn{ border-radius:8px 0 0 8px; }
 .top .savemore{ height:30px; padding:0 7px; border-radius:0 8px 8px 0; margin-left:1px; display:inline-grid; place-items:center; }
 .savemore .chev{ width:10px; height:10px; fill:none; stroke:#fff; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
@@ -718,7 +720,8 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <span class="spacer"></span>
     <button class="tbtn wide" id="importBtn" aria-haspopup="menu" aria-expanded="false" title="Bring in a 3D model or scan, SVG artwork, or a reference photo"><span>Import</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
     <button class="tbtn wide openbtn" id="geoBtn" title="Frame builder: build a frame from geometry numbers or change its size"><span>Frame builder</span></button>
-    <a class="tbtn wide openbtn getapp webonly" id="getApp" href="https://fitflat.app/download.html" target="_blank" rel="noopener" title="FitFlat for Mac and Windows: free to download and try" hidden><span>Get the app</span></a>
+    <a class="tbtn wide openbtn getapp webonly" id="getApp" href="https://fitflat.app/download.html" target="_blank" rel="noopener" title="FitFlat for Mac and Windows: free to download and try" hidden><span>Download</span></a>
+    <a class="tbtn wide openbtn buybtn" id="buyBtn" href="https://fitflat.app/buy.html" target="_blank" rel="noopener" title="Exporting cut files needs a licence" hidden><span>Buy a licence</span></a>
     <button class="tbtn wide openbtn" id="newBtn" title="Start a new project: build a frame or import a 3D model (asks to save the open one first)"><span>New</span></button>
     <button class="tbtn wide openbtn" id="openBtn" title="Open one of your saved projects (Ctrl O)"><span>Open</span></button>
     <div class="split"><button class="btn primary savebtn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button><button class="btn primary savemore" id="saveMore" aria-haspopup="menu" aria-expanded="false" title="More ways to save" aria-label="More ways to save"><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button></div>
@@ -1207,6 +1210,19 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <header><h2 id="privTitle">Privacy</h2></header>
     <div class="body" id="privBody"></div>
     <footer><span class="spacer"></span><button class="btn primary" value="ok" autofocus>OK</button></footer>
+  </form>
+</dialog>
+<dialog class="geo unitdlg" id="licGate" aria-labelledby="lgTitle">
+  <form method="dialog" onsubmit="return false">
+    <header><h2 id="lgTitle">Exporting needs a licence</h2><p>Everything else in FitFlat is free to use here. To download cut files, open your licence file: it is read only in this browser and never uploaded.</p></header>
+    <div class="body">
+      <div class="lgrow"><button type="button" class="btn primary" id="lgOpen">Open licence file…</button><span class="note">or drop it here</span><input type="file" id="lgFile" accept=".fitflat-licence,.json" hidden></div>
+      <label class="chk"><input type="checkbox" id="lgRem" checked> Remember on this computer</label>
+      <details class="lgkey"><summary>I have an access key</summary><div class="lgrow"><input id="lgKey" placeholder="XXXX-XXXX-XXXX-XXXX-XXXX" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="lgKeyGo">Unlock</button></div></details>
+      <p class="note warn" id="lgErr" role="alert"></p>
+      <div class="lgnone"><b>No licence yet?</b> <a href="https://fitflat.app/buy.html" target="_blank" rel="noopener">Buy a licence</a>, or <a href="https://fitflat.app/download.html" target="_blank" rel="noopener">download FitFlat</a> and try exporting free for 14 days.</div>
+    </div>
+    <footer><span class="spacer"></span><button type="button" class="btn" id="lgCancel">Not now</button></footer>
   </form>
 </dialog>
 <dialog class="geo unitdlg newdlg" id="newDlg" aria-labelledby="newTitle">
@@ -2400,6 +2416,7 @@ const Core = (() => {
     return best || shelf([]);
   }
 
+  /*@@ffx:buildSVG*/
   function buildSVG(packing, W, H, opts, names) {
     const gapY = 40, total = packing.sheets * H + (packing.sheets - 1) * gapY;
     const f = v => (Math.round(v*100)/100).toString();
@@ -2430,7 +2447,8 @@ ${opts.heat ? `<g id="stretch-map" inkscape:groupmode="layer" inkscape:label="${
 ${cut}</g>
 ${weed ? `<g id="weed">\n${weed}</g>\n` : ''}
 ${opts.labels ? `<g id="labels">\n${lab}</g>\n` : ''}</svg>`;
-  }
+  }  /*@@ffx-end*/
+
 
   // a box tree over the triangles, so a view ray only tests the few it passes near (picking under the mouse on big models)
   function buildBVH(mesh) {
@@ -4072,6 +4090,7 @@ function gradedPieces(pr, i) {
   return { pieces, failed };
 }
 $('#gradeExport').addEventListener('click', async () => {
+  if (!(await exportReady())) return;
   const pr = curPreset(); if (!pr) return; const sel = pr.sizes.map((s, i) => i).filter(i => gradePick.on[i]); if (!sel.length) { $('#gradeNote').textContent = tr('Tick at least one size.'); return; }
   const sh = S.sheet, out = [], notes = [];
   for (const [k, i] of sel.entries()) {
@@ -5245,7 +5264,7 @@ const SOLVES = new Map(); let RESV = 0;
 // this version of the unwrapper: opening a project again, or reloading, takes them from there instead of unwrapping again.
 const UNWRAPS = (() => {
   const fnv = (str, h = 0x811c9dc5) => { for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; } return h; };
-  let tag = null; const solverTag = () => tag || (tag = (() => { const sc = [...document.scripts].find(x => x.textContent.includes('const Core = (() => {')); const t = sc ? sc.textContent : ''; return fnv(t).toString(36) + t.length.toString(36); })());
+  let tag = null; const solverTag = () => tag || (tag = (() => { const sc = [...document.scripts].find(x => /const Core\s*=\s*\(\(\)\s*=>\s*\{/.test(x.textContent)); const t = sc ? sc.textContent : ''; return fnv(t).toString(36) + t.length.toString(36); })());
   const modelKey = m => { if (!m) return ''; if (m._ukey) return m._ukey; const P = m.mesh.pos, T = m.mesh.tri; let a = 0x811c9dc5, b = 0x9747b28c;
     const f = new Float32Array(1), u = new Uint32Array(f.buffer); for (let i = 0; i < P.length; i++) { f[0] = P[i]; a = Math.imul(a ^ u[0], 16777619) >>> 0; b = Math.imul(b ^ (u[0] >>> 7), 2246822519) >>> 0; }
     for (let i = 0; i < T.length; i++) { a = Math.imul(a ^ T[i], 16777619) >>> 0; } return (m._ukey = a.toString(36) + b.toString(36) + P.length.toString(36)); };
@@ -5292,7 +5311,7 @@ const POOL = (() => {
   const N = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 2) - 1)); let W = null, sent = null, seq = 0, off = false; const wait = new Map(), busy = new Map();
   const H = (i,j,k) => ((i*73856093) ^ (j*19349663) ^ (k*83492791)) | 0;
   const start = () => { if (W || off) return !off; try {
-      const sc = [...document.scripts].find(x => x.textContent.includes('const Core = (() => {')); if (!sc || typeof Worker === 'undefined') throw 0;
+      const sc = [...document.scripts].find(x => /const Core\s*=\s*\(\(\)\s*=>\s*\{/.test(x.textContent)); if (!sc || typeof Worker === 'undefined') throw 0;
       const body = sc.textContent + `
 ;const H = ${H.toString()}; let M = null;
 self.onmessage = e => { const m = e.data;
@@ -6407,8 +6426,10 @@ function stackSVGs(files) {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape" width="${W}mm" height="${H}mm" viewBox="0 0 ${W} ${H}">\n${body}</svg>`;
 }
 // DXF (R12 text, millimetres): cut outlines as closed polylines, curves flattened finely; labels, marks, weed boxes and the sheet on their own layers
-function cutSheetDXF(pk, W, names) {
-  const sh = S.sheet, H = pk.H, gapY = 40, total = pk.sheets * H + (pk.sheets - 1) * gapY, f = v => (Math.round(v * 1000) / 1000).toString();
+function cutSheetDXF(pk, W, names) { return writeDXF(pk, W, names, S.sheet); }
+/*@@ffx:writeDXF*/
+function writeDXF(pk, W, names, sh) {
+  const H = pk.H, gapY = 40, total = pk.sheets * H + (pk.sheets - 1) * gapY, f = v => (Math.round(v * 1000) / 1000).toString();
   const out = ['0', 'SECTION', '2', 'HEADER', '9', '$INSUNITS', '70', '4', '9', '$MEASUREMENT', '70', '1', '0', 'ENDSEC', '0', 'SECTION', '2', 'TABLES', '0', 'TABLE', '2', 'LAYER', '70', '5'];
   for (const [ln, col] of [['CUT', 7], ['LABELS', 6], ['SHEET', 8], ['REGISTRATION', 7], ['WEED', 5]]) out.push('0', 'LAYER', '2', ln, '70', '0', '62', String(col), '6', 'CONTINUOUS');
   out.push('0', 'ENDTAB', '0', 'ENDSEC', '0', 'SECTION', '2', 'ENTITIES');
@@ -6427,6 +6448,7 @@ function cutSheetDXF(pk, W, names) {
     if (sh.labels && names[p.id]) out.push('0', 'TEXT', '8', 'LABELS', '10', f(p.x + p.w / 2), '20', f(Y(oy + p.y + p.h / 2)), '30', '0', '40', f(Math.max(2.5, Math.min(8, p.h / 5))), '1', String(names[p.id]).replace(/[\r\n]/g, ' '), '72', '1', '11', f(p.x + p.w / 2), '21', f(Y(oy + p.y + p.h / 2)), '31', '0'); }
   out.push('0', 'ENDSEC', '0', 'EOF'); return out.join('\r\n') + '\r\n';
 }
+/*@@ffx-end*/
 // ---------- zoom and pan on the sheet ----------
 // the part of the sheet the pieces use, with a margin: notches are placed close up
 function piecesView() {
@@ -8996,16 +9018,60 @@ $('#pbMove').addEventListener('click', () => { S.placeHit = null; clearPlacePrev
 canvas.addEventListener('pointerleave', () => { $('#placeGhost').hidden = true; });
 
 // ---------- export ----------
+// On fitflat.app everything works without a licence except downloading cut files: the export writers come encrypted
+// (ffx.bin), and a licence file (or an access key) unlocks them for this browser. The desktop app has them built in.
+const FFX_STORE = 'fitflat-web-access';
+async function ffxOpen(id, dkRaw) {
+  const a = await (await fetch('access.json', { cache: 'no-store' })).json(), w = a.users?.[id]; if (!w) throw new Error('revoked');
+  const b = s => Uint8Array.from(atob(s), c => c.charCodeAt(0)), dk = await crypto.subtle.importKey('raw', dkRaw, 'AES-GCM', false, ['decrypt']);
+  let k; try { k = await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b(w.iv) }, dk, b(w.key)); } catch (e) { throw new Error('wrong'); }
+  const key = await crypto.subtle.importKey('raw', k, 'AES-GCM', false, ['decrypt']), data = new Uint8Array(await (await fetch(a.ffx + '?v=' + a.build, { cache: 'force-cache' })).arrayBuffer());
+  const js = new TextDecoder().decode(await crypto.subtle.decrypt({ name: 'AES-GCM', iv: b(a.iv) }, key, data));
+  const el = document.createElement('script'); el.textContent = js; document.head.appendChild(el); el.remove();
+  if (!window.__FFX) throw new Error('load'); updateBuyBtn(); return true;
+}
+function updateBuyBtn() { const b = $('#buyBtn'); if (b && window.__FFX_SEALED) b.hidden = !!window.__FFX; }
+async function exportReady() {
+  if (!window.__FFX_SEALED || window.__FFX) return true;
+  let s = null; try { s = JSON.parse(localStorage.getItem(FFX_STORE) || 'null'); } catch (e) {}
+  if (s) { try { return await ffxOpen(s.id, Uint8Array.from(atob(s.dk), c => c.charCodeAt(0))); } catch (e) { try { localStorage.removeItem(FFX_STORE); } catch (x) {} } }
+  return new Promise(res => openLicGate(res));
+}
+function openLicGate(done) {
+  const d = $('#licGate'), err = $('#lgErr'); err.textContent = ''; $('#lgKey').value = '';
+  const finish = ok => { d.close(); done && done(ok); done = null; };
+  const keep = (id, dk) => { if ($('#lgRem').checked) try { localStorage.setItem(FFX_STORE, JSON.stringify({ id, dk: btoa(String.fromCharCode(...dk)) })); } catch (e) {} };
+  const fail = e => { err.textContent = e.message === 'revoked' || e.message === 'wrong' ? tr('This licence does not unlock exporting (it may have ended or been withdrawn).') : tr('Exporting could not be unlocked: {0}').replace('{0}', e.message); };
+  const withLicence = async file => { let id, dk;
+    try { const f = JSON.parse(await file.text()), u = x => Uint8Array.from(atob(x.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((x.length + 3) % 4)), c => c.charCodeAt(0));
+      const p = JSON.parse(new TextDecoder().decode(u(f.payload))); id = p.id; dk = new Uint8Array(await crypto.subtle.digest('SHA-256', new Uint8Array([...new TextEncoder().encode('fitflat-web:'), ...u(f.signature)]))); }
+    catch (e) { err.textContent = tr('This is not a FitFlat licence file.'); return; }
+    try { await ffxOpen(id, dk); keep(id, dk); flash(tr('Licence opened: exporting is unlocked.')); finish(true); } catch (e) { fail(e); } };
+  $('#lgFile').onchange = e => { const f = e.target.files[0]; e.target.value = ''; if (f) withLicence(f); };
+  $('#lgOpen').onclick = () => $('#lgFile').click();
+  d.ondragover = e => e.preventDefault(); d.ondrop = e => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) withLicence(f); };
+  $('#lgKeyGo').onclick = async () => { const key = $('#lgKey').value.toUpperCase().replace(/[^0-9A-Z]/g, '').replace(/[IL]/g, '1').replace(/O/g, '0');
+    if (key.length !== 20) { err.textContent = tr('An access key has 20 letters and digits.'); return; }
+    try { const a = await (await fetch('access.json', { cache: 'no-store' })).json(), w = a.users?.[key.slice(0, 4)]; if (!w) throw new Error('wrong');
+      const base = await crypto.subtle.importKey('raw', new TextEncoder().encode(key), 'PBKDF2', false, ['deriveBits']);
+      const dk = new Uint8Array(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt: Uint8Array.from(atob(w.salt), c => c.charCodeAt(0)), iterations: w.iter }, base, 256));
+      await ffxOpen(key.slice(0, 4), dk); keep(key.slice(0, 4), dk); flash(tr('Exporting is unlocked.')); finish(true); } catch (e) { fail(e); } };
+  $('#lgCancel').onclick = () => finish(false); d.oncancel = e => { e.preventDefault(); finish(false); };
+  d.showModal();
+}
+// on the website: a remembered licence unlocks exporting quietly in the background; until then Buy shows in the top bar
+if (window.__FFX_SEALED) { updateBuyBtn(); (async () => { let s = null; try { s = JSON.parse(localStorage.getItem(FFX_STORE) || 'null'); } catch (e) {} if (s) try { await ffxOpen(s.id, Uint8Array.from(atob(s.dk), c => c.charCodeAt(0))); } catch (e) {} })(); }
+window.FFBuyButton = on => { const b = $('#buyBtn'); if (b) b.hidden = !on; }; // the desktop app shows it while there is no licence
 let downloadsApi = null;
 if (window.claude?.use) window.claude.use('downloads').then(d => { downloadsApi = d; }).catch(() => {});
-$('#export').addEventListener('click', () => flushStaleThen(async () => {
+$('#export').addEventListener('click', async () => { if (!(await exportReady())) return; flushStaleThen(async () => {
   const pieces = solvedPieces(); if (!pieces.length) return; const sh = S.sheet, r = cutSheetSVG(pieces, S.source?.name);
   if (await saveFile(baseName() + '_cut_sheet.svg', r.svg, $('#exportNote'))) $('#exportNote').textContent += ` (${r.nodes} ${tr('nodes')}${sh.curves !== false ? ', ' + tr('smooth curves') : ''})`;
-}));
-$('#exportDxf').addEventListener('click', () => flushStaleThen(async () => {
+}); });
+$('#exportDxf').addEventListener('click', async () => { if (!(await exportReady())) return; flushStaleThen(async () => {
   const pieces = solvedPieces(); if (!pieces.length) return; const r = cutSheetSVG(pieces);
   await saveFile(baseName() + '_cut_sheet.dxf', cutSheetDXF(r.pk, S.sheet.w, r.names), $('#exportNote'));
-}));
+}); });
 
 updateUI();
 // ---------- floating panels: drag by the grip, drop near an edge to pin it there; the pin button frees or docks a panel ----------
@@ -9695,6 +9761,8 @@ const DE = {
   "Help: the walkthrough again, or the manual": "Hilfe: den Rundgang noch einmal, oder das Handbuch", "Help": "Hilfe", "Walkthrough": "Rundgang", "the short tour of FitFlat, again": "die kurze Tour durch FitFlat, noch einmal", "Manual": "Handbuch", "everything, step by step": "alles, Schritt für Schritt",
   "More ways to save": "Weitere Arten zu speichern",
   "Tips": "Tipps", "Show tips at the bottom of the view": "Tipps unten in der Ansicht zeigen",
+  "Exporting cut files needs a licence": "Für den Export von Schnittdateien braucht es eine Lizenz",
+  "Exporting needs a licence": "Exportieren braucht eine Lizenz", "Everything else in FitFlat is free to use here. To download cut files, open your licence file: it is read only in this browser and never uploaded.": "Alles andere in FitFlat kannst du hier frei nutzen. Um Schnittdateien herunterzuladen, öffne deine Lizenzdatei: sie wird nur in diesem Browser gelesen und nie hochgeladen.", "Open licence file…": "Lizenzdatei öffnen …", "or drop it here": "oder hier ablegen", "Remember on this computer": "Auf diesem Computer merken", "I have an access key": "Ich habe einen Zugangsschlüssel", "Unlock": "Freischalten", "No licence yet?": "Noch keine Lizenz?", "Buy a licence": "Lizenz kaufen", "download FitFlat": "lade FitFlat herunter", "Not now": "Später", "This licence does not unlock exporting (it may have ended or been withdrawn).": "Diese Lizenz schaltet den Export nicht frei (vielleicht ist sie abgelaufen oder wurde zurückgezogen).", "Exporting could not be unlocked: {0}": "Der Export konnte nicht freigeschaltet werden: {0}", "This is not a FitFlat licence file.": "Das ist keine FitFlat-Lizenzdatei.", "Licence opened: exporting is unlocked.": "Lizenz geöffnet: der Export ist freigeschaltet.", "An access key has 20 letters and digits.": "Ein Zugangsschlüssel hat 20 Buchstaben und Ziffern.", "Exporting is unlocked.": "Der Export ist freigeschaltet.",
   "Welcome screen": "Startbildschirm", "the start page again": "die Startseite noch einmal", "Download FitFlat": "FitFlat herunterladen", "the app for Mac and Windows: free to try": "die App für Mac und Windows: kostenlos testen", "Get the app": "App holen",
   "Open on fitflat.app": "Auf fitflat.app öffnen",
   "Legal notice": "Impressum", "who makes FitFlat (Impressum)": "wer FitFlat macht (Impressum)",
@@ -10278,6 +10346,7 @@ setLang(LANG);
   const leave = then => { if (still) { dlg.close(); then && then(); return; } dlg.classList.add('out'); setTimeout(() => { dlg.classList.remove('out'); dlg.close(); then && then(); }, 260); };
   $('#introSkip').addEventListener('click', () => leave(() => setTimeout(askStoreOnce, 300)));
   if (!window.FFDesk && !window.__TAURI__) document.querySelectorAll('.webonly').forEach(el => el.hidden = false); // in the browser: point to the desktop app
+  if (window.__FFX_SEALED) { let seen = false; try { seen = sessionStorage.getItem('fitflat-intro-seen') === '1'; sessionStorage.setItem('fitflat-intro-seen', '1'); } catch (e) {} if (!seen) setTimeout(() => { if (!dlg.open && !document.querySelector('dialog[open]')) welcome(); }, 300); } // fitflat.app: the start page on every visit
   if (!window.FFDesk && !window.__TAURI__) { $('#introSkip').textContent = tr('Continue in the browser'); $('#introDl').hidden = false; $('#introDl').title = tr('FitFlat for Mac and Windows: free to download and try');
     $('#introDl').addEventListener('click', () => window.open('https://fitflat.app/download.html', '_blank', 'noopener')); }
   $('#introGo').addEventListener('click', () => leave(startTour));
