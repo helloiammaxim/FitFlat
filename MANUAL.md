@@ -122,7 +122,7 @@ Use a generated frame for layout and sizing; for production cuts use the real fr
 
 ## 3. Moving around the 3D view
 
-**Navigation** in Settings chooses how the mouse moves the view: **FitFlat** (below) or **Blender**: middle mouse turns, Shift + middle slides, Ctrl + middle (drag up and down) or scroll zooms, and Alt + left drag stands in for a missing middle button. Numpad 1 / 3 / 7 / 5, Home and Numpad . (zoom to the selection) work as in Blender. **Trackpad** (on by default on a Mac): two fingers turn the view, Shift + two fingers slide it, a pinch zooms. **Gizmo** (Ctrl + `) shows or hides the move, turn and size handles on the selected decal.
+**Navigation** in Settings chooses how the mouse moves the view: **FitFlat** (below) or **Blender**: middle mouse turns, Shift + middle slides, Ctrl + middle (drag up and down) or scroll zooms, and Alt + left drag stands in for a missing middle button. Numpad 1 / 3 / 7 / 5, Home and Numpad . (zoom to the selection) work as in Blender. **Trackpad** (on by default): on a trackpad two fingers turn the view, Shift + two fingers slide it, a pinch zooms. A mouse wheel still zooms: FitFlat tells a trackpad from a mouse wheel by itself, so the switch is only for turning the gestures off (then two fingers zoom too). **Gizmo** (Ctrl + `) shows or hides the move, turn and size handles on the selected decal.
 
 - **Turn:** drag the background, or hold Alt or Space and drag (also over the model).
 - **Pan:** right-drag.

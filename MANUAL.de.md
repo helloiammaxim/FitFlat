@@ -122,7 +122,7 @@ Nutze einen erzeugten Rahmen für Layout und Größen; für Produktionsschnitte 
 
 ## 3. In der 3D-Ansicht bewegen
 
-**Navigation** in den Einstellungen bestimmt, wie die Maus die Ansicht bewegt: **FitFlat** (unten) oder **Blender**: mittlere Maustaste dreht, Umschalt + Mitte verschiebt, Strg + Mitte (hoch und runter ziehen) oder Scrollen zoomt, und Alt + links ziehen ersetzt eine fehlende mittlere Taste. Ziffernblock 1 / 3 / 7 / 5, Pos1 und Ziffernblock , (auf die Auswahl zoomen) funktionieren wie in Blender. **Trackpad** (am Mac standardmäßig an): zwei Finger drehen die Ansicht, Umschalt + zwei Finger verschieben sie, Spreizen zoomt. **Gizmo** (Strg + `) zeigt oder versteckt die Griffe zum Verschieben, Drehen und Skalieren am gewählten Dekor.
+**Navigation** in den Einstellungen bestimmt, wie die Maus die Ansicht bewegt: **FitFlat** (unten) oder **Blender**: mittlere Maustaste dreht, Umschalt + Mitte verschiebt, Strg + Mitte (hoch und runter ziehen) oder Scrollen zoomt, und Alt + links ziehen ersetzt eine fehlende mittlere Taste. Ziffernblock 1 / 3 / 7 / 5, Pos1 und Ziffernblock , (auf die Auswahl zoomen) funktionieren wie in Blender. **Trackpad** (standardmäßig an): auf einem Trackpad drehen zwei Finger die Ansicht, Umschalt + zwei Finger verschieben sie, Spreizen zoomt. Ein Mausrad zoomt weiter: FitFlat unterscheidet Trackpad und Mausrad selbst, der Schalter ist also nur zum Ausschalten der Gesten da (dann zoomen auch zwei Finger). **Gizmo** (Strg + `) zeigt oder versteckt die Griffe zum Verschieben, Drehen und Skalieren am gewählten Dekor.
 
 - **Drehen:** Hintergrund ziehen, oder Alt bzw. Leertaste halten und ziehen (auch über dem Modell).
 - **Verschieben:** mit rechts ziehen.
