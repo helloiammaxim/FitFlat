@@ -454,4 +454,4 @@ Auf dem Mac ⌘ statt Strg verwenden.
 
 ---
 
-© 2026 Max Soldatkin. Frei für private und andere nicht-kommerzielle Nutzung unter der [PolyForm Noncommercial License 1.0.0](LICENSE.md). Jede kommerzielle Nutzung braucht eine schriftliche Erlaubnis.
+© 2026 Maksym Soldatkin. Frei für private und andere nicht-kommerzielle Nutzung unter der [PolyForm Noncommercial License 1.0.0](LICENSE.md). Jede kommerzielle Nutzung braucht eine schriftliche Erlaubnis.

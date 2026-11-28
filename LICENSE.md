@@ -1,6 +1,6 @@
-Required Notice: Copyright 2026 Max Soldatkin (https://github.com/helloiammaxim)
+Required Notice: Copyright 2026 Maksym Soldatkin (https://github.com/helloiammaxim)
 
-Free for personal and other noncommercial use under the license below. Any commercial use needs a separate written license from Max Soldatkin.
+Free for personal and other noncommercial use under the license below. Any commercial use needs a separate written license from Maksym Soldatkin.
 
 # PolyForm Noncommercial License 1.0.0
 

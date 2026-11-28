@@ -453,4 +453,4 @@ On a Mac use ⌘ instead of Ctrl.
 
 ---
 
-© 2026 Max Soldatkin. Free for personal and other noncommercial use under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). Any commercial use needs written permission.
+© 2026 Maksym Soldatkin. Free for personal and other noncommercial use under the [PolyForm Noncommercial License 1.0.0](LICENSE.md). Any commercial use needs written permission.

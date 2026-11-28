@@ -93,7 +93,7 @@ FitFlat läuft komplett im Browser. Es gibt keinen Server, kein Konto, keine Ana
 
 ## License
 
-Copyright 2026 Max Soldatkin. Released under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
+Copyright 2026 Maksym Soldatkin. Released under the [PolyForm Noncommercial License 1.0.0](LICENSE.md).
 
 - **Personal and other noncommercial use is free.**
 - **Any commercial use needs my written permission.** That includes using FitFlat in a business to make decals for customers, selling it, or building it into another product. Get in touch through GitHub ([@helloiammaxim](https://github.com/helloiammaxim)) to arrange a commercial license.
