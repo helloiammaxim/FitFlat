@@ -641,6 +641,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
 #importMenu button{ flex-direction:column; align-items:flex-start; gap:1px; }
 .tmenu.dd kbd{ font:inherit; font-size:11.5px; color:var(--muted); }
 .tmenu.dd hr{ border:0; border-top:1px solid var(--line); margin:5px 8px; }
+.top .tbtn.openbtn{ padding:0 14px; }
 .tbtn .chev{ width:10px; height:10px; stroke-width:1.6; margin-left:-2px; opacity:.7; }
 .brand .bname{ color:#353C47; } /* the wordmark in cold slate, not black */
 :root[data-theme="dark"] .brand .bname{ color:#C9CFD8; }
@@ -664,6 +665,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <span class="spacer"></span>
     <button class="tbtn wide" id="importBtn" aria-haspopup="menu" aria-expanded="false" title="Bring in a 3D model or scan, SVG artwork, or a reference photo"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 3v9M6.5 8.5L10 12l3.5-3.5"/><path d="M3.5 12.5v2A1.75 1.75 0 0 0 5.25 16.25h9.5a1.75 1.75 0 0 0 1.75-1.75v-2"/></svg><span>Import</span><svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg></button>
     <button class="tbtn wide" id="geoBtn" title="Build a frame from geometry numbers or change its size"><svg viewBox="0 0 24 20" aria-hidden="true"><circle cx="5" cy="13" r="4"/><circle cx="19" cy="13" r="4"/><path d="M5 13l4-7h7l3 7M9 6l3.5 7H5M12.5 13L16 6M8 4h3M15 4h2.5"/></svg><span>Frame</span></button>
+    <button class="tbtn wide openbtn" id="openBtn" title="Open one of your saved projects (Ctrl O)"><span>Open</span></button>
     <button class="btn primary savebtn" id="save" title="Save the project in this browser, under Projects (Ctrl+S)">Save</button>
     <span class="tsep" aria-hidden="true"></span>
     <button class="tbtn" id="settingsBtn" title="Settings: language, appearance, panel layout, model units" aria-label="Settings" aria-haspopup="dialog" aria-expanded="false"><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3 5.5h8M14.5 5.5H17M3 14.5h2.5M9 14.5h8"/><circle cx="12.75" cy="5.5" r="1.75"/><circle cx="7.25" cy="14.5" r="1.75"/></svg></button>
@@ -673,7 +675,7 @@ select optgroup{ font-weight:600; color:#6E6E73; }
     <input type="file" id="file" accept=".glb,.gltf,.obj,.stl,.json,.svg" hidden><input type="file" id="importSvg" accept=".svg,image/svg+xml" hidden><input type="file" id="projFile" accept=".json" hidden>
     <div class="tmenu dd" id="projMenu" role="menu" aria-label="Project" hidden>
       <button role="menuitem" data-m="new">New project<kbd></kbd></button>
-      <button role="menuitem" data-m="lib">Open a saved project…</button>
+      <button role="menuitem" data-m="lib">Open a saved project…<kbd>Ctrl O</kbd></button>
       <hr>
       <button role="menuitem" data-m="save">Save<kbd>Ctrl S</kbd></button>
       <button role="menuitem" data-m="saveas">Save as a new project</button>
@@ -13567,9 +13569,12 @@ $('#tplList').addEventListener('click', async e => {
 function libTab(t) { t = t === true ? 'tpl' : t === false ? 'proj' : t; for (const [tab, pan, k] of [['#tabProj', '#libProj', 'proj'], ['#tabStart', '#libStart', 'start'], ['#tabTpl', '#libTpl', 'tpl']]) { $(tab).setAttribute('aria-selected', String(t === k)); $(pan).hidden = t !== k; } }
 $('#tabProj').addEventListener('click', () => libTab('proj')); $('#tabTpl').addEventListener('click', () => libTab('tpl')); $('#tabStart').addEventListener('click', () => libTab('start'));
 $('#libSearch').addEventListener('input', renderLibSoon); $('#libSort').addEventListener('change', renderLib);
+const openProjects = async () => { libTab('proj'); $('#libMsg').textContent = ''; if (S.storeMode === 'folder' && FOLDER.handle && !FOLDER.ok) await folderPerm(true); $('#libDlg').showModal(); renderLib(); };
+$('#openBtn').addEventListener('click', openProjects);
+addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'o' && !e.target.closest?.('input, textarea')) { e.preventDefault(); if (!$('#libDlg').open) openProjects(); } });
 headerMenu($('#projName'), $('#projMenu'), async m => {
   if (m === 'new') $('#demo').click();
-  else if (m === 'lib') { libTab('proj'); $('#libMsg').textContent = ''; if (S.storeMode === 'folder' && FOLDER.handle && !FOLDER.ok) await folderPerm(true); $('#libDlg').showModal(); renderLib(); }
+  else if (m === 'lib') openProjects();
   else if (m === 'save') saveProject(false);
   else if (m === 'saveas') saveProject(true);
   else if (m === 'rename') { const n = prompt(tr('Project name'), S.project?.name || ''); if (n != null && n.trim()) { S.project.name = safeName(n.trim()); updateProjName(); if (S.project.id) saveProject(false, true); } }
@@ -19214,6 +19219,7 @@ const DE = {
   "Keep current…": "Aktuelle behalten…", "Keep the current arrangement as the layout shown": "Die aktuelle Anordnung als gezeigtes Layout behalten",
   "Layout: Drawing": "Layout: Zeichnen",
   "Drawing": "Zeichnen",
+  "Open one of your saved projects (Ctrl O)": "Eines deiner gespeicherten Projekte öffnen (Strg O)",
   "Import": "Importieren", "Bring in a 3D model or scan, SVG artwork, or a reference photo": "3D-Modell oder Scan, SVG-Grafik oder Referenzfoto hereinholen", "3D model or scan": "3D-Modell oder Scan", "SVG artwork as decals": "SVG-Grafik als Decals", "logos and shapes, placed on the frame": "Logos und Formen, auf den Rahmen gesetzt", "Reference photo": "Referenzfoto", "a photo of the real frame, to trace from": "ein Foto des echten Rahmens, zum Nachzeichnen",
   "Project: new, open, save, rename, download": "Projekt: neu, öffnen, speichern, umbenennen, herunterladen", "New project": "Neues Projekt", "Open a saved project…": "Gespeichertes Projekt öffnen…", "Save as a new project": "Als neues Projekt speichern", "Rename…": "Umbenennen…", "Open a project file (.json)…": "Projektdatei öffnen (.json)…", "Download the project file": "Projektdatei herunterladen", "Manage projects and templates…": "Projekte und Vorlagen verwalten…", "Project name": "Projektname", "Editing": "Bearbeiten", "Clean": "Aufgeräumt", "Settings": "Einstellungen", "Language": "Sprache", "Appearance": "Darstellung", "Panel layout": "Anordnung", "Model units": "Modelleinheiten", "Frame": "Rahmen", "New": "Neu", "Open": "Öffnen",
   "New: start over with the start frame": "Neu: mit dem Startrahmen neu beginnen", "Import SVG: place SVG artwork on the frame as editable decals": "SVG importieren: SVG-Grafik als bearbeitbare Decals auf den Rahmen setzen", "Settings: language, appearance, panel layout, model units": "Einstellungen: Sprache, Darstellung, Panel-Anordnung, Modelleinheiten",
