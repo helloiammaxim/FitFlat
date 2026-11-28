@@ -312,7 +312,8 @@ label.inline{ display:inline-flex; align-items:center; gap:6px; font-size:13px; 
 .matbar button{ min-width:26px; height:24px; padding:0 6px; border:0; border-radius:6px; background:transparent; color:#fff; font:600 12px/1 inherit; cursor:pointer; }
 .matbar button:hover, .matbar button[aria-pressed="true"]{ background:rgba(255,255,255,.18); }
 .mat.big{ position:fixed; z-index:60; left:16px; right:16px; top:64px; bottom:16px; margin:0; display:flex; flex-direction:column; box-shadow:0 12px 40px rgba(0,0,0,.45); }
-.mat.big svg{ flex:1; min-height:0; max-height:none; height:100%; }
+.mat.big svg#sheet{ flex:1; min-height:0; max-height:none; height:100%; }
+.matbar svg{ width:14px; height:14px; flex:none; } /* toolbar icons keep their size in the big view */
 .matmeta{ display:flex; justify-content:space-between; color:#CFE3DA; font-size:12.5px; margin-top:8px; font-variant-numeric:tabular-nums; }
 .matmeta strong{ color:#fff; font-weight:600; }
 .sec{ margin:0 12px 12px; padding:12px; background:var(--surface); border-radius:14px; }
